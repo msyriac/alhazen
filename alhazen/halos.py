@@ -38,7 +38,7 @@ def predictSN(polComb,noiseTY,noisePY,N,MM):
 
 
 
-def NFWkappa(cc,m500,c500,zL,thetaArc,cmbZ=1100.): #theta in arcminutes
+def NFWkappa(cc,massOverh,concentration,zL,thetaArc,overdensity=500.,critical=True,atClusterZ=True): #theta in arcminutes
 
 
     gnfw = lambda x: np.piecewise(x, [x>1., x<1., x==1.], \
@@ -51,44 +51,41 @@ def NFWkappa(cc,m500,c500,zL,thetaArc,cmbZ=1100.): #theta in arcminutes
 
 
 
-
-    comL  = cc.results.comoving_radial_distance(zL)
-    c500  = c500
-    comS  = cc.results.comoving_radial_distance(cmbZ)
+    cmbZ = cc.cmbZ
+    comL  = cc.results.comoving_radial_distance(zL) 
+    comS  = cc.results.comoving_radial_distance(cmbZ) 
     comLS = comS-comL
 
+    
 
-    M = m500
-    omegaM = cc.om
+    c = concentration
+    M = massOverh*cc.h
 
-    H0 =cc.h * 3.241E-18 #s^-1
-    G=4.52E-48 #solar^-1 mpc^3 s^-2
-    rhoC0 = 3.*(H0**2.)/(8.*np.pi*G)   #solar / mpc^3
+    zdensity = 0.
+    if atClusterZ: zdensity = zL
 
-    r500=(3.*M/(4.*np.pi*500.*omegaM*rhoC0))**(1./3.)
-    R500 = cc.rdel_c(M,zL,500.).flatten()[0] # R500 in Mpc/h
-    R500 = cc.rdel_c(M,0.,500.).flatten()[0] # R500 in Mpc/h
-    print r500, R500
-    #sys.exit()
+    if critical:
+        r500 = cc.rdel_c(M,zdensity,overdensity).flatten()[0] *cc.h # R500 in Mpc No 1/h
+    else:
+        r500 = cc.rdel_m(M,zdensity,overdensity) *cc.h # R500 in Mpc No 1/h
 
 
     conv=np.pi/(180.*60.)
     theta = thetaArc*conv # theta in radians
-    rS = r500/c500
+    rS = r500/c
 
     thetaS = rS/ comL 
 
-    pref=2.*np.pi*1.91E-19 # this is 8piG/c^2 in units of Mpc/solar mass
-    fc = np.log(1.+c500) - (c500/(1.+c500))
-    const1 = (3./4./np.pi) #dimensionless
-    const2 = pref/3. #H0^2 / rhoC0 = 8piG/3/c^2 = pref / 3 in Mpc/solar mass
-    const3 = comL * comLS * (1.+zL) / comS #Mpc ############ change back
+
+    const12 = 9.571e-20 # 2G/c^2 in Mpc / solar mass 
+    fc = np.log(1.+c) - (c/(1.+c))    
+    const3 = comL * comLS * (1.+zL) / comS #  Mpc
     const4 = M / (rS*rS) #solar mass / MPc^2
     const5 = 1./fc
-
+    
 
     kappaU = gnfw(theta/thetaS)
-    consts = const1 * const2 * const3 * const4 * const5
+    consts = const12 * const3 * const4 * const5
     kappa = consts * kappaU
 
 
@@ -97,7 +94,7 @@ def NFWkappa(cc,m500,c500,zL,thetaArc,cmbZ=1100.): #theta in arcminutes
 
 
 
-def getDLnMCMB(ells,Nls,clusterCosmology,M,z,concentration,arcStamp,pxStamp,arc_upto,bin_width,expectedSN,Nclusters=1000,numSims=30,saveId=None,numPoints=1000,nsigma=8.):
+def getDLnMCMB(ells,Nls,clusterCosmology,M,z,concentration,arcStamp,pxStamp,arc_upto,bin_width,expectedSN,Nclusters=1000,numSims=30,saveId=None,numPoints=1000,nsigma=8.,overdensity=500.,critical=True,atClusterZ=True):
 
     import flipper.liteMap as lm
     if saveId is not None: from orphics.tools.output import Plotter
@@ -112,9 +109,9 @@ def getDLnMCMB(ells,Nls,clusterCosmology,M,z,concentration,arcStamp,pxStamp,arc_
     xMap,yMap,modRMap,xx,xy = fmaps.getRealAttributes(lmap)
     lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(lmap)
 
-    kappaMap = NFWkappa(cc,M,concentration,z,modRMap*180.*60./np.pi)
+    kappaMap = NFWkappa(cc,M,concentration,z,modRMap*180.*60./np.pi,overdensity,critical,atClusterZ)
     finetheta = np.arange(0.01,arc_upto,0.01)
-    finekappa = NFWkappa(cc,M,concentration,z,finetheta)
+    finekappa = NFWkappa(cc,M,concentration,z,finetheta,overdensity,critical,atClusterZ)
     kappaMap = fmaps.stepFunctionFilterLiteMap(kappaMap,modLMap,stepfilter_ellmax)
 
     generator = fmaps.GRFGen(lmap,ells,Nls)
