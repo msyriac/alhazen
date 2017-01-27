@@ -1,5 +1,4 @@
 import numpy as np
-from orphics.theory.quadEstTheory import QuadNorm
 import orphics.analysis.flatMaps as fmaps 
 
 '''
