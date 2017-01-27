@@ -1,12 +1,6 @@
-from orphics.theory.quadEstTheory import QuadNorm
-import orphics.analysis.flatMaps as fmaps 
 import numpy as np
-from astLib import astWCS, astCoords
-import flipper.liteMap as lm
-from orphics.tools.output import Plotter
-from orphics.tools.stats import binInAnnuli
 
-def kappa(cc,m500,c500,zL,thetaArc,cmbZ=1100.): #theta in arcminutes
+def NFWkappa(cc,m500,c500,zL,thetaArc,cmbZ=1100.): #theta in arcminutes
 
 
     gnfw = lambda x: np.piecewise(x, [x>1., x<1., x==1.], \

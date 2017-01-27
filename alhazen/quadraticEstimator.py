@@ -11,6 +11,8 @@ from scipy.fftpack import fftshift,ifftshift,fftfreq
 from pyfftw.interfaces.scipy_fftpack import fft2
 from pyfftw.interfaces.scipy_fftpack import ifft2
 
+from orphics.tools.stats import timeit, bin2D
+
 import time
 import cPickle as pickle
 
