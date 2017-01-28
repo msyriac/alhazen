@@ -199,9 +199,9 @@ def getDLnMCMB(ells,Nls,clusterCosmology,log10Moverh,z,concentration,arcStamp,px
     xMap,yMap,modRMap,xx,xy = fmaps.getRealAttributes(lmap)
     lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(lmap)
 
-    kappaMap = NFWkappa(cc,M,concentration,z,modRMap*180.*60./np.pi,cc.cmbZ,overdensity,critical,atClusterZ)
+    kappaMap,retR500 = NFWkappa(cc,M,concentration,z,modRMap*180.*60./np.pi,cc.cmbZ,overdensity,critical,atClusterZ)
     finetheta = np.arange(0.01,arc_upto,0.01)
-    finekappa = NFWkappa(cc,M,concentration,z,finetheta,cc.cmbZ,overdensity,critical,atClusterZ)
+    finekappa,retR500 = NFWkappa(cc,M,concentration,z,finetheta,cc.cmbZ,overdensity,critical,atClusterZ)
     kappaMap = fmaps.stepFunctionFilterLiteMap(kappaMap,modLMap,stepfilter_ellmax)
 
     generator = fmaps.GRFGen(lmap,ells,Nls)
