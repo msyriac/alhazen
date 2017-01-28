@@ -38,6 +38,94 @@ def predictSN(polComb,noiseTY,noisePY,N,MM):
 
 
 
+@timeit
+def NFWMatchedFilterVar(lmap,clusterCosmology,M,c,z,ells,Nls):
+
+        
+    xMap,yMap,modRMap,xx,yy = fmaps.getRealAttributes(lmap)
+    lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(lmap)
+    
+        
+    cc = clusterCosmology
+    kappaReal, r500 = NFWkappa(cc,M,c,z,modRMap*180.*60./np.pi,sourceZ=cc.cmbZ)
+    
+
+    from scipy.fftpack import fftshift,ifftshift,fftfreq
+    from pyfftw.interfaces.scipy_fftpack import fft2
+    from pyfftw.interfaces.scipy_fftpack import ifft2
+    from scipy.integrate import simps
+
+    dAz = cc.results.angular_diameter_distance(z)
+    th500 = r500/dAz
+    fiveth500 = 5.*th500
+    print "theta500 " , fiveth500*180.*60./np.pi , " arcminutes"
+    print "maximum theta " , modRMap.max()*180.*60./np.pi, " arcminutes"
+
+    kInt = kappaReal.copy()
+    kInt[modRMap>fiveth500] = 0.
+    print "mean kappa inside theta500 " , kInt[modRMap<fiveth500].mean()
+    print "area of th500 disc " , np.pi*th500**2.
+    print "estimated integral " , kInt[modRMap<fiveth500].mean()*np.pi*th500**2.
+    k500 = simps(simps(kInt, yy), xx)
+    
+    print "integral of kappa inside disc ",k500
+    Ukappa = kappaReal/k500
+
+    from orphics.tools.output import Plotter
+    from scipy.interpolate import splrep,splev
+    pl = Plotter()
+    pl.plot2d(Ukappa)
+    pl.done("output/kappa.png")
+
+
+    Uft = fft2(Ukappa)
+    Upower = np.real(Ukappa*Ukappa.conjugate())
+
+    pl = Plotter()
+    pl.plot2d(Upower)
+    pl.done("output/upower.png")
+
+    Nls[Nls<0.]=np.inf
+    s = splrep(ells,Nls,k=3)
+    kk = splev(modLMap,s)
+    kk[modLMap<2.]=np.inf
+    kk[modLMap>ells.max()] = np.inf
+
+    Nx = lmap.Nx
+    Ny = lmap.Ny
+    #area = Nx*Ny*lmap.pixScaleX*lmap.pixScaleY
+    #kk = kk /area * (Nx*Ny)**2
+
+        
+    
+    pl = Plotter()
+    pl.plot2d(kk)
+    pl.done("output/Npower.png")
+
+    filter = np.nan_to_num(Upower/kk)
+    
+    filter[modLMap>8000] = 0.
+    print filter
+    print filter.max()
+    print filter.min()
+    print filter.shape
+    pl = Plotter()
+    pl.plot2d(fftshift(filter))
+    pl.done("output/filter.png")
+
+    
+    varinv = simps(simps(filter, ly), lx)
+    std = np.sqrt(1./varinv)
+
+    sn = k500/std
+    print sn*np.sqrt(1000.)
+    
+    
+
+        
+        
+
+
 def NFWkappa(cc,massOverh,concentration,zL,thetaArc,sourceZ,overdensity=500.,critical=True,atClusterZ=True): #theta in arcminutes
 
 
@@ -89,7 +177,7 @@ def NFWkappa(cc,massOverh,concentration,zL,thetaArc,sourceZ,overdensity=500.,cri
     kappa = consts * kappaU
 
 
-    return kappa
+    return kappa, r500
 
 
 
