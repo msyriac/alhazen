@@ -16,6 +16,15 @@ from orphics.tools.stats import timeit, bin2D
 import time
 import cPickle as pickle
 
+def getMax(polComb,tellmax,pellmax):
+    if polComb=='TT':
+        return tellmax
+    elif polComb in ['EE','EB']:
+        return pellmax
+    else:
+        return max(tellmax,pellmax)
+
+
 class QuadNorm(object):
 
     

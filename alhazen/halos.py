@@ -38,7 +38,7 @@ def predictSN(polComb,noiseTY,noisePY,N,MM):
 
 
 
-def NFWkappa(cc,massOverh,concentration,zL,thetaArc,overdensity=500.,critical=True,atClusterZ=True): #theta in arcminutes
+def NFWkappa(cc,massOverh,concentration,zL,thetaArc,sourceZ,overdensity=500.,critical=True,atClusterZ=True): #theta in arcminutes
 
 
     gnfw = lambda x: np.piecewise(x, [x>1., x<1., x==1.], \
@@ -51,7 +51,7 @@ def NFWkappa(cc,massOverh,concentration,zL,thetaArc,overdensity=500.,critical=Tr
 
 
 
-    cmbZ = cc.cmbZ
+    cmbZ = sourceZ
     comL  = cc.results.comoving_radial_distance(zL) 
     comS  = cc.results.comoving_radial_distance(cmbZ) 
     comLS = comS-comL
@@ -94,10 +94,12 @@ def NFWkappa(cc,massOverh,concentration,zL,thetaArc,overdensity=500.,critical=Tr
 
 
 
-def getDLnMCMB(ells,Nls,clusterCosmology,M,z,concentration,arcStamp,pxStamp,arc_upto,bin_width,expectedSN,Nclusters=1000,numSims=30,saveId=None,numPoints=1000,nsigma=8.,overdensity=500.,critical=True,atClusterZ=True):
+def getDLnMCMB(ells,Nls,clusterCosmology,log10Moverh,z,concentration,arcStamp,pxStamp,arc_upto,bin_width,expectedSN,Nclusters=1000,numSims=30,saveId=None,numPoints=1000,nsigma=8.,overdensity=500.,critical=True,atClusterZ=True):
 
     import flipper.liteMap as lm
     if saveId is not None: from orphics.tools.output import Plotter
+
+    M = 10.**log10Moverh
 
     cc = clusterCosmology
 
@@ -109,9 +111,9 @@ def getDLnMCMB(ells,Nls,clusterCosmology,M,z,concentration,arcStamp,pxStamp,arc_
     xMap,yMap,modRMap,xx,xy = fmaps.getRealAttributes(lmap)
     lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(lmap)
 
-    kappaMap = NFWkappa(cc,M,concentration,z,modRMap*180.*60./np.pi,overdensity,critical,atClusterZ)
+    kappaMap = NFWkappa(cc,M,concentration,z,modRMap*180.*60./np.pi,cc.cmbZ,overdensity,critical,atClusterZ)
     finetheta = np.arange(0.01,arc_upto,0.01)
-    finekappa = NFWkappa(cc,M,concentration,z,finetheta,overdensity,critical,atClusterZ)
+    finekappa = NFWkappa(cc,M,concentration,z,finetheta,cc.cmbZ,overdensity,critical,atClusterZ)
     kappaMap = fmaps.stepFunctionFilterLiteMap(kappaMap,modLMap,stepfilter_ellmax)
 
     generator = fmaps.GRFGen(lmap,ells,Nls)
@@ -160,6 +162,10 @@ def getDLnMCMB(ells,Nls,clusterCosmology,M,z,concentration,arcStamp,pxStamp,arc_
     Likes = Likes / (Likes.sum()*width) #normalize
     ampBest,ampErr = cfit(norm.pdf,amplitudeRange,Likes,p0=[1.0,0.5])[0]
 
+    sn = ampBest/ampErr/np.sqrt(numSims)
+    snAll = ampBest/ampErr
+    if snAll<5.: print "WARNING: ", saveId, " run with mass ", M , " and redshift ", z , " has overall S/N<5. \
+    Consider re-running with a greater numSims, otherwise estimate of per Ncluster S/N will be noisy."
 
     if saveId is not None:
         Fit = np.array([np.exp(-0.5*(x-ampBest)**2./ampErr**2.) for x in amplitudeRange])
@@ -173,9 +179,6 @@ def getDLnMCMB(ells,Nls,clusterCosmology,M,z,concentration,arcStamp,pxStamp,arc_
         pl.plot2d(bigStamp/numSims)
         pl.done("output/"+saveId+"bigstamp.png")
 
-    sn = ampBest/ampErr/np.sqrt(numSims)
-    snAll = ampBest/ampErr
-    if snAll<5.: print "WARNING: ", saveId, " run with mass ", M , " and redshift ", z , " has overall S/N<5. \
-    Consider re-running with a greater numSims, otherwise estimate of per Ncluster S/N will be noisy."
+        np.savetxt("data/"+saveId+"_m"+str(log10Moverh)+"_z"+str(z)+".txt",np.array([log10Moverh,z,1./sn]))
     
     return 1./sn
