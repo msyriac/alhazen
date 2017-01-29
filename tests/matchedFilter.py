@@ -38,16 +38,16 @@ gradCut = 2000
 halo = True
 beamX = 1.0
 beamY = 1.0
-noiseTX = 1.0
-noisePX = 1.414
-noiseTY = 1.0
-noisePY = 1.414
+noiseTX = 10.0
+noisePX = 14.14
+noiseTY = 10.0
+noisePY = 14.14
 tellmin = 2
 tellmax = 8000
 gradCut = 2000
 pellmin = 2
 pellmax = 8000
-polComb = 'EB'
+polComb = 'TT'
 kmin = 100
 kmax = getMax(polComb,tellmax,pellmax)
 
@@ -73,12 +73,15 @@ pl.done("output/nl.png")
 
 
 arcStamp = 20.
-pxStamp = 0.01
+pxStamp = 0.2
 lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
 
 
 
+overdensity=180.
+critical=False
+atClusterZ=False
 
-NFWMatchedFilterVar(lmap,cc,M,c,z,ells=ls,Nls=Nls)
+NFWMatchedFilterVar(lmap,cc,M,c,z,ells=ls,Nls=Nls,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 
 
