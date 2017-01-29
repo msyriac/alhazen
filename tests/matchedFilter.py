@@ -72,7 +72,7 @@ pl.done("output/nl.png")
 
 
 
-arcStamp = 20.
+arcStamp = 40.
 pxStamp = 0.2
 lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
 

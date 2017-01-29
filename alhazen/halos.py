@@ -79,13 +79,13 @@ def NFWMatchedFilterVar(lmap,clusterCosmology,M,c,z,ells,Nls,overdensity=500.,cr
     ellmin = 300
     
     Uft = fft2(Ukappa)
-    Upower = np.real(Ukappa*Ukappa.conjugate())
+    Upower = np.real(Uft*Uft.conjugate())
 
-    uint = Upower.copy()
-    uint = uint*0.+1.
-    uint[modLMap>ellmax] = 0.
-    uint[modLMap<ellmin] = 0.
-    norm = uint.sum()
+    # uint = Upower.copy()
+    # uint = uint*0.+1.
+    # uint[modLMap>ellmax] = 0.
+    # uint[modLMap<ellmin] = 0.
+    # norm = uint.sum()
 
 
 
@@ -97,17 +97,18 @@ def NFWMatchedFilterVar(lmap,clusterCosmology,M,c,z,ells,Nls,overdensity=500.,cr
 
     
     Nls[Nls<0.]=0.
-    s = interp1d(ells,Nls,bounds_error=False,fill_value=0.)
-    Nl2d = s(modLMap)
-    #s = splrep(ells,Nls,k=3)
-    #Nl2d = splev(modLMap,s)
+    #s = interp1d(ells,Nls,bounds_error=False,fill_value=0.)
+    #Nl2d = s(modLMap)
+    s = splrep(ells,Nls,k=3)
+    Nl2d = splev(modLMap,s)
     
     Nl2d[modLMap<ellmin]=np.inf
     Nl2d[modLMap>ellmax] = np.inf
 
-    # area = lmap.Nx*lmap.Ny*lmap.pixScaleX*lmap.pixScaleY
+    area = lmap.Nx*lmap.Ny*lmap.pixScaleX*lmap.pixScaleY
     #Nl2d = Nl2d   #(((lmap.Nx*lmap.Ny)**2.)/ area)**2.
-
+    Nl2d = Nl2d /area * (lmap.Nx*lmap.Ny)**2
+        
 
         
     
@@ -115,10 +116,10 @@ def NFWMatchedFilterVar(lmap,clusterCosmology,M,c,z,ells,Nls,overdensity=500.,cr
     # pl.plot2d(Nl2d)
     # pl.done("output/Npower.png")
 
-    filter = np.nan_to_num(Upower)
+    #filter = np.nan_to_num(Upower)
     #filter = np.nan_to_num(Nl2d)
-    #filter = np.nan_to_num(Upower/Nl2d)
-    filterNorm = filter*0.+1.
+    filter = np.nan_to_num(Upower/Nl2d)
+    #filterNorm = filter*0.+1.
     filter[modLMap>ellmax] = 0.
     filter[modLMap<ellmin] = 0.
     #filterNorm[modLMap>ellmax] = 0.
@@ -132,18 +133,18 @@ def NFWMatchedFilterVar(lmap,clusterCosmology,M,c,z,ells,Nls,overdensity=500.,cr
     # pl.done("output/filter.png")
 
     
-    # varinv = simps(simps(filter, ly), lx)
-    # varinvNorm = simps(simps(filterNorm, ly), lx)
-    varinv = filter.sum()
-    varinvNorm = filterNorm.sum()
-    print varinv/(norm)
+    varinv = simps(simps(filter, ly), lx)
+    #varinvNorm = simps(simps(filterNorm, ly), lx)
+    #varinv = filter.sum()
+    #varinvNorm = filterNorm.sum()
+    #print varinv/(norm)
     #print varinvNorm
     #print varinv/varinvNorm
     #std = np.sqrt(varinvNorm/varinv)
-    #std = np.sqrt(1./varinv)
+    std = np.sqrt(1./varinv)
 
-    #sn = k500/std
-    #print sn*np.sqrt(1000.)
+    sn = k500/std
+    print sn*np.sqrt(1000.)
     
     
 
