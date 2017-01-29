@@ -8,6 +8,8 @@ from scipy.fftpack import fftshift,ifftshift,fftfreq
 from pyfftw.interfaces.scipy_fftpack import fft2
 from pyfftw.interfaces.scipy_fftpack import ifft2
 from scipy.integrate import simps
+from orphics.tools.output import Plotter
+import flipper.liteMap as lm
 
 @timeit
 def getProfiles(generator,stepfilter_ellmax,kappaMap,binner,N):
@@ -44,9 +46,11 @@ def predictSN(polComb,noiseTY,noisePY,N,MM):
 
 
 @timeit
-def NFWMatchedFilterVar(lmap,clusterCosmology,M,c,z,ells,Nls,overdensity=500.,critical=True,atClusterZ=True):
+def NFWMatchedFilterSN(clusterCosmology,M,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05):
 
-        
+    lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
+    kellmin = 2.*np.pi/arcStamp*np.pi/60./180.
+    
     xMap,yMap,modRMap,xx,yy = fmaps.getRealAttributes(lmap)
     lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(lmap)
     
@@ -57,94 +61,72 @@ def NFWMatchedFilterVar(lmap,clusterCosmology,M,c,z,ells,Nls,overdensity=500.,cr
     dAz = cc.results.angular_diameter_distance(z)
     th500 = r500/dAz
     fiveth500 = 5.*th500
-    print "5theta500 " , fiveth500*180.*60./np.pi , " arcminutes"
-    print "maximum theta " , modRMap.max()*180.*60./np.pi, " arcminutes"
+    # print "5theta500 " , fiveth500*180.*60./np.pi , " arcminutes"
+    # print "maximum theta " , modRMap.max()*180.*60./np.pi, " arcminutes"
 
     kInt = kappaReal.copy()
     kInt[modRMap>fiveth500] = 0.
-    print "mean kappa inside theta500 " , kInt[modRMap<fiveth500].mean()
-    print "area of th500 disc " , np.pi*fiveth500**2.*(180.*60./np.pi)**2.
-    print "estimated integral " , kInt[modRMap<fiveth500].mean()*np.pi*fiveth500**2.
+    # print "mean kappa inside theta500 " , kInt[modRMap<fiveth500].mean()
+    # print "area of th500 disc " , np.pi*fiveth500**2.*(180.*60./np.pi)**2.
+    # print "estimated integral " , kInt[modRMap<fiveth500].mean()*np.pi*fiveth500**2.
     k500 = simps(simps(kInt, yy), xx)
     
-    print "integral of kappa inside disc ",k500
+    # print "integral of kappa inside disc ",k500
     Ukappa = kappaReal/k500
 
-    # from orphics.tools.output import Plotter
     # pl = Plotter()
     # pl.plot2d(Ukappa)
     # pl.done("output/kappa.png")
 
-    ellmax = 3000
-    ellmin = 300
+    ellmax = kellmax
+    ellmin = kellmin
     
     Uft = fft2(Ukappa)
     Upower = np.real(Uft*Uft.conjugate())
 
-    # uint = Upower.copy()
-    # uint = uint*0.+1.
-    # uint[modLMap>ellmax] = 0.
-    # uint[modLMap<ellmin] = 0.
-    # norm = uint.sum()
-
-
-
+    
 
     # pl = Plotter()
-    # pl.plot2d(Upower)
+    # pl.plot2d(fftshift(Upower))
     # pl.done("output/upower.png")
 
 
     
     Nls[Nls<0.]=0.
-    #s = interp1d(ells,Nls,bounds_error=False,fill_value=0.)
-    #Nl2d = s(modLMap)
     s = splrep(ells,Nls,k=3)
-    Nl2d = splev(modLMap,s)
+    Nl2d = splev(modLMap,s) 
     
     Nl2d[modLMap<ellmin]=np.inf
     Nl2d[modLMap>ellmax] = np.inf
 
     area = lmap.Nx*lmap.Ny*lmap.pixScaleX*lmap.pixScaleY
-    #Nl2d = Nl2d   #(((lmap.Nx*lmap.Ny)**2.)/ area)**2.
-    Nl2d = Nl2d /area * (lmap.Nx*lmap.Ny)**2
+    Upower = Upower *area / (lmap.Nx*lmap.Ny)**2
         
-
-        
-    
-    # pl = Plotter()
-    # pl.plot2d(Nl2d)
-    # pl.done("output/Npower.png")
-
-    #filter = np.nan_to_num(Upower)
-    #filter = np.nan_to_num(Nl2d)
     filter = np.nan_to_num(Upower/Nl2d)
-    #filterNorm = filter*0.+1.
     filter[modLMap>ellmax] = 0.
     filter[modLMap<ellmin] = 0.
-    #filterNorm[modLMap>ellmax] = 0.
-    #filterNorm[modLMap<ellmin] = 0.
-    #print filter
-    #print filter.max()
-    #print filter.min()
-    #print filter.shape
     # pl = Plotter()
     # pl.plot2d(fftshift(filter))
     # pl.done("output/filter.png")
 
-    
-    varinv = simps(simps(filter, ly), lx)
-    #varinvNorm = simps(simps(filterNorm, ly), lx)
-    #varinv = filter.sum()
-    #varinvNorm = filterNorm.sum()
-    #print varinv/(norm)
-    #print varinvNorm
-    #print varinv/varinvNorm
-    #std = np.sqrt(varinvNorm/varinv)
-    std = np.sqrt(1./varinv)
+    # bin_edges = np.arange(ellmin,ellmax,10)
+    # binner = bin2D(modLMap, bin_edges)
+    # centers, nl2dells = binner.bin(Nl2d)
+    # centers, upowerells = binner.bin(Upower)
+    # centers, filterells = binner.bin(filter)
+    # pl = Plotter()
+    # pl.add(centers,upowerells,label="upower")
+    # pl.add(centers,nl2dells,label="noise")
+    # pl.add(centers,filterells,label="filter")
+    # pl.add(ells,Nls,ls="--")
+    # pl.legendOn(loc='upper right')
+    # pl.done("output/filterells.png")
 
+    
+    varinv = filter.sum()
+    std = np.sqrt(1./varinv)
     sn = k500/std
-    print sn*np.sqrt(1000.)
+    return sn
     
     
 

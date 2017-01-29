@@ -2,7 +2,7 @@ from orphics.tools.output import Plotter
 import flipper.liteMap as lm
 from szlib.szcounts import ClusterCosmology,dictFromSection,listFromConfig
 from ConfigParser import SafeConfigParser 
-from alhazen.halos import NFWMatchedFilterVar
+from alhazen.halos import NFWMatchedFilterSN
 import numpy as np
 from orphics.tools.cmb import loadTheorySpectraFromCAMB
 from alhazen.quadraticEstimator import NlGenerator,getMax
@@ -47,7 +47,7 @@ tellmax = 8000
 gradCut = 2000
 pellmin = 2
 pellmax = 8000
-polComb = 'TT'
+polComb = 'EB'
 kmin = 100
 kmax = getMax(polComb,tellmax,pellmax)
 
@@ -61,27 +61,27 @@ myNls = NlGenerator(lmap,theory,bin_edges,gradCut=gradCut)
 myNls.updateNoise(beamX,noiseTX,noisePX,tellmin,tellmax,pellmin,pellmax,beamY=beamY,noiseTY=noiseTY,noisePY=noisePY)
 ls,Nls = myNls.getNl(polComb=polComb,halo=halo)
 
-ellkk = np.arange(2,9000,1)
-Clkk = theory.gCl("kk",ellkk)    
-pl = Plotter(scaleY='log',scaleX='log')
-pl.add(ellkk,4.*Clkk/2./np.pi)
-pl.add(ls,4.*Nls/2./np.pi)
-pl.legendOn(loc='lower left',labsize=10)
-pl.done("output/nl.png")
+# ellkk = np.arange(2,9000,1)
+# Clkk = theory.gCl("kk",ellkk)    
+# pl = Plotter(scaleY='log',scaleX='log')
+# pl.add(ellkk,4.*Clkk/2./np.pi)
+# pl.add(ls,4.*Nls/2./np.pi)
+# pl.legendOn(loc='lower left',labsize=10)
+# pl.done("output/nl.png")
 
 
 
 
-arcStamp = 40.
-pxStamp = 0.2
-lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
 
 
 
 overdensity=180.
 critical=False
 atClusterZ=False
+kellmax = 8000
 
-NFWMatchedFilterVar(lmap,cc,M,c,z,ells=ls,Nls=Nls,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+sn = NFWMatchedFilterSN(cc,M,c,z,ells=ls,Nls=Nls,kellmax=kellmax,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+
+print sn*np.sqrt(1000)
 
 
