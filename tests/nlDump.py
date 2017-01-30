@@ -43,10 +43,8 @@ print lmap.data.shape
 i=0
 for gradCut in [10000,2000]:
     myNls = NlGenerator(lmap,theory,gradCut=gradCut)
-    #for polComb in ['TT','TE','EE','EB','ET','TB']:
-    for polComb in ['EB','TB']:
-        #for beamY in np.arange(0.5,10.0,0.5):
-        for beamY in np.arange(1.0,10.0,0.5):
+    for polComb in ['TT','TE','EE','EB','ET','TB']:
+        for beamY in np.arange(0.5,10.0,0.5):
             beamell = beamscale(beamY)
             for tellmaxY,pellmaxY in [(3000,5000),(beamell,beamell)]:
 
@@ -73,14 +71,11 @@ for gradCut in [10000,2000]:
                                       pellminY=pellminY,pellmaxY=pellmaxY)
                     
                     if (polComb!='EB' and polComb!='TB') or (delensTolerance is None):
-
                         ls,Nls = myNls.getNl(polComb=polComb,halo=halo)
-                        
-                        
                     else:
                         ls, Nls = myNls.iterativeDelens(polComb,delensTolerance,halo)
 
 
 
-                    fileName = saveRoot + getFileName(['gradCut','polComb','beamY','noiseY','grad','tellminY','pellminY','kmin','deg','px'],[gradCut,polComb,beamY,noiseY,lab,tellminY,pellminY,kmin,deg,px])+".txt"
+                    fileName = saveRoot + getFileName(['gradCut','polComb','beamY','noiseY','grad','tellminY','pellminY','kmin','deg','px','delens'],[gradCut,polComb,beamY,noiseY,lab,tellminY,pellminY,kmin,deg,px,delensTolerance])+".txt"
                     np.savetxt(fileName,np.vstack((ls,Nls)).transpose())

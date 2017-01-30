@@ -185,7 +185,6 @@ class QuadNorm(object):
 
         if self.verbose: 
             print "Calculating norm for ", XY
-            #startTime = time.time()
 
             
         h=0.
@@ -527,9 +526,6 @@ class QuadNorm(object):
         self.Nlkk[XY] = retval.copy()
 
 
-        # if self.verbose:
-        #     elapTime = time.time() - startTime
-        #     print "Time for norm was ", elapTime ," seconds."
 
         
         return np.nan_to_num(retval * 2. / lmap/(lmap+1.))
@@ -554,10 +550,6 @@ class QuadNorm(object):
         clPPArr[self.fMaskYY['EE']==0] = 0.
         cltotPPArr[self.fMaskYY['EE']==0] = np.inf
         
-        #clunlentotEEArr[np.where(lmap >= self.lmax_P)] = np.inf
-        #clunlenEEArr[np.where(lmap >= self.lmax_P)] = 0.
-        #clPPArr[np.where(lmap >= self.lmax_P)] = 0.
-        #cltotPPArr[np.where(lmap >= self.lmax_P)] = np.inf
 
         if halo: clunlenEEArr[np.where(self.modLMap >= self.gradCut)] = 0.
                 
@@ -596,21 +588,12 @@ class QuadNorm(object):
         ClBBres[np.where(np.logical_or(self.modLMap >= self.bigell, self.modLMap == 0.))] = 0.
         ClBBres *= self.Nx * self.Ny 
         ClBBres[self.fMaskYY['EE']==0] = 0.
-        #ClBBres[lmap>self.lmax_P]=0.
         from orphics.tools.output import Plotter
                 
         
-        #ftHolder = self.ftMap.copy()
-        #ftHolder.kMap = np.sqrt(ClBBres)/self.ftMap.pixScaleX/self.ftMap.pixScaleY
-        #fftTools.powerFromFFT(ftHolder, ftHolder)
         area =self.Nx*self.Ny*self.pixScaleX*self.pixScaleY
         bbNoise2D = ((np.sqrt(ClBBres)/self.pixScaleX/self.pixScaleY)**2.)*(area/(self.Nx*self.Ny*1.0)**2)
 
-        pl = Plotter()
-        pl.plot2d(fftshift(bbNoise2D))
-        pl.done("output/clbb2d.png")
-        
-        #bbNoise2D = fftTools.powerFromFFT(ftHolder, ftHolder)
         self.lClFid2d['BB'] = bbNoise2D.copy()
 
         
@@ -711,7 +694,7 @@ class NlGenerator(object):
 
         
         from orphics.tools.output import Plotter
-        pl = Plotter(scaleY='log',scaleX='log')
+        #pl = Plotter(scaleY='log',scaleX='log')
         #pl = Plotter(scaleY='log')
         while ctol>dTolPercentage:
             print "Performing iteration ", inum+1
@@ -719,7 +702,6 @@ class NlGenerator(object):
             centers, nlkk = delensBinner.bin(self.N.Nlkk[xy])
             bbNoise2D = self.N.delensClBB(self.N.Nlkk[xy],halo)
             ells, dclbb = delensBinner.bin(bbNoise2D)
-            print dclbb
             if inum>0:
                 new = np.nanmean(nlkk)
                 old = np.nanmean(oldNl)
@@ -728,8 +710,8 @@ class NlGenerator(object):
             oldNl = nlkk.copy()
             inum += 1
             #pl.add(centers,nlkk)
-            pl.add(ells,dclbb*ells**2.)
-        pl.done('output/delens'+xy+'.png')
+            #pl.add(ells,dclbb*ells**2.)
+        #pl.done('output/delens'+xy+'.png')
         self.N.lClFid2d['BB'] = origBB.copy()
         return centers,nlkk
 
