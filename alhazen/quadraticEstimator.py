@@ -605,7 +605,7 @@ class QuadNorm(object):
 
 
 class NlGenerator(object):
-    def __init__(self,templateMap,theorySpectra,bin_edges,gradCut=None,TCMB=2.725e6):
+    def __init__(self,templateMap,theorySpectra,bin_edges=None,gradCut=None,TCMB=2.725e6):
 
         self.N = QuadNorm(templateMap,gradCut=gradCut)
         self.TCMB = TCMB
@@ -621,10 +621,13 @@ class NlGenerator(object):
             self.N.addLensedFilter2DPower(cmb,lClFilt)
             self.N.addUnlensedNorm2DPower(cmb,uClNorm)
 
-        self.bin_edges = bin_edges
+        if bin_edges is not None:
+            self.bin_edges = bin_edges
+            self.binner = bin2D(self.N.modLMap, bin_edges)
+
+    def updateBins(self,bin_edges):
 
         self.binner = bin2D(self.N.modLMap, bin_edges)
-
 
     def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,delensTolerance=None):
 
