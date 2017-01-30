@@ -631,7 +631,7 @@ class NlGenerator(object):
     def updateBins(self,bin_edges):
         self.binner = bin2D(self.N.modLMap, bin_edges)
 
-    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,delensTolerance=None):
+    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.]):
 
         def setDefault(A,B):
             if A is None:
@@ -647,8 +647,10 @@ class NlGenerator(object):
         tellmaxY = setDefault(tellmaxY,tellmaxX)
         pellmaxY = setDefault(pellmaxY,pellmaxX)
 
-        nTX,nPX = fmaps.whiteNoise2D([noiseTX,noisePX],beamX,self.N.modLMap,TCMB=self.TCMB)
-        nTY,nPY = fmaps.whiteNoise2D([noiseTY,noisePY],beamY,self.N.modLMap,TCMB=self.TCMB)
+        nTX,nPX = fmaps.whiteNoise2D([noiseTX,noisePX],beamX,self.N.modLMap, \
+                                     TCMB=self.TCMB,lknees=lkneesX,alphas=alphasX)
+        nTY,nPY = fmaps.whiteNoise2D([noiseTY,noisePY],beamY,self.N.modLMap, \
+                                     TCMB=self.TCMB,lknees=lkneesY,alphas=alphasY)
         fMaskTX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminX,lmax=tellmaxX)
         fMaskTY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminY,lmax=tellmaxY)
         fMaskPX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminX,lmax=pellmaxX)
@@ -663,6 +665,8 @@ class NlGenerator(object):
         for i,noise in enumerate(nList):
             self.N.addNoise2DPowerXX(noise,nListX[i],fListX[i])
             self.N.addNoise2DPowerYY(noise,nListY[i],fListY[i])
+
+        return nTX,nPX,nTY,nPY
 
     @timeit
     def getNl(self,polComb='TT',halo=True):            

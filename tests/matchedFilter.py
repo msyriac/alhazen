@@ -7,7 +7,7 @@ import numpy as np
 from orphics.tools.cmb import loadTheorySpectraFromCAMB
 from alhazen.quadraticEstimator import NlGenerator,getMax
 
-M = 2.e14
+Mexp = np.log10(2.e14)
 z = 0.7
 c = 1.84
 
@@ -47,7 +47,7 @@ tellmax = 8000
 gradCut = 2000
 pellmin = 2
 pellmax = 8000
-polComb = 'EB'
+polComb = 'TT'
 kmin = 100
 kmax = getMax(polComb,tellmax,pellmax)
 
@@ -80,7 +80,7 @@ critical=False
 atClusterZ=False
 kellmax = 8000
 
-sn = NFWMatchedFilterSN(cc,M,c,z,ells=ls,Nls=Nls,kellmax=kellmax,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+sn = NFWMatchedFilterSN(cc,Mexp,c,z,ells=ls,Nls=Nls,kellmax=kellmax,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 
 print sn*np.sqrt(1000)
 

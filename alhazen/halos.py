@@ -46,7 +46,8 @@ def predictSN(polComb,noiseTY,noisePY,N,MM):
 
 
 @timeit
-def NFWMatchedFilterSN(clusterCosmology,M,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05):
+def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05,saveId=None):
+    M = 10.**log10Moverh
 
     lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
     kellmin = 2.*np.pi/arcStamp*np.pi/60./180.
@@ -126,6 +127,11 @@ def NFWMatchedFilterSN(clusterCosmology,M,c,z,ells,Nls,kellmax,overdensity=500.,
     varinv = filter.sum()
     std = np.sqrt(1./varinv)
     sn = k500/std
+
+    if saveId is not None:
+        np.savetxt("data/"+saveId+"_m"+str(log10Moverh)+"_z"+str(z)+".txt",np.array([log10Moverh,z,1./sn]))
+
+
     return sn
     
     

@@ -1,4 +1,4 @@
-from orphics.tools.output import Plotter
+from orphics.tools.io import Plotter
 import flipper.liteMap as lm
 from szlib.szcounts import ClusterCosmology,dictFromSection,listFromConfig
 from alhazen.halos import NFWMatchedFilterSN
@@ -8,12 +8,6 @@ from alhazen.quadraticEstimator import NlGenerator,getMax
 import sys
 
 
-def getFileName(listOfNames,listOfVals):
-    fullstr = ""
-    for name,val in zip(listOfNames,listOfVals):
-        fullstr += "_"+name+"_"+str(val)
-
-    return fullstr
 
 
 
@@ -61,7 +55,7 @@ for gradCut in [10000,2000]:
 
                     kmax = getMax(polComb,tellmaxY,pellmaxY)
                     i+=1
-                    print i,tellmaxY,pellmaxY,kmax
+                    print i,tellmaxY,pellmaxY,kmax,"delens:",delensTolerance
 
                     bin_edges = np.arange(kmin,kmax,dell)+dell
                     myNls.updateBins(bin_edges)
@@ -77,5 +71,5 @@ for gradCut in [10000,2000]:
 
 
 
-                    fileName = saveRoot + getFileName(['gradCut','polComb','beamY','noiseY','grad','tellminY','pellminY','kmin','deg','px','delens'],[gradCut,polComb,beamY,noiseY,lab,tellminY,pellminY,kmin,deg,px,delensTolerance])+".txt"
+                    fileName = saveRoot + getFileNameString(['gradCut','polComb','beamY','noiseY','grad','tellminY','pellminY','kmin','deg','px','delens'],[gradCut,polComb,beamY,noiseY,lab,tellminY,pellminY,kmin,deg,px,delensTolerance])+".txt"
                     np.savetxt(fileName,np.vstack((ls,Nls)).transpose())
