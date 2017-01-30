@@ -33,8 +33,8 @@ beamscale = lambda b: np.sqrt(8.*np.log(2.))*60.*180./np.pi/b
 
 kmin = 40
 deg = 10.
-#px = 0.2
-px = 0.5
+px = 0.2
+#px = 0.5
 dell = 10
 theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
 lmap = lm.makeEmptyCEATemplate(raSizeDeg=deg, decSizeDeg=deg,pixScaleXarcmin=px,pixScaleYarcmin=px)
