@@ -2,12 +2,12 @@ from orphics.tools.output import Plotter
 import flipper.liteMap as lm
 from szlib.szcounts import ClusterCosmology,dictFromSection,listFromConfig
 from ConfigParser import SafeConfigParser 
-from alhazen.halos import NFWMatchedFilterVar
+from alhazen.halos import NFWMatchedFilterSN
 import numpy as np
 from orphics.tools.cmb import loadTheorySpectraFromCAMB
 from alhazen.quadraticEstimator import NlGenerator,getMax
 
-M = 2.e14
+Mexp = np.log10(2.e14)
 z = 0.7
 c = 1.84
 
@@ -38,16 +38,16 @@ gradCut = 2000
 halo = True
 beamX = 1.0
 beamY = 1.0
-noiseTX = 1.0
-noisePX = 1.414
-noiseTY = 1.0
-noisePY = 1.414
+noiseTX = 10.0
+noisePX = 14.14
+noiseTY = 10.0
+noisePY = 14.14
 tellmin = 2
 tellmax = 8000
 gradCut = 2000
 pellmin = 2
 pellmax = 8000
-polComb = 'EB'
+polComb = 'TT'
 kmin = 100
 kmax = getMax(polComb,tellmax,pellmax)
 
@@ -61,24 +61,27 @@ myNls = NlGenerator(lmap,theory,bin_edges,gradCut=gradCut)
 myNls.updateNoise(beamX,noiseTX,noisePX,tellmin,tellmax,pellmin,pellmax,beamY=beamY,noiseTY=noiseTY,noisePY=noisePY)
 ls,Nls = myNls.getNl(polComb=polComb,halo=halo)
 
-ellkk = np.arange(2,9000,1)
-Clkk = theory.gCl("kk",ellkk)    
-pl = Plotter(scaleY='log',scaleX='log')
-pl.add(ellkk,4.*Clkk/2./np.pi)
-pl.add(ls,4.*Nls/2./np.pi)
-pl.legendOn(loc='lower left',labsize=10)
-pl.done("output/nl.png")
+# ellkk = np.arange(2,9000,1)
+# Clkk = theory.gCl("kk",ellkk)    
+# pl = Plotter(scaleY='log',scaleX='log')
+# pl.add(ellkk,4.*Clkk/2./np.pi)
+# pl.add(ls,4.*Nls/2./np.pi)
+# pl.legendOn(loc='lower left',labsize=10)
+# pl.done("output/nl.png")
 
 
 
 
-arcStamp = 20.
-pxStamp = 0.01
-lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
 
 
 
+overdensity=180.
+critical=False
+atClusterZ=False
+kellmax = 8000
 
-NFWMatchedFilterVar(lmap,cc,M,c,z,ells=ls,Nls=Nls)
+sn = NFWMatchedFilterSN(cc,Mexp,c,z,ells=ls,Nls=Nls,kellmax=kellmax,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+
+print sn*np.sqrt(1000)
 
 

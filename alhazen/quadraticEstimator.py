@@ -37,6 +37,8 @@ class QuadNorm(object):
     
         '''
         self.verbose = verbose
+        self.Nx = templateMap.Nx
+        self.Ny = templateMap.Ny
 
         self.lxMap,self.lyMap,self.modLMap,self.thetaMap,self.lx,self.ly = fmaps.getFTAttributesFromLiteMap(templateMap)
         self.lxHatMap = np.nan_to_num(self.lxMap / self.modLMap)
@@ -145,6 +147,7 @@ class QuadNorm(object):
         power2d is a flipper power2d object            
         '''
         self.clkk2d = power2dData.copy()
+        self.clpp2d = self.clkk2d.copy()*4./(self.modLMap**2.)/((self.modLMap+1.)**2.)
 
 
     def WXY(self,XY):
@@ -182,7 +185,6 @@ class QuadNorm(object):
 
         if self.verbose: 
             print "Calculating norm for ", XY
-            #startTime = time.time()
 
             
         h=0.
@@ -524,9 +526,6 @@ class QuadNorm(object):
         self.Nlkk[XY] = retval.copy()
 
 
-        # if self.verbose:
-        #     elapTime = time.time() - startTime
-        #     print "Time for norm was ", elapTime ," seconds."
 
         
         return np.nan_to_num(retval * 2. / lmap/(lmap+1.))
@@ -538,21 +537,21 @@ class QuadNorm(object):
       
 
 
-
-    def delensClBB(self,halo=False):
-
-        clPPArr = self.clPPArr
-        cltotPPArr = clPPArr + self.NlPPnowArr
+    def delensClBB(self,Nlkk,halo=True):
+        self.Nlppnow = Nlkk*4./(self.modLMap**2.)/((self.modLMap+1.)**2.)
+        clPPArr = self.clpp2d
+        cltotPPArr = clPPArr + self.Nlppnow
         cltotPPArr[np.isnan(cltotPPArr)] = np.inf
         
         clunlenEEArr = self.uClFid2d['EE'].copy()
-        clunlentotEEArr =self.uClFid2d['EE'].copy() + self.noiseArray[1]
-        clunlentotEEArr[np.where(lmap >= self.lmax_P)] = np.inf
-        clunlenEEArr[np.where(lmap >= self.lmax_P)] = 0.
-        clPPArr[np.where(lmap >= self.lmax_P)] = 0.
-        cltotPPArr[np.where(lmap >= self.lmax_P)] = np.inf
+        clunlentotEEArr = (self.uClFid2d['EE'].copy()+self.noiseYY2d['EE'])
+        clunlentotEEArr[self.fMaskYY['EE']==0] = np.inf
+        clunlenEEArr[self.fMaskYY['EE']==0] = 0.
+        clPPArr[self.fMaskYY['EE']==0] = 0.
+        cltotPPArr[self.fMaskYY['EE']==0] = np.inf
+        
 
-        if halo: clunlenEEArr[np.where(lmap >= self.gradCut)] = 0.
+        if halo: clunlenEEArr[np.where(self.modLMap >= self.gradCut)] = 0.
                 
         sin2phi = lambda lxhat,lyhat: (2.*lxhat*lyhat)
         cos2phi = lambda lxhat,lyhat: (lyhat*lyhat-lxhat*lxhat)
@@ -586,26 +585,26 @@ class QuadNorm(object):
         ClBBres = np.real(np.sum( allTerms, axis = 0))
 
         
-        ClBBres[np.where(np.logical_or(self.lmap >= self.bigell, lmap == 0.))] = 0.
-        ClBBres *= self.ftMap.Nx * self.ftMap.Ny #* (2.*np.pi)**2.
-        ft = self.ftMap
-        ClBBres[lmap>self.lmax_P]=0.
+        ClBBres[np.where(np.logical_or(self.modLMap >= self.bigell, self.modLMap == 0.))] = 0.
+        ClBBres *= self.Nx * self.Ny 
+        ClBBres[self.fMaskYY['EE']==0] = 0.
+        from orphics.tools.output import Plotter
+                
         
-        ftHolder = self.ftMap.copy()
-        ftHolder.kMap = np.sqrt(ClBBres)/self.ftMap.pixScaleX/self.ftMap.pixScaleY
-        bbNoise2D = fftTools.powerFromFFT(ftHolder, ftHolder)
-        self.lClFid2d['BB'] = bbNoise2D.powerMap
-        lLower,lUpper,lBin,NlBinBB,clBinSd,binWeight = aveBinInAnnuli(bbNoise2D,binfile = binfile)
+        area =self.Nx*self.Ny*self.pixScaleX*self.pixScaleY
+        bbNoise2D = ((np.sqrt(ClBBres)/self.pixScaleX/self.pixScaleY)**2.)*(area/(self.Nx*self.Ny*1.0)**2)
 
-        return lBin,NlBinBB
+        self.lClFid2d['BB'] = bbNoise2D.copy()
 
+        
+        return bbNoise2D
 
                 
     
 
 
 class NlGenerator(object):
-    def __init__(self,templateMap,theorySpectra,bin_edges,gradCut=None,TCMB=2.725e6):
+    def __init__(self,templateMap,theorySpectra,bin_edges=None,gradCut=None,TCMB=2.725e6):
 
         self.N = QuadNorm(templateMap,gradCut=gradCut)
         self.TCMB = TCMB
@@ -621,12 +620,18 @@ class NlGenerator(object):
             self.N.addLensedFilter2DPower(cmb,lClFilt)
             self.N.addUnlensedNorm2DPower(cmb,uClNorm)
 
-        self.bin_edges = bin_edges
+        Clkk2d = theorySpectra.gCl("kk",self.N.modLMap)    
+        self.N.addClkk2DPower(Clkk2d)
+            
 
+        if bin_edges is not None:
+            self.bin_edges = bin_edges
+            self.binner = bin2D(self.N.modLMap, bin_edges)
+
+    def updateBins(self,bin_edges):
         self.binner = bin2D(self.N.modLMap, bin_edges)
 
-
-    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,delensTolerance=None):
+    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.]):
 
         def setDefault(A,B):
             if A is None:
@@ -642,8 +647,10 @@ class NlGenerator(object):
         tellmaxY = setDefault(tellmaxY,tellmaxX)
         pellmaxY = setDefault(pellmaxY,pellmaxX)
 
-        nTX,nPX = fmaps.whiteNoise2D([noiseTX,noisePX],beamX,self.N.modLMap,TCMB=self.TCMB)
-        nTY,nPY = fmaps.whiteNoise2D([noiseTY,noisePY],beamY,self.N.modLMap,TCMB=self.TCMB)
+        nTX,nPX = fmaps.whiteNoise2D([noiseTX,noisePX],beamX,self.N.modLMap, \
+                                     TCMB=self.TCMB,lknees=lkneesX,alphas=alphasX)
+        nTY,nPY = fmaps.whiteNoise2D([noiseTY,noisePY],beamY,self.N.modLMap, \
+                                     TCMB=self.TCMB,lknees=lkneesY,alphas=alphasY)
         fMaskTX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminX,lmax=tellmaxX)
         fMaskTY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminY,lmax=tellmaxY)
         fMaskPX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminX,lmax=pellmaxX)
@@ -658,6 +665,8 @@ class NlGenerator(object):
         for i,noise in enumerate(nList):
             self.N.addNoise2DPowerXX(noise,nListX[i],fListX[i])
             self.N.addNoise2DPowerYY(noise,nListY[i],fListY[i])
+
+        return nTX,nPX,nTY,nPY
 
     @timeit
     def getNl(self,polComb='TT',halo=True):            
@@ -678,6 +687,37 @@ class NlGenerator(object):
         
         return centers, Nlbinned
 
+    def iterativeDelens(self,xy,dTolPercentage=1.0,halo=True):
+        assert xy=='EB' or xy=='TB'
+        origBB = self.N.lClFid2d['BB'].copy()
+        ctol = np.inf
+        inum = 0
+
+        bin_edges = np.arange(100.,3000.,20.)
+        delensBinner =  bin2D(self.N.modLMap, bin_edges)
+
+        
+        from orphics.tools.output import Plotter
+        #pl = Plotter(scaleY='log',scaleX='log')
+        #pl = Plotter(scaleY='log')
+        while ctol>dTolPercentage:
+            print "Performing iteration ", inum+1
+            Al2d = self.N.getNlkk2d(xy,halo)
+            centers, nlkk = delensBinner.bin(self.N.Nlkk[xy])
+            bbNoise2D = self.N.delensClBB(self.N.Nlkk[xy],halo)
+            ells, dclbb = delensBinner.bin(bbNoise2D)
+            if inum>0:
+                new = np.nanmean(nlkk)
+                old = np.nanmean(oldNl)
+                ctol = np.abs(old-new)*100./new
+                print "Percentage difference between iterations is ",ctol, " compared to requested tolerance of ", dTolPercentage
+            oldNl = nlkk.copy()
+            inum += 1
+            #pl.add(centers,nlkk)
+            #pl.add(ells,dclbb*ells**2.)
+        #pl.done('output/delens'+xy+'.png')
+        self.N.lClFid2d['BB'] = origBB.copy()
+        return centers,nlkk
 
 class Estimator(object):
     '''
