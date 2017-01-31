@@ -27,26 +27,34 @@ constDict = dictFromSection(Config,'constants')
 cc = Cosmology(cosmoDict,constDict,lmax)
 theory = cc.theory
 
-
+fgfileX = None
+beamFileX = None
 TCMB = 2.725e6
 gradCut = 10000
 halo = True
+#beamX = 7.0
 beamX = 1.4
 beamY = 1.4
 
 # D56 S2+S3
-# noiseTX = np.sqrt(1./(1./16.**2.+1./11.7**2.))#16.0
+# noiseTX = np.sqrt(1./(1./17.**2.+1./11.7**2.))#16.0
 # noisePX = np.sqrt(2.)*noiseTX
-# noiseTY = np.sqrt(1./(1./16.**2.+1./11.7**2.))#16.0
+# noiseTY = np.sqrt(1./(1./17.**2.+1./11.7**2.))#16.0
 # noisePY = np.sqrt(2.)*noiseTY
-# fsky = 600./41250.
+# fsky = 430./41250.
+fgfileX = "data/foreground_powers.txt"
+beamFileX = "data/beam_3.txt"
+fgfileY = "data/foreground_powers.txt"
+beamFileY = "data/beam_3.txt"
 
 # D56 S2
-noiseTX = 30.0
-noisePX = np.sqrt(2.)*noiseTX
-noiseTY = 30.0
-noisePY = np.sqrt(2.)*noiseTY
-fsky = 626./41250.
+# noiseTX = 17.0
+# noisePX = np.sqrt(2.)*noiseTX
+# noiseTY = 17.0
+# noisePY = np.sqrt(2.)*noiseTY
+# fsky = 430./41250.
+# fgfile = "data/foreground_powers.txt"
+# beamFile = "data/beam_3.txt"
 
 # D5+6 S2
 # noiseTX = 11.3
@@ -58,30 +66,49 @@ fsky = 626./41250.
 
 
 # BOSS-N
-# noiseTX = 32.83
-# noisePX = np.sqrt(2.)*noiseTX
-# noiseTY = 32.83 #16.0
-# noisePY = np.sqrt(2.)*noiseTY
-# fsky = 2100./41250.
+noiseTX = 32.83
+noisePX = np.sqrt(2.)*noiseTX
+noiseTY = 32.83 #16.0
+noisePY = np.sqrt(2.)*noiseTY
+fsky = 2100./41250.
 
 
-# tellminX = 500 #1000
+tellminX = 500 #1000
+tellmaxX = 3000
+pellminX = 500 #1000
+pellmaxX = 3000
+tellminY = 500 #1000
+tellmaxY = 3000
+pellminY = 500 #1000
+pellmaxY = 3000
+
+# tellminX = 1000
 # tellmaxX = 3000
-# pellminX = 500 #1000
+# pellminX = 1000
 # pellmaxX = 3000
-# tellminY = 500 #1000
+# tellminY = 1000
 # tellmaxY = 3000
-# pellminY = 500 #1000
+# pellminY = 1000
 # pellmaxY = 3000
 
-tellminX = 1000
-tellmaxX = 3000
-pellminX = 1000
-pellmaxX = 3000
-tellminY = 1000
-tellmaxY = 3000
-pellminY = 1000
-pellmaxY = 3000
+lxcutTX = 90
+lycutTX = 50
+lxcutTY = lxcutTX
+lycutTY = lycutTX
+lxcutPX = lxcutTX
+lycutPX = lycutTX
+lxcutPY = lxcutTX
+lycutPY = lycutTX
+
+# lxcutTX = 0
+# lycutTX = 0
+# lxcutTY = 50
+# lycutTY = 90
+# lxcutPX = 0
+# lycutPX = 0
+# lxcutPY = 50
+# lycutPY = 90
+
 
 # tellminX = 2 #1000
 # tellmaxX = 3000
@@ -99,17 +126,23 @@ pellmaxY = 3000
 # alphaY = [-4.65,-3.05]
 
 
-lkneeX = [2000,2000]
-alphaX = [-2.7,-1]
-lkneeY = [2000,2000]
-alphaY = [-2.7,-1]
+# ACT fits
+lkneeX = [3294.8,1868.8]
+alphaX = [-3.22,-0.59]
+lkneeY = [3294.8,1868.8]
+alphaY = [-3.22,-0.59]
+
+# lkneeX = [0,0]
+# alphaX = [1,1]
+# lkneeY = [3294.8,1868.8]
+# alphaY = [-3.22,-0.59]
 
 
 
-lkneeX = [4100,2000]
-alphaX = [-4.7,-2]
-lkneeY = [4100,2000]
-alphaY = [-4.7,-2]
+# lkneeX = [4100,2000]
+# alphaX = [-4.7,-2]
+# lkneeY = [4100,2000]
+# alphaY = [-4.7,-2]
 
 # lkneeX = [0,0]
 # alphaX = [1,1]
@@ -143,44 +176,16 @@ for polComb in ['TT','TE','EE','EB']:
     lmap = lm.makeEmptyCEATemplate(raSizeDeg=deg, decSizeDeg=deg,pixScaleXarcmin=px,pixScaleYarcmin=px)
     myNls = NlGenerator(lmap,theory,bin_edges,gradCut=gradCut)
     myNls.updateBins(bin_edges)
-    cmbBinner = bin2D(myNls.N.modLMap, cmb_bin_edges)
 
     nTX,nPX,nTY,nPY = myNls.updateNoise(beamX,noiseTX,noisePX,tellminX,tellmaxX, \
                       pellminX,pellmaxX,beamY=beamY,noiseTY=noiseTY, \
                       noisePY=noisePY,tellminY=tellminY,tellmaxY=tellmaxY, \
                       pellminY=pellminY,pellmaxY=pellmaxY,lkneesX=lkneeX,alphasX=alphaX, \
-                      lkneesY=lkneeY,alphasY=alphaY)
+                                        lkneesY=lkneeY,alphasY=alphaY,lxcutTX=lxcutTX, \
+                                        lxcutTY=lxcutTY,lycutTX=lycutTX,lycutTY=lycutTY, \
+                                        lxcutPX=lxcutPX,lxcutPY=lxcutPY,lycutPX=lycutPX,lycutPY=lycutPY, \
+                                        fgFileX=fgfileX,beamFileX=beamFileX,fgFileY=fgfileY,beamFileY=beamFileY )
 
-    cmbells,ntt = cmbBinner.bin(nTX)
-    cmbells,npp = cmbBinner.bin(nPX)
-    cltt = theory.lCl("TT",cmb_bin_edges)
-    clee = theory.lCl("EE",cmb_bin_edges)
-    pl = Plotter(scaleY='log')
-    pl.add(cmbells,ntt*cmbells*(cmbells+1.)/2./np.pi,ls="--",color="orange")
-    pl.add(cmbells,npp*cmbells*(cmbells+1.)/2./np.pi,ls="--",color="blue")
-
-
-    # nTX,nPX,nTY,nPY = myNls.updateNoise(beamX,noiseTX,noisePX,tellminX,tellmaxX, \
-    #                   pellminX,pellmaxX,beamY=beamY,noiseTY=noiseTY, \
-    #                   noisePY=noisePY,tellminY=tellminY,tellmaxY=tellmaxY, \
-    #                                     pellminY=pellminY,pellmaxY=pellmaxY)
-
-    # cmbells,ntt = cmbBinner.bin(nTX)
-    # cmbells,npp = cmbBinner.bin(nPX)
-    # pl.add(cmbells,ntt*cmbells*(cmbells+1.)/2./np.pi,ls="-.",color="orange")
-    # pl.add(cmbells,npp*cmbells*(cmbells+1.)/2./np.pi,ls="-.",color="blue")
-    pl.add(cmb_bin_edges,cltt*cmb_bin_edges*(cmb_bin_edges+1.)/2./np.pi,color="orange")
-    pl.add(cmb_bin_edges,clee*cmb_bin_edges*(cmb_bin_edges+1.)/2./np.pi,color="blue")
-
-    ls, tcltt = np.loadtxt("data/louisCls.dat",unpack=True,delimiter=',')
-    pl.add(ls,tcltt/TCMB**2.)
-
-
-    ls, tclee = np.loadtxt("data/louisClsEE.dat",unpack=True,delimiter=',')
-    pl.add(ls,tclee/TCMB**2.)
-
-    pl.done("output/cmb.png")
-    sys.exit()
 
     # myNls.updateNoise(beamY,noiseTY,noisePY,tellminY,tellmaxY, \
     #                   pellminY,pellmaxY,beamY=beamX,noiseTY=noiseTX, \
@@ -210,10 +215,14 @@ pl.legendOn(loc='lower right',labsize=12)
 pl._ax.set_xlim(kellrange.min(),kellrange.max())
 pl.done("output/projnl.png")
 
+Nlmvfunc = interp1d(kellrange,Nlmv,bounds_error=False,fill_value=np.inf)
 
+snrange = np.arange(80.,2100.,240.)
+Clkk = theory.gCl("kk",snrange)
 
 
 LF = LensForecast()
-LF.loadKK(kellrange,Clkk,kellrange,Nlmv)
-sn,errs = LF.sn(kellrange,fsky,"kk")
+LF.loadKK(snrange,Clkk,snrange,Nlmvfunc(snrange))
+sn,errs = LF.sn(snrange,fsky,"kk")
+print errs
 print "mv", sn
