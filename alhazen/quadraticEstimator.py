@@ -631,7 +631,7 @@ class NlGenerator(object):
     def updateBins(self,bin_edges):
         self.binner = bin2D(self.N.modLMap, bin_edges)
 
-    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.]):
+    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],lxcutTX=0,lxcutTY=0,lycutTX=0,lycutTY=0,lxcutPX=0,lxcutPY=0,lycutPX=0,lycutPY=0,fgFileX=None,beamFileX=None,fgFileY=None,beamFileY=None):
 
         def setDefault(A,B):
             if A is None:
@@ -648,14 +648,28 @@ class NlGenerator(object):
         pellmaxY = setDefault(pellmaxY,pellmaxX)
 
         nTX,nPX = fmaps.whiteNoise2D([noiseTX,noisePX],beamX,self.N.modLMap, \
-                                     TCMB=self.TCMB,lknees=lkneesX,alphas=alphasX)
+                                     TCMB=self.TCMB,lknees=lkneesX,alphas=alphasX,beamFile=beamFileX)
         nTY,nPY = fmaps.whiteNoise2D([noiseTY,noisePY],beamY,self.N.modLMap, \
-                                     TCMB=self.TCMB,lknees=lkneesY,alphas=alphasY)
-        fMaskTX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminX,lmax=tellmaxX)
-        fMaskTY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminY,lmax=tellmaxY)
-        fMaskPX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminX,lmax=pellmaxX)
-        fMaskPY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminY,lmax=pellmaxY)
+                                     TCMB=self.TCMB,lknees=lkneesY,alphas=alphasY,beamFile=beamFileY)
+        fMaskTX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminX,lmax=tellmaxX,lxcut=lxcutTX,lycut=lycutTX)
+        fMaskTY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminY,lmax=tellmaxY,lxcut=lxcutTY,lycut=lycutTY)
+        fMaskPX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminX,lmax=pellmaxX,lxcut=lxcutPX,lycut=lycutPX)
+        fMaskPY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminY,lmax=pellmaxY,lxcut=lxcutPY,lycut=lycutPY)
 
+        if fgFileX is not None:
+            from scipy.interpolate import interp1d
+            fells,fg = np.loadtxt(fgFileX,unpack=True)
+            fgfunc = interp1d(fells,fg,bounds_error=False,fill_value=0.)
+            fg2d = fgfunc(self.N.modLMap) / self.TCMB**2.
+            nTX += fg2d
+        if fgFileY is not None:
+            from scipy.interpolate import interp1d
+            fells,fg = np.loadtxt(fgFileY,unpack=True)
+            fgfunc = interp1d(fells,fg,bounds_error=False,fill_value=0.)
+            fg2d = fgfunc(self.N.modLMap) / self.TCMB**2.
+            nTY += fg2d
+
+            
         nList = ['TT','EE','BB']
 
         nListX = [nTX,nPX,nPX]
