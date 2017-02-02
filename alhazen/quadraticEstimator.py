@@ -697,7 +697,7 @@ class NlGenerator(object):
         delensBinner =  bin2D(self.N.modLMap, bin_edges)
 
         
-        from orphics.tools.output import Plotter
+        #from orphics.tools.output import Plotter
         #pl = Plotter(scaleY='log',scaleX='log')
         #pl = Plotter(scaleY='log')
         while ctol>dTolPercentage:
