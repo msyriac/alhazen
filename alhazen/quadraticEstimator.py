@@ -816,6 +816,7 @@ class Estimator(object):
             nList = ['TT']
             cmbList = ['TT']
             estList = ['TT']
+            self.phaseY = 1.
         else:
             self.phaseY = np.cos(2.*self.N.thetaMap)+1.j*np.sin(2.*self.N.thetaMap)
             nList = ['TT','EE','BB']
