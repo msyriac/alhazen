@@ -84,4 +84,3 @@ sn = NFWMatchedFilterSN(cc,Mexp,c,z,ells=ls,Nls=Nls,kellmax=kellmax,overdensity=
 
 print sn*np.sqrt(1000)
 
-
