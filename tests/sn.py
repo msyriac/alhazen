@@ -1,6 +1,6 @@
 import matplotlib
 matplotlib.use('Agg')
-from orphics.tools.io import Plotter,dictFromSection,listFromConfig
+from orphics.tools.io import Plotter,dictFromSection,listFromConfig,getLensParams
 from orphics.theory.gaussianCov import LensForecast
 from orphics.theory.cosmology import Cosmology
 from orphics.tools.cmb import loadTheorySpectraFromCAMB
@@ -9,151 +9,37 @@ import numpy as np
 from alhazen.quadraticEstimator import NlGenerator,getMax
 import orphics.analysis.flatMaps as fmaps 
 import flipper.liteMap as lm
-from orphics.tools.stats import timeit, bin2D
+from orphics.tools.stats import timeit, bin2D,coreBinner
 from ConfigParser import SafeConfigParser 
+from szlib.szcounts import ClusterCosmology
 
-#cambRoot = "data/ell28k_highacc"
-#theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
-
-
-cosmologyName = 'Planck15' # from ini file
-lmax = 5000
-iniFile = "../SZ_filter/input/params.ini"
+cosmologyName = 'LACosmology' #Planck15' 
+iniFile = "input/params.ini"
 Config = SafeConfigParser()
 Config.optionxform=str
 Config.read(iniFile)
+
+lmax = Config.getint('general','camb_ellmax')
 cosmoDict = dictFromSection(Config,cosmologyName)
 constDict = dictFromSection(Config,'constants')
-cc = Cosmology(cosmoDict,constDict,lmax)
+cc = ClusterCosmology(cosmoDict,constDict,lmax)
 theory = cc.theory
 
-fgfileX = None
-beamFileX = None
-TCMB = 2.725e6
-gradCut = 10000
-halo = True
-#beamX = 7.0
-beamX = 1.4
-beamY = 1.4
+expX = Config.get('general','X')
+expY = Config.get('general','Y')
 
-# D56 S2+S3
-# noiseTX = np.sqrt(1./(1./17.**2.+1./11.7**2.))#16.0
-# noisePX = np.sqrt(2.)*noiseTX
-# noiseTY = np.sqrt(1./(1./17.**2.+1./11.7**2.))#16.0
-# noisePY = np.sqrt(2.)*noiseTY
-# fsky = 430./41250.
-fgfileX = "data/foreground_powers.txt"
-beamFileX = "data/beam_3.txt"
-fgfileY = "data/foreground_powers.txt"
-beamFileY = "data/beam_3.txt"
-
-# D56 S2
-# noiseTX = 17.0
-# noisePX = np.sqrt(2.)*noiseTX
-# noiseTY = 17.0
-# noisePY = np.sqrt(2.)*noiseTY
-# fsky = 430./41250.
-# fgfile = "data/foreground_powers.txt"
-# beamFile = "data/beam_3.txt"
-
-# D5+6 S2
-# noiseTX = 11.3
-# noisePX = np.sqrt(2.)*noiseTX
-# noiseTY = 11.3
-# noisePY = np.sqrt(2.)*noiseTY
-# fsky = 128./41250.
+beamX,beamFileX,fgFileX,noiseTX,noisePX,tellminX,tellmaxX,pellminX, \
+    pellmaxX,lxcutTX,lycutTX,lxcutPX,lycutPX,lkneeTX,alphaTX,lkneePX,alphaPX = getLensParams(Config,expX)
+beamY,beamFileY,fgFileY,noiseTY,noisePY,tellminY,tellmaxY,pellminY, \
+    pellmaxY,lxcutTY,lycutTY,lxcutPY,lycutPY,lkneeTY,alphaTY,lkneePY,alphaPY = getLensParams(Config,expY)
 
 
+    
+TCMB = Config.getfloat('general','TCMB')
+gradCut = Config.getint('general','gradCut')
+halo = Config.getboolean('general','halo')
+fsky = Config.getfloat('general','sqDeg')/41250.
 
-# BOSS-N
-noiseTX = 32.83
-noisePX = np.sqrt(2.)*noiseTX
-noiseTY = 32.83 #16.0
-noisePY = np.sqrt(2.)*noiseTY
-fsky = 2100./41250.
-
-
-tellminX = 500 #1000
-tellmaxX = 3000
-pellminX = 500 #1000
-pellmaxX = 3000
-tellminY = 500 #1000
-tellmaxY = 3000
-pellminY = 500 #1000
-pellmaxY = 3000
-
-# tellminX = 1000
-# tellmaxX = 3000
-# pellminX = 1000
-# pellmaxX = 3000
-# tellminY = 1000
-# tellmaxY = 3000
-# pellminY = 1000
-# pellmaxY = 3000
-
-lxcutTX = 90
-lycutTX = 50
-lxcutTY = lxcutTX
-lycutTY = lycutTX
-lxcutPX = lxcutTX
-lycutPX = lycutTX
-lxcutPY = lxcutTX
-lycutPY = lycutTX
-
-# lxcutTX = 0
-# lycutTX = 0
-# lxcutTY = 50
-# lycutTY = 90
-# lxcutPX = 0
-# lycutPX = 0
-# lxcutPY = 50
-# lycutPY = 90
-
-
-# tellminX = 2 #1000
-# tellmaxX = 3000
-# pellminX = 2 #1000
-# pellmaxX = 3000
-# tellminY = 500 #1000
-# tellmaxY = 3000
-# pellminY = 500 #1000
-# pellmaxY = 3000
-
-
-# lkneeX = [4129,312]
-# alphaX = [-4.65,-3.05]
-# lkneeY = [4129,312]
-# alphaY = [-4.65,-3.05]
-
-
-# ACT fits
-lkneeX = [3294.8,1868.8]
-alphaX = [-3.22,-0.59]
-lkneeY = [3294.8,1868.8]
-alphaY = [-3.22,-0.59]
-
-# lkneeX = [0,0]
-# alphaX = [1,1]
-# lkneeY = [3294.8,1868.8]
-# alphaY = [-3.22,-0.59]
-
-
-
-# lkneeX = [4100,2000]
-# alphaX = [-4.7,-2]
-# lkneeY = [4100,2000]
-# alphaY = [-4.7,-2]
-
-# lkneeX = [0,0]
-# alphaX = [1,1]
-# lkneeY = [3400,330]
-# alphaY = [-4.7,-3.8]
-
-
-# lkneeX = [0,0]
-# alphaX = [1,1]
-# lkneeY = [0,0]
-# alphaY = [1,1]
 
 kmin = 40
 
@@ -162,15 +48,16 @@ deg = 10.
 px = 0.5
 dell = 10
 
-kellrange = np.arange(80.,2100.,10.)
+kellrange = np.arange(80.,2100.,240.)
+kfrange = np.arange(80.,2100.,1.)
 
-Clkk = theory.gCl("kk",kellrange)
+Clkk = theory.gCl("kk",kfrange)
 
 cmb_bin_edges = np.arange(10,9000,10)
 
 Nlmvinv = 0.
 pl = Plotter(scaleY='log')
-for polComb in ['TT','TE','EE','EB']:
+for polComb in ['TT','TE','EE','EB','TB']:
     kmax = getMax(polComb,tellmaxY,pellmaxY)
     bin_edges = np.arange(kmin,kmax,dell)+dell
     lmap = lm.makeEmptyCEATemplate(raSizeDeg=deg, decSizeDeg=deg,pixScaleXarcmin=px,pixScaleYarcmin=px)
@@ -180,11 +67,11 @@ for polComb in ['TT','TE','EE','EB']:
     nTX,nPX,nTY,nPY = myNls.updateNoise(beamX,noiseTX,noisePX,tellminX,tellmaxX, \
                       pellminX,pellmaxX,beamY=beamY,noiseTY=noiseTY, \
                       noisePY=noisePY,tellminY=tellminY,tellmaxY=tellmaxY, \
-                      pellminY=pellminY,pellmaxY=pellmaxY,lkneesX=lkneeX,alphasX=alphaX, \
-                                        lkneesY=lkneeY,alphasY=alphaY,lxcutTX=lxcutTX, \
+                      pellminY=pellminY,pellmaxY=pellmaxY,lkneesX=(lkneeTX,lkneePX),alphasX=(alphaTX,alphaPX), \
+                                        lkneesY=(lkneeTY,lkneePY),alphasY=(alphaTY,alphaPY),lxcutTX=lxcutTX, \
                                         lxcutTY=lxcutTY,lycutTX=lycutTX,lycutTY=lycutTY, \
                                         lxcutPX=lxcutPX,lxcutPY=lxcutPY,lycutPX=lycutPX,lycutPY=lycutPY, \
-                                        fgFileX=fgfileX,beamFileX=beamFileX,fgFileY=fgfileY,beamFileY=beamFileY )
+                                        fgFileX=fgFileX,beamFileX=beamFileX,fgFileY=fgFileY,beamFileY=beamFileY )
 
 
     # myNls.updateNoise(beamY,noiseTY,noisePY,tellminY,tellmaxY, \
@@ -202,12 +89,12 @@ for polComb in ['TT','TE','EE','EB']:
     pl.add(ls,4.*Nls/2./np.pi,label=polComb,ls="--")
 
     LF = LensForecast()
-    LF.loadKK(kellrange,Clkk,ls,Nls)#kellrange,nlnow)
+    LF.loadKK(kfrange,Clkk,ls,Nls)#kellrange,nlnow)
     sn,errs = LF.sn(kellrange,fsky,"kk")
     print polComb, sn
 
 
-pl.add(kellrange,4.*Clkk/2./np.pi)
+pl.add(kfrange,4.*Clkk/2./np.pi)
 
 Nlmv = 1./Nlmvinv
 pl.add(kellrange,4.*Nlmv/2./np.pi,label="mv",color='black')
@@ -215,10 +102,15 @@ pl.legendOn(loc='lower right',labsize=12)
 pl._ax.set_xlim(kellrange.min(),kellrange.max())
 pl.done("output/projnl.png")
 
+np.savetxt(expX+expY+"_nlmv.txt",np.vstack((ls,Nlmv)).transpose())
+sys.exit()
+
 Nlmvfunc = interp1d(kellrange,Nlmv,bounds_error=False,fill_value=np.inf)
 
 snrange = np.arange(80.,2100.,240.)
 Clkk = theory.gCl("kk",snrange)
+
+
 
 
 LF = LensForecast()
@@ -226,3 +118,88 @@ LF.loadKK(snrange,Clkk,snrange,Nlmvfunc(snrange))
 sn,errs = LF.sn(snrange,fsky,"kk")
 print errs
 print "mv", sn
+
+Clkk = theory.gCl("kk",kfrange)
+b = coreBinner(snrange)
+cents,clkkbinned = b.binned(kfrange,Clkk) 
+
+Nlold = np.loadtxt("Nltemp.txt")
+
+
+# pl = Plotter(scaleY='log',labelX="$L$",labelY="$[L(L+1)]^2C_L^{\\phi\\phi}/2\\pi$")
+# pl.add(kfrange,4.*Clkk/2./np.pi)
+# #pl.addErr(cents,4.*np.array(clkkbinned)/2./np.pi,yerr=np.array(errs)*4./2./np.pi,marker="x")
+# pl.add(kellrange,4.*Nlmv/2./np.pi,color='black',label="ACTS15")
+# pl.add(kellrange,4.*Nlold/2./np.pi,color='black',label="PlACTS15")
+# pl.legendOn(loc='lower right',labsize=12)
+# pl._ax.set_xlim(0,2200)
+# pl._ax.set_ylim(-0.2e-7,1.6e-7)
+# pl._ax.axhline(y=0.,ls="--",alpha=0.5)
+# pl.done("output/errs.png")
+
+#np.savetxt("Nltemp.txt",Nlmv)
+fskyCMASS =  203./41250.
+N = 12000. *fsky/fskyCMASS#148.#*12376./2950.
+Mexp = 13.3
+c = 5.0
+#c = 1.18
+z = 0.55
+ls = kellrange
+Nls = Nlmv
+kellmax = 8000
+# overdensity = 500
+# critical = True
+# atClusterZ = True
+overdensity = 180
+critical = False
+atClusterZ = False
+from alhazen.halos import NFWMatchedFilterSN
+sn = NFWMatchedFilterSN(cc,Mexp,c,z,ells=ls,Nls=Nls,kellmax=kellmax,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+
+print 100./(sn*np.sqrt(N)), " %"
+print "sn " , sn*np.sqrt(N)
+
+from orphics.theory.limber import XCorrIntegrator
+
+snrange = np.arange(40,400,20)
+
+xint = XCorrIntegrator(cosmoDict)
+zcents,dndz = np.loadtxt("data/cmass_dndz.csv",unpack=True)
+xint.addNz("cmass",zcents,dndz[1:],bias=2.0)
+xint.generateCls(snrange)
+
+Clgg = xint.getCl("cmass","cmass")
+Clkg = xint.getCl("cmb","cmass")
+
+ngal = 0.026
+
+LF = LensForecast()
+Clkk = theory.gCl("kk",snrange)
+LF.loadKK(snrange,Clkk,ls,Nls)#kellrange,nlnow)
+LF.loadKG(snrange,Clkg)#kellrange,nlnow)
+LF.loadGG(snrange,Clgg,ngal=ngal)#kellrange,nlnow)
+sn,errs = LF.sn(snrange,fsky,"kg")
+print errs
+
+
+frange = np.arange(40,2000,1)
+xint.generateCls(frange)
+
+Clgg = xint.getCl("cmass","cmass")
+Clkg = xint.getCl("cmb","cmass")
+
+b = coreBinner(snrange)
+cents,clkgbinned = b.binned(frange,Clkg)
+
+from scipy.interpolate import interp1d
+clkgint = interp1d(frange,Clkg)
+
+print "kg S/N " , sn
+pl = Plotter(labelX="$L$",labelY="$LC_L$")
+pl.add(frange,frange*Clkg)
+pl.addErr(cents,clkgint(cents)*cents,yerr=np.array(errs)*cents,marker="o")
+#pl.legendOn(loc='lower right',labsize=12)
+pl._ax.set_xlim(0,2000)
+#pl._ax.set_ylim(-0.2e-7,1.6e-7)
+pl._ax.axhline(y=0.,ls="--",alpha=0.5)
+pl.done("output/errs.png")
