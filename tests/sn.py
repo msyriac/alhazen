@@ -29,6 +29,8 @@ theory = cc.theory
 
 fgfileX = None
 beamFileX = None
+fgfileY = None
+beamFileY = None
 TCMB = 2.725e6
 gradCut = 10000
 halo = True
@@ -37,24 +39,24 @@ beamX = 1.4
 beamY = 1.4
 
 # D56 S2+S3
-# noiseTX = np.sqrt(1./(1./17.**2.+1./11.7**2.))#16.0
-# noisePX = np.sqrt(2.)*noiseTX
-# noiseTY = np.sqrt(1./(1./17.**2.+1./11.7**2.))#16.0
-# noisePY = np.sqrt(2.)*noiseTY
+noiseTX = np.sqrt(1./(1./17.**2.+1./11.7**2.))#16.0
+noisePX = np.sqrt(2.)*noiseTX
+noiseTY = np.sqrt(1./(1./17.**2.+1./11.7**2.))#16.0
+noisePY = np.sqrt(2.)*noiseTY
 # fsky = 430./41250.
-fgfileX = "data/foreground_powers.txt"
-beamFileX = "data/beam_3.txt"
-fgfileY = "data/foreground_powers.txt"
-beamFileY = "data/beam_3.txt"
+# fgfileX = "data/foreground_powers.txt"
+# beamFileX = "data/beam_3.txt"
+# fgfileY = "data/foreground_powers.txt"
+# beamFileY = "data/beam_3.txt"
 
 # D56 S2
 # noiseTX = 17.0
 # noisePX = np.sqrt(2.)*noiseTX
 # noiseTY = 17.0
 # noisePY = np.sqrt(2.)*noiseTY
-# fsky = 430./41250.
+fsky = 430./41250.
 # fgfile = "data/foreground_powers.txt"
-# beamFile = "data/beam_3.txt"
+beamFile = "data/beam_3.txt"
 
 # D5+6 S2
 # noiseTX = 11.3
@@ -66,11 +68,11 @@ beamFileY = "data/beam_3.txt"
 
 
 # BOSS-N
-noiseTX = 32.83
-noisePX = np.sqrt(2.)*noiseTX
-noiseTY = 32.83 #16.0
-noisePY = np.sqrt(2.)*noiseTY
-fsky = 2100./41250.
+# noiseTX = 32.83
+# noisePX = np.sqrt(2.)*noiseTX
+# noiseTY = 32.83 #16.0
+# noisePY = np.sqrt(2.)*noiseTY
+# fsky = 2100./41250.
 
 
 tellminX = 500 #1000
@@ -185,6 +187,28 @@ for polComb in ['TT','TE','EE','EB']:
                                         lxcutTY=lxcutTY,lycutTX=lycutTX,lycutTY=lycutTY, \
                                         lxcutPX=lxcutPX,lxcutPY=lxcutPY,lycutPX=lycutPX,lycutPY=lycutPY, \
                                         fgFileX=fgfileX,beamFileX=beamFileX,fgFileY=fgfileY,beamFileY=beamFileY )
+
+    cmbbins = np.arange(50.,5000.,10.)
+    binner = bin2D(myNls.N.modLMap,cmbbins)
+    ells,nlpp = binner.bin(nPY)
+    pl = Plotter(scaleY='log')
+    pl.add(ells,theory.lCl("BB",ells)*ells**2.)
+    pl.add(ells,nlpp*ells**2.)
+
+    nTX,nPX,nTY,nPY = myNls.updateNoise(beamX,noiseTX,noisePX,tellminX,tellmaxX, \
+                      pellminX,pellmaxX,beamY=beamY,noiseTY=noiseTY, \
+                      noisePY=noisePY,tellminY=tellminY,tellmaxY=tellmaxY, \
+                      pellminY=pellminY,pellmaxY=pellmaxY,lxcutTX=lxcutTX, \
+                                        lxcutTY=lxcutTY,lycutTX=lycutTX,lycutTY=lycutTY, \
+                                        lxcutPX=lxcutPX,lxcutPY=lxcutPY,lycutPX=lycutPX,lycutPY=lycutPY, \
+                                        fgFileX=fgfileX,beamFileX=beamFileX,fgFileY=fgfileY,beamFileY=beamFileY )
+
+    ells,nlppw = binner.bin(nPY)
+    pl.add(ells,nlppw*ells**2.,ls="--")
+
+    
+    pl.done("output/clbb.png")
+    sys.exit()
 
 
     # myNls.updateNoise(beamY,noiseTY,noisePY,tellminY,tellmaxY, \
