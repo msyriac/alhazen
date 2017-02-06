@@ -704,14 +704,16 @@ class NlGenerator(object):
     def iterativeDelens(self,xy,dTolPercentage=1.0,halo=True):
         assert xy=='EB' or xy=='TB'
         origBB = self.N.lClFid2d['BB'].copy()
+        bin_edges = np.arange(100.,3000.,20.)
+        delensBinner =  bin2D(self.N.modLMap, bin_edges)
+        ells, oclbb = delensBinner.bin(origBB)
+
         ctol = np.inf
         inum = 0
 
-        bin_edges = np.arange(100.,3000.,20.)
-        delensBinner =  bin2D(self.N.modLMap, bin_edges)
 
         
-        from orphics.tools.output import Plotter
+        #from orphics.tools.output import Plotter
         #pl = Plotter(scaleY='log',scaleX='log')
         #pl = Plotter(scaleY='log')
         while ctol>dTolPercentage:
@@ -731,7 +733,8 @@ class NlGenerator(object):
             #pl.add(ells,dclbb*ells**2.)
         #pl.done('output/delens'+xy+'.png')
         self.N.lClFid2d['BB'] = origBB.copy()
-        return centers,nlkk
+        efficiency = (np.max(oclbb)-np.max(dclbb))*100./np.max(oclbb)
+        return centers,nlkk,efficiency
 
 class Estimator(object):
     '''
@@ -816,6 +819,7 @@ class Estimator(object):
             nList = ['TT']
             cmbList = ['TT']
             estList = ['TT']
+            self.phaseY = 1.
         else:
             self.phaseY = np.cos(2.*self.N.thetaMap)+1.j*np.sin(2.*self.N.thetaMap)
             nList = ['TT','EE','BB']
