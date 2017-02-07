@@ -72,7 +72,7 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     # print "estimated integral " , kInt[modRMap<fiveth500].mean()*np.pi*fiveth500**2.
     k500 = simps(simps(kInt, yy), xx)
     
-    # print "integral of kappa inside disc ",k500
+    print "integral of kappa inside disc ",k500
     Ukappa = kappaReal/k500
 
     # pl = Plotter()

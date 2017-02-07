@@ -47,7 +47,7 @@ deg = 10.
 px = 0.5
 dell = 10
 
-kellrange = np.arange(80.,2100.,240.)
+kellrange = np.arange(80.,2100.,20.)
 kfrange = np.arange(80.,2100.,1.)
 
 Clkk = theory.gCl("kk",kfrange)
@@ -72,27 +72,27 @@ for polComb in ['TT','TE','EE','EB','TB']:
                                         lxcutPX=lxcutPX,lxcutPY=lxcutPY,lycutPX=lycutPX,lycutPY=lycutPY, \
                                         fgFileX=fgFileX,beamFileX=beamFileX,fgFileY=fgFileY,beamFileY=beamFileY )
 
-    cmbbins = np.arange(50.,5000.,10.)
-    binner = bin2D(myNls.N.modLMap,cmbbins)
-    ells,nlpp = binner.bin(nPY)
-    pl = Plotter(scaleY='log')
-    pl.add(ells,theory.lCl("BB",ells)*ells**2.)
-    pl.add(ells,nlpp*ells**2.)
+    # cmbbins = np.arange(50.,5000.,10.)
+    # binner = bin2D(myNls.N.modLMap,cmbbins)
+    # ells,nlpp = binner.bin(nPY)
+    # pl = Plotter(scaleY='log')
+    # pl.add(ells,theory.lCl("BB",ells)*ells**2.)
+    # pl.add(ells,nlpp*ells**2.)
 
-    nTX,nPX,nTY,nPY = myNls.updateNoise(beamX,noiseTX,noisePX,tellminX,tellmaxX, \
-                      pellminX,pellmaxX,beamY=beamY,noiseTY=noiseTY, \
-                      noisePY=noisePY,tellminY=tellminY,tellmaxY=tellmaxY, \
-                      pellminY=pellminY,pellmaxY=pellmaxY,lxcutTX=lxcutTX, \
-                                        lxcutTY=lxcutTY,lycutTX=lycutTX,lycutTY=lycutTY, \
-                                        lxcutPX=lxcutPX,lxcutPY=lxcutPY,lycutPX=lycutPX,lycutPY=lycutPY, \
-                                        fgFileX=fgfileX,beamFileX=beamFileX,fgFileY=fgfileY,beamFileY=beamFileY )
+    # nTX,nPX,nTY,nPY = myNls.updateNoise(beamX,noiseTX,noisePX,tellminX,tellmaxX, \
+    #                   pellminX,pellmaxX,beamY=beamY,noiseTY=noiseTY, \
+    #                   noisePY=noisePY,tellminY=tellminY,tellmaxY=tellmaxY, \
+    #                   pellminY=pellminY,pellmaxY=pellmaxY,lxcutTX=lxcutTX, \
+    #                                     lxcutTY=lxcutTY,lycutTX=lycutTX,lycutTY=lycutTY, \
+    #                                     lxcutPX=lxcutPX,lxcutPY=lxcutPY,lycutPX=lycutPX,lycutPY=lycutPY, \
+    #                                     fgFileX=fgfileX,beamFileX=beamFileX,fgFileY=fgfileY,beamFileY=beamFileY )
 
-    ells,nlppw = binner.bin(nPY)
-    pl.add(ells,nlppw*ells**2.,ls="--")
+    # ells,nlppw = binner.bin(nPY)
+    # pl.add(ells,nlppw*ells**2.,ls="--")
 
     
-    pl.done("output/clbb.png")
-    sys.exit()
+    # pl.done("output/clbb.png")
+    # sys.exit()
 
 
     # myNls.updateNoise(beamY,noiseTY,noisePY,tellminY,tellmaxY, \
@@ -123,7 +123,9 @@ pl.legendOn(loc='lower right',labsize=12)
 pl._ax.set_xlim(kellrange.min(),kellrange.max())
 pl.done("output/projnl.png")
 
-np.savetxt(expX+expY+"_nlmv.txt",np.vstack((ls,Nlmv)).transpose())
+print ls.shape
+print Nlmv.shape
+np.savetxt(expX+expY+"_nlmv.txt",np.vstack((np.array(kellrange),np.array(Nlmv))).transpose())
 sys.exit()
 
 Nlmvfunc = interp1d(kellrange,Nlmv,bounds_error=False,fill_value=np.inf)
