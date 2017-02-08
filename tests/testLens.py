@@ -24,7 +24,7 @@ constDict = dictFromSection(Config,'constants')
 cc = ClusterCosmology(cosmoDict,constDict,lmax)
 
 
-massOverh = 2.e14
+massOverh = 2.e15
 concentration = 3.2
 zL = 0.7
 sourceZ = 1100.
@@ -33,13 +33,15 @@ critical = False
 atClusterZ = False
 
 
-px = 0.5
-arc = 300
+px = 0.1
+arc = 100
 hwidth = arc/2.
+hwidthTen = 5.
 
 deg = utils.degree
 arcmin =  utils.arcmin
 shape, wcs = enmap.geometry(pos=[[-hwidth*arcmin,-hwidth*arcmin],[hwidth*arcmin,hwidth*arcmin]], res=px*arcmin, proj="car")
+shapeTen, wcsTen = enmap.geometry(pos=[[-hwidthTen*arcmin,-hwidthTen*arcmin],[hwidthTen*arcmin,hwidthTen*arcmin]], res=px*arcmin, proj="car")
 thetaMap = enmap.posmap(shape, wcs)
 thetaMap = np.sum(thetaMap**2,0)**0.5
 
@@ -66,7 +68,7 @@ pix = kappaMap.sky2pix(pos, safe=False)
         
 ps = powspec.read_spectrum("data/cl_lensinput.dat")
 
-N = 100
+N = 1
 
 
 
@@ -78,7 +80,8 @@ for i in range(N):
     
     if i==0:
         pl = Plotter()
-        pl.plot2d(lensedMap[250:-250,250:-250]-map[250:-250,250:-250])
+        #pl.plot2d(lensedMap[250:-250,250:-250]-map[250:-250,250:-250])
+        pl.plot2d(enmap.project(lensedMap,shapeTen,wcsTen))
         pl.done("output/lensed.png")
 
 
