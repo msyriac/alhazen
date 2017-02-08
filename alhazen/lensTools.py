@@ -15,11 +15,6 @@ class alphaMaker(object):
     def __init__(self,imap):
 
 
-        '''
-        This is an internal function that will store the lensing kernel for the given stamp dimensions
-        when the simulator is initialized.
-        '''
-
         thetaMap = imap.posmap()
         thetaModSqMap = np.sum(thetaMap**2,0)
 
@@ -31,19 +26,18 @@ class alphaMaker(object):
 
 
 
-    def kappaToAlpha(self,kappaMap,test=False,px=0.5):
+    def kappaToAlpha(self,kappaMap,test=False):
         
 
         fKappa = enmap.fft(kappaMap,normalize=False)
         fAlpha = self.ftkernels * fKappa
-        print fAlpha.shape
-        pixScale = px*np.pi/180./60.
-        Nx,Ny = kappaMap.shape
+        pixScaleY, pixScaleX = kappaMap.pixshape()
+        Ny,Nx = kappaMap.shape
 
-        retAlpha = (np.fft.ifftshift(enmap.ifft(fAlpha,normalize=False).real)+kappaMap*0.)*pixScale*pixScale/Nx/Ny
+        retAlpha = (np.fft.ifftshift(enmap.ifft(fAlpha,normalize=False).real)+kappaMap*0.)*pixScaleY*pixScaleX/Nx/Ny
         
         if test:
-            newKap = np.nan_to_num(0.5*enmap.div(retAlpha[::-1,:,:])) #/pixScale
+            newKap = np.nan_to_num(0.5*enmap.div(retAlpha[::-1,:,:])) 
             thetaMap = kappaMap.posmap()
             thetaModMap = 60.*180.*(np.sum(thetaMap**2,0)**0.5)/np.pi
             print "newkappaint ", np.nanmean(newKap[thetaModMap<10.])

@@ -1,7 +1,7 @@
 print "Importing modules..."
 import matplotlib
 matplotlib.use('Agg')
-from enlib import enmap,utils
+from enlib import enmap,utils,lensing,powspec
 import numpy as np
 from alhazen.halos import NFWkappa
 from alhazen.lensTools import alphaMaker
@@ -33,7 +33,7 @@ critical = False
 atClusterZ = False
 
 
-px = 0.1
+px = 0.5
 arc = 300
 hwidth = arc/2.
 
@@ -55,26 +55,31 @@ print "kappaint ", kappaMap[thetaMap*60.*180./np.pi<10.].mean()
 
 
 a = alphaMaker(thetaMap)
-alpha = a.kappaToAlpha(kappaMap,test=True,px=px)
+alpha = a.kappaToAlpha(kappaMap)
 
-print alpha.shape
 
 alphamod = 180.*60.*np.sum(alpha**2,0)**0.5/np.pi
-
 print "alphaint ", alphamod[thetaMap*60.*180./np.pi<10.].mean()
 
-# pl = Plotter()
-# pl.plot2d(kappaMap)
-# pl.done("output/kappa.png")
+pos = kappaMap.posmap() + alpha
+pix = kappaMap.sky2pix(pos, safe=False)
+        
+ps = powspec.read_spectrum("data/cl_lensinput.dat")
 
-# pl = Plotter()
-# pl.plot2d(alpha[0,:,:])
-# pl.done("output/alphax.png")
+N = 100
 
-# pl = Plotter()
-# pl.plot2d(alpha[1,:,:])
-# pl.done("output/alphay.png")
 
-pl = Plotter()
-pl.plot2d(alphamod)
-pl.done("output/alphamod.png")
+
+
+for i in range(N):
+    print i
+    map = enmap.rand_map(shape, wcs, ps)
+    lensedMap = lensing.displace_map(map, pix,order=5) #,lens_map(map, alpha)
+    
+    if i==0:
+        pl = Plotter()
+        pl.plot2d(lensedMap[250:-250,250:-250]-map[250:-250,250:-250])
+        pl.done("output/lensed.png")
+
+
+    
