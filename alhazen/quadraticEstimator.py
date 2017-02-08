@@ -633,6 +633,7 @@ class NlGenerator(object):
             self.binner = bin2D(self.N.modLMap, bin_edges)
 
     def updateBins(self,bin_edges):
+        self.N.bigell = bin_edges[len(bin_edges)-1]
         self.binner = bin2D(self.N.modLMap, bin_edges)
 
     def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],lxcutTX=0,lxcutTY=0,lycutTX=0,lycutTY=0,lxcutPX=0,lxcutPY=0,lycutPX=0,lycutPY=0,fgFileX=None,beamFileX=None,fgFileY=None,beamFileY=None):
@@ -650,6 +651,9 @@ class NlGenerator(object):
         pellminY = setDefault(pellminY,pellminX)
         tellmaxY = setDefault(tellmaxY,tellmaxX)
         pellmaxY = setDefault(pellmaxY,pellmaxX)
+
+        self.N.lmax_T = max(tellmaxX,tellmaxY)
+        self.N.lmax_P = max(pellmaxX,pellmaxY)
 
         nTX,nPX = fmaps.whiteNoise2D([noiseTX,noisePX],beamX,self.N.modLMap, \
                                      TCMB=self.TCMB,lknees=lkneesX,alphas=alphasX,beamFile=beamFileX)
