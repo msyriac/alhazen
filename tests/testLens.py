@@ -34,9 +34,11 @@ atClusterZ = False
 px = 0.5
 arc = 300
 hwidth = arc/2.
+hwidthTen = 5.
 deg = utils.degree
 arcmin =  utils.arcmin
 shape, wcs = enmap.geometry(pos=[[-hwidth*arcmin,-hwidth*arcmin],[hwidth*arcmin,hwidth*arcmin]], res=px*arcmin, proj="car")
+shapeTen, wcsTen = enmap.geometry(pos=[[-hwidthTen*arcmin,-hwidthTen*arcmin],[hwidthTen*arcmin,hwidthTen*arcmin]], res=px*arcmin, proj="car")
 thetaMap = enmap.posmap(shape, wcs)
 thetaMap = np.sum(thetaMap**2,0)**0.5
 
@@ -67,7 +69,8 @@ for i in range(N):
     
     if i==0:
         pl = Plotter()
-        pl.plot2d(lensedMap[250:-250,250:-250]-map[250:-250,250:-250])
+        #pl.plot2d(lensedMap[250:-250,250:-250]-map[250:-250,250:-250])
+        pl.plot2d(enmap.project(lensedMap,shapeTen,wcsTen))
         pl.done("output/lensed.png")
 
 
