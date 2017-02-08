@@ -17,7 +17,7 @@ Config = SafeConfigParser()
 Config.optionxform=str
 Config.read(iniFile)
 
-lmax = 8000
+lmax = 5000
 
 cosmoDict = dictFromSection(Config,cosmologyName)
 constDict = dictFromSection(Config,'constants')
@@ -33,8 +33,8 @@ critical = False
 atClusterZ = False
 
 
-px = 0.5
-arc = 100
+px = 0.1
+arc = 300
 hwidth = arc/2.
 
 deg = utils.degree
@@ -51,13 +51,17 @@ thetaMap = np.sum(thetaMap**2,0)**0.5
 
 kappaMap,r500 = NFWkappa(cc,massOverh,concentration,zL,thetaMap*180.*60./np.pi,sourceZ,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 
+print "kappaint ", kappaMap[thetaMap*60.*180./np.pi<10.].mean()
+
 
 a = alphaMaker(thetaMap)
-alpha = a.kappaToAlpha(kappaMap,test=True)
+alpha = a.kappaToAlpha(kappaMap,test=True,px=px)
 
 print alpha.shape
 
-alphamod = np.sum(alpha**2,0)**0.5
+alphamod = 180.*60.*np.sum(alpha**2,0)**0.5/np.pi
+
+print "alphaint ", alphamod[thetaMap*60.*180./np.pi<10.].mean()
 
 # pl = Plotter()
 # pl.plot2d(kappaMap)

@@ -31,21 +31,23 @@ class alphaMaker(object):
 
 
 
-    def kappaToAlpha(self,kappaMap,test=False):
+    def kappaToAlpha(self,kappaMap,test=False,px=0.5):
         
 
         fKappa = enmap.fft(kappaMap,normalize=False)
         fAlpha = self.ftkernels * fKappa
+        print fAlpha.shape
+        pixScale = px*np.pi/180./60.
+        Nx,Ny = kappaMap.shape
 
-        retAlpha = np.fft.ifftshift(enmap.ifft(fAlpha,normalize=False).real)+kappaMap*0.
-
+        retAlpha = (np.fft.ifftshift(enmap.ifft(fAlpha,normalize=False).real)+kappaMap*0.)*pixScale*pixScale/Nx/Ny
+        
         if test:
-            pixScale = 0.5*np.pi/180./60.
-            #newKap = self.div(retAlpha[::-1,:,:])
-            newKap = enmap.div(retAlpha[::-1,:,:])*pixScale**2.
-            #newKap = enmap.div(retAlpha[:,:,:])
-            #newKap = enmap.div(retAlpha[::-1,20:-20,20:-20])
-            #kappaMap = kappaMap[20:-20,20:-20]
+            newKap = np.nan_to_num(0.5*enmap.div(retAlpha[::-1,:,:])) #/pixScale
+            thetaMap = kappaMap.posmap()
+            thetaModMap = 60.*180.*(np.sum(thetaMap**2,0)**0.5)/np.pi
+            print "newkappaint ", np.nanmean(newKap[thetaModMap<10.])
+            
             pl = Plotter()
             pl.plot2d(kappaMap)
             pl.done("output/oldKap.png")
@@ -53,14 +55,12 @@ class alphaMaker(object):
             pl.plot2d(newKap)
             pl.done("output/newKap.png")
             ratio = np.nan_to_num(newKap/kappaMap)
-            thetaMap = kappaMap.posmap()
             print thetaMap.shape
-            thetaModMap = 60.*180.*(np.sum(thetaMap**2,0)**0.5)/np.pi
 
 
-            print ratio[thetaModMap<10].mean()
+            print ratio[thetaModMap<5].mean()
             pl = Plotter()
-            pl.plot2d(ratio[20:-20,20:-20])
+            pl.plot2d(ratio[200:-200,200:-200])
             pl.done("output/testratio.png")
 
 
