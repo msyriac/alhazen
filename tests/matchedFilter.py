@@ -1,6 +1,6 @@
 from orphics.tools.output import Plotter
 import flipper.liteMap as lm
-from szlib.szcounts import ClusterCosmology,dictFromSection,listFromConfig
+from szlib.szcounts import ClusterCosmology
 from ConfigParser import SafeConfigParser 
 from alhazen.halos import NFWMatchedFilterSN
 import numpy as np

@@ -201,6 +201,10 @@ class QuadNorm(object):
                 WXY = self.WXY('TT')
                 WY = self.WY('TT')
 
+                # binrange = np.arange(50,4000,10)
+                # binner = bin2D(self.modLMap,binrange)
+                # self.cents,self.wxy = binner.bin(WXY)
+
                 preG = WY
                 rfact = 2.**0.25
                 for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
