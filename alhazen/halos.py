@@ -174,6 +174,7 @@ def NFWkappa(cc,massOverh,concentration,zL,thetaArc,sourceZ,overdensity=500.,cri
 
     conv=np.pi/(180.*60.)
     theta = thetaArc*conv # theta in radians
+
     rS = r500/c
 
     thetaS = rS/ comL 
@@ -186,7 +187,8 @@ def NFWkappa(cc,massOverh,concentration,zL,thetaArc,sourceZ,overdensity=500.,cri
     const5 = 1./fc
     
 
-    kappaU = gnfw(theta/thetaS)
+    kappaU = gnfw(theta/thetaS)+theta*0. # added for compatibility with enmap
+
     consts = const12 * const3 * const4 * const5
     kappa = consts * kappaU
 

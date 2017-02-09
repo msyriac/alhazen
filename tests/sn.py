@@ -146,7 +146,7 @@ Clkk = theory.gCl("kk",kfrange)
 b = coreBinner(snrange)
 cents,clkkbinned = b.binned(kfrange,Clkk) 
 
-Nlold = np.loadtxt("Nltemp.txt")
+#Nlold = np.loadtxt("Nltemp.txt")
 
 
 # pl = Plotter(scaleY='log',labelX="$L$",labelY="$[L(L+1)]^2C_L^{\\phi\\phi}/2\\pi$")
@@ -184,7 +184,7 @@ print "sn " , sn*np.sqrt(N)
 
 from orphics.theory.limber import XCorrIntegrator
 
-snrange = np.arange(40,400,20)
+snrange = np.arange(80,2000,200)
 
 xint = XCorrIntegrator(cosmoDict)
 zcents,dndz = np.loadtxt("data/cmass_dndz.csv",unpack=True)
@@ -226,3 +226,38 @@ pl._ax.set_xlim(0,2000)
 #pl._ax.set_ylim(-0.2e-7,1.6e-7)
 pl._ax.axhline(y=0.,ls="--",alpha=0.5)
 pl.done("output/errs.png")
+
+
+zcents,dndz = np.loadtxt("data/hscd6.csv",unpack=True)
+xint.addNz("hsc",zcents,dndz[1:])
+xint.generateCls(snrange)
+
+Clss = xint.getCl("hsc","hsc")
+Clks = xint.getCl("cmb","hsc")
+
+ngal = 12.0
+
+
+nlfile = "/astro/u/msyriac/repos/HSCxACT/data/actpolS2coaddN0_TT_6.txt"
+ls,Nls = np.loadtxt(nlfile,unpack=True)
+
+LF = LensForecast()
+Clkk = theory.gCl("kk",snrange)
+LF.loadKK(snrange,Clkk,ls,Nls)#kellrange,nlnow)
+LF.loadKS(snrange,Clks)#kellrange,nlnow)
+LF.loadSS(snrange,Clss,ngal=ngal)#kellrange,nlnow)
+sn,errs = LF.sn(snrange,fsky,"ks")
+print errs
+print "ks ", sn
+
+Clsg = xint.getCl("hsc","cmass")
+
+ngalF = 0.026
+LF = LensForecast()
+LF.loadSS(snrange,Clss,ngal=ngal)#kellrange,nlnow)
+LF.loadSG(snrange,Clsg)#kellrange,nlnow)
+LF.loadGG(snrange,Clgg,ngal=ngalF)#kellrange,nlnow)
+sn,errs = LF.sn(snrange,fsky,"sg")
+print errs
+print "sg ", sn
+
