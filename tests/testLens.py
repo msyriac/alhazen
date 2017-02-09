@@ -76,6 +76,8 @@ kellmax = 8000
 from orphics.analysis import flatMaps as fmaps
 from alhazen.quadraticEstimator import Estimator
 lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(templateLm)
+lmap = kappaMap.lmap 
+
 fMaskCMB = fmaps.fourierMask(lx,ly,modLMap,lmin=cmbellmin,lmax=cmbellmax)
 fMask = fmaps.fourierMask(lx,ly,modLMap,lmin=kellmin,lmax=kellmax)
 qest = Estimator(templateLm,
