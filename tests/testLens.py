@@ -60,14 +60,20 @@ pix = kappaMap.sky2pix(pos, safe=False)
 # === CMB POWER SPECTRUM ===      
 ps = powspec.read_spectrum("data/cl_lensinput.dat")
 
-print kappaMap.wcs
-print kappaMap.wcs.header
 
 
 # === QUADRATIC ESTIMATOR INITIALIZATION ===      
+
+class template:
+    pass
+
+templateLM = template()
+templateLM.Ny, templateLM.Nx = kappaMap.shape
+templateLM.pixScaleY, templateLM.pixScaleX = kappaMap.pixshape()
+
 polCombList = ["TT"]
 theory = cc.theory
-noise = fot.copy()*0.
+noise = np.asarray(kappaMap)*0.
 gradCut = 2000
 cmbellmin = 200
 cmbellmax = 8000
@@ -75,12 +81,12 @@ kellmin = 200
 kellmax = 8000
 from orphics.analysis import flatMaps as fmaps
 from alhazen.quadraticEstimator import Estimator
-lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(templateLm)
+lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(templateLM)
 lmap = kappaMap.lmap 
 
 fMaskCMB = fmaps.fourierMask(lx,ly,modLMap,lmin=cmbellmin,lmax=cmbellmax)
 fMask = fmaps.fourierMask(lx,ly,modLMap,lmin=kellmin,lmax=kellmax)
-qest = Estimator(templateLm,
+qest = Estimator(templateLM,
                  theory,
                  theorySpectraForNorm=None,
                  noiseX2dTEB=[noise,noise,noise],
