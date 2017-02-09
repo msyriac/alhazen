@@ -37,12 +37,14 @@ class QuadNorm(object):
     
         '''
         self.verbose = verbose
-        self.Nx = templateMap.Nx
-        self.Ny = templateMap.Ny
+        self.Ny,self.Nx = templateMap.shape
 
+        self.lMap = templateMap.lmap()
+        self.modLMap = np.sum(thetaMap**2,0)**0.5
+        
         self.lxMap,self.lyMap,self.modLMap,self.thetaMap,self.lx,self.ly = fmaps.getFTAttributesFromLiteMap(templateMap)
-        self.lxHatMap = np.nan_to_num(self.lxMap / self.modLMap)
-        self.lyHatMap = np.nan_to_num(self.lyMap / self.modLMap)
+
+        self.lHat = self.lMap / np.nan_to_num(1. / self.modLMap)
 
         self.uClNow2d = {}
         self.uClFid2d = {}

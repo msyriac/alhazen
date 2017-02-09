@@ -65,7 +65,6 @@ print kappaMap.wcs.header
 
 
 # === QUADRATIC ESTIMATOR INITIALIZATION ===      
-templateLm = enmap.to_flipper(kappaMap)
 polCombList = ["TT"]
 theory = cc.theory
 noise = fot.copy()*0.
