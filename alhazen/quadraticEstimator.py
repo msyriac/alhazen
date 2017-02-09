@@ -588,7 +588,7 @@ class QuadNorm(object):
         ClBBres[np.where(np.logical_or(self.modLMap >= self.bigell, self.modLMap == 0.))] = 0.
         ClBBres *= self.Nx * self.Ny 
         ClBBres[self.fMaskYY['EE']==0] = 0.
-        from orphics.tools.output import Plotter
+        from orphics.tools.io import Plotter
                 
         
         area =self.Nx*self.Ny*self.pixScaleX*self.pixScaleY
