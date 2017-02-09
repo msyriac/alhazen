@@ -149,7 +149,7 @@ for k,i in enumerate(myIs):
                          fmaskY2dTEB=[fMaskCMB]*3,
                          fmaskKappa=fMask,
                          doCurl=False,
-                         TOnly=(len(polCombList)==1),
+                         TOnly=False,
                          halo=True,
                          gradCut=cmbellmax,verbose=True,
                          loadPickledNormAndFilters=loadFile,

@@ -34,10 +34,11 @@ class alphaMaker(object):
         pixScaleY, pixScaleX = kappaMap.pixshape()
         Ny,Nx = kappaMap.shape
 
-        retAlpha = (np.fft.ifftshift(enmap.ifft(fAlpha,normalize=False).real)+kappaMap*0.)*pixScaleY*pixScaleX/Nx/Ny
+        #retAlpha = (np.fft.ifftshift(enmap.ifft(fAlpha,normalize=False).real)+kappaMap*0.)*pixScaleY*pixScaleX/Nx/Ny
+        retAlpha = -(np.fft.ifftshift(enmap.ifft(fAlpha,normalize=False).real[::-1])+kappaMap*0.)*pixScaleY*pixScaleX/Nx/Ny
         
         if test:
-            newKap = np.nan_to_num(0.5*enmap.div(retAlpha[::-1,:,:])) 
+            newKap = -np.nan_to_num(0.5*enmap.div(retAlpha)) 
             thetaMap = kappaMap.posmap()
             thetaModMap = 60.*180.*(np.sum(thetaMap**2,0)**0.5)/np.pi
             print "newkappaint ", np.nanmean(newKap[thetaModMap<10.])

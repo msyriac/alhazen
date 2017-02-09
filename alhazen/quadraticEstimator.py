@@ -1,3 +1,4 @@
+from __future__ import division
 import numpy as np
 import orphics.analysis.flatMaps as fmaps 
 
@@ -39,8 +40,8 @@ class QuadNorm(object):
         self.verbose = verbose
         self.Ny,self.Nx = templateMap.Ny, templateMap.Nx
         self.lxMap,self.lyMap,self.modLMap,self.thetaMap,self.lx,self.ly = fmaps.getFTAttributesFromLiteMap(templateMap)
-        self.lxHatMap = np.nan_to_num(self.lxMap / self.modLMap)
-        self.lyHatMap = np.nan_to_num(self.lyMap / self.modLMap)
+        self.lxHatMap = self.lxMap*np.nan_to_num(1. / self.modLMap)
+        self.lyHatMap = self.lyMap*np.nan_to_num(1. / self.modLMap)
 
 
         self.uClNow2d = {}
@@ -56,8 +57,11 @@ class QuadNorm(object):
         self.defaultMaskT = fmaps.fourierMask(self.lx,self.ly,self.modLMap,lmin=2,lmax=self.lmax_T)
         self.defaultMaskP = fmaps.fourierMask(self.lx,self.ly,self.modLMap,lmin=2,lmax=self.lmax_P)
         self.bigell=9000.
-        self.gradCut = self.bigell
-        if gradCut is not None: self.gradCut = gradCut
+        if gradCut is not None: 
+            self.gradCut = gradCut
+        else:
+            self.gradCut = bigell
+        
 
 
         self.Nlkk = {}
@@ -521,7 +525,7 @@ class QuadNorm(object):
         
                         
         ALinv = np.real(np.sum( allTerms, axis = 0))
-        NL = np.nan_to_num(lmap**2. * (lmap + 1.)**2. / 4. / ALinv)
+        NL = (lmap**2.) * ((lmap + 1.)**2.) *np.nan_to_num(1. / ALinv)/ 4.
         NL[np.where(np.logical_or(lmap >= self.bigell, lmap == 0.))] = 0.
 
         retval = np.nan_to_num(NL.real * self.pixScaleX*self.pixScaleY  )
@@ -531,7 +535,7 @@ class QuadNorm(object):
 
 
         
-        return np.nan_to_num(retval * 2. / lmap/(lmap+1.))
+        return retval * 2. * np.nan_to_num(1. / lmap/(lmap+1.))
         
         
                   
@@ -554,7 +558,7 @@ class QuadNorm(object):
         cltotPPArr[self.fMaskYY['EE']==0] = np.inf
         
 
-        if halo: clunlenEEArr[np.where(self.modLMap >= self.gradCut)] = 0.
+        #if halo: clunlenEEArr[np.where(self.modLMap >= self.gradCut)] = 0.
                 
         sin2phi = lambda lxhat,lyhat: (2.*lxhat*lyhat)
         cos2phi = lambda lxhat,lyhat: (lyhat*lyhat-lxhat*lxhat)
@@ -939,7 +943,7 @@ class Estimator(object):
             except:
                 pass
 
-    def getKappa(self,XY):
+    def getKappa(self,XY,weightedFt=False):
 
         assert self._hasX and self._hasY
         assert XY in ['TT','TE','ET','EB','TB','EE']
@@ -947,6 +951,8 @@ class Estimator(object):
 
         WXY = self.N.WXY(XY)
         WY = self.N.WY(Y+Y)
+
+
 
         lx = self.N.lxMap
         ly = self.N.lyMap
@@ -967,7 +973,11 @@ class Estimator(object):
         kPy = fft2(ifft2(self.kGrady[X]*WXY*phaseY)*HighMapStar)
         rawKappa = ifft2(1.j*lx*kPx*fMask + 1.j*ly*kPy*fMask).real
         AL = self.AL[XY]*fMask
-        self.kappa = -ifft2(AL*fft2(rawKappa))
+
+
+        kappaft = -AL*fft2(rawKappa)
+        #if weightedFt: return np.nan_to_num(kappaft/self.N.Nlkk[XY]),np.nan_to_num(1./self.N.Nlkk[XY])
+        self.kappa = ifft2(kappaft)
 
 
         if self.verbose:
