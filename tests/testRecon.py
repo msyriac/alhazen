@@ -1,13 +1,13 @@
 print "Starting imports..."
 import matplotlib
 matplotlib.use('Agg')
-from orphics.analysis.quadraticEstimator import Estimator
+from alhazen.quadraticEstimator import Estimator
 import orphics.analysis.flatMaps as fmaps 
 from orphics.tools.cmb import loadTheorySpectraFromCAMB
 import numpy as np
 from astLib import astWCS, astCoords
-import liteMap as lm
-from orphics.tools.output import Plotter
+import flipper.liteMap as lm
+from orphics.tools.io import Plotter
 from orphics.tools.stats import binInAnnuli
 import sys
 
@@ -20,10 +20,9 @@ from pyfftw.interfaces.scipy_fftpack import ifft2
 import pyfftw
 pyfftw.interfaces.cache.enable()
 
-import fftTools as ft
+import flipper.fftTools as ft
 import orphics.tools.stats as stats
 
-import fftPol as fpol
 
 from orphics.tools.stats import getStats
 
@@ -54,7 +53,7 @@ if cutout:
     cutoutStr = "_cutout"
 
 #polCombList = ['TT','EE','EB','TB','TE','ET']
-polCombList = ['TT']
+polCombList = ['TT','EB']
 colorList = ['red','blue','green','orange','purple','brown']
 
 simRoot = "/astro/astronfs01/workarea/msyriac/cmbSims/"
@@ -92,7 +91,6 @@ startIndex = rank*num_each
 endIndex = startIndex + num_each
 myIs = range(N)[startIndex:endIndex]
 
-    
 
 listCrossPower = {}
 listReconPower = {}
@@ -271,7 +269,7 @@ else:
     pl.legendOn(labsize=10,loc='upper right')
     pl._ax.set_xlim(kellmin,kellmax)
     pl._ax.axhline(y=0.,ls="--",color='black',alpha=0.5)
-    pl._ax.set_ylim(-10.,5.)
+    #pl._ax.set_ylim(-10.,5.)
     pl.done("tests/output/percent.png")
 
     # cross compare to power of input (bias)

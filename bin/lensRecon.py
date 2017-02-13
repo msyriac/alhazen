@@ -10,16 +10,16 @@ from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 from szlib.szcounts import ClusterCosmology
 from orphics.tools.stats import bin2D
 from szlib.sims import BattagliaSims
+import sys
 print "Done importing modules..."
 
 def getKappaSZ(bSims,snap,massIndex,px,thetaMapshape):
     b = bSims
-    #snap = 44
-    #massIndex = 40
     PIX = 2048
     maps, z, kappaSimDat, szMapuKDat, projectedM500, trueM500, trueR500, pxInRad, pxInRad = b.getMaps(snap,massIndex,freqGHz=150.)
     pxIn = pxInRad * 180.*60./np.pi
     hwidth = PIX*pxIn/2.
+    print "At redshift ", z , " stamp is ", hwidth ," arcminutes wide."
     
     # input pixelization
     shapeSim, wcsSim = enmap.geometry(pos=[[-hwidth*arcmin,-hwidth*arcmin],[hwidth*arcmin,hwidth*arcmin]], res=pxIn*arcmin, proj="car")
@@ -33,15 +33,20 @@ def getKappaSZ(bSims,snap,massIndex,px,thetaMapshape):
 
     print thetaMapshape
     print szMap.shape
-    diffPad = ((np.array(thetaMapshape) - np.array(szMap.shape))/2.+0.5).astype(int)
-    
-    apodWidth = 25
-    kappaMap = enmap.pad(enmap.apod(kappaMap,apodWidth),diffPad)[:-1,:-1]
-    szMap = enmap.pad(enmap.apod(szMap,apodWidth),diffPad)[:-1,:-1]
-    print szMap.shape
-    assert szMap.shape==thetaMap.shape
 
-    print z, projectedM500
+    if szMap.shape[0]>thetaMapshape[0]:
+        kappaMap = enmap.project(kappaSim,thetaMapshape,wcsOut)
+        szMap = enmap.project(szMapuK,thetaMapshape,wcsOut)
+    else:
+        diffPad = ((np.array(thetaMapshape) - np.array(szMap.shape))/2.+0.5).astype(int)
+    
+        apodWidth = 25
+        kappaMap = enmap.pad(enmap.apod(kappaMap,apodWidth),diffPad)[:-1,:-1]
+        szMap = enmap.pad(enmap.apod(szMap,apodWidth),diffPad)[:-1,:-1]
+        # print szMap.shape
+        assert szMap.shape==thetaMap.shape
+
+    # print z, projectedM500
     # pl = Plotter()
     # pl.plot2d(kappaMap)
     # pl.done("output/kappasim.png")
@@ -50,8 +55,14 @@ def getKappaSZ(bSims,snap,massIndex,px,thetaMapshape):
     # pl.done("output/szsim.png")
     # sys.exit()
 
-    print "kappaint ", kappaMap[thetaMap*60.*180./np.pi<10.].mean()
+    # print "kappaint ", kappaMap[thetaMap*60.*180./np.pi<10.].mean()
     return kappaMap,szMap
+
+
+jobIndex = int(sys.argv[1])
+jobNum = int(sys.argv[2])
+snapNum = int(sys.argv[3])
+saveName = sys.argv[4]
 
 
 # === COSMOLOGY ===
@@ -93,7 +104,7 @@ thetaMap = np.sum(thetaMap**2,0)**0.5
 
 # === KAPPA MAP ===
 # kappaMap,r500 = NFWkappa(cc,massOverh,concentration,zL,thetaMap*180.*60./np.pi,sourceZ,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
-snap = 43
+snap = snapNum
 b = BattagliaSims(constDict)
 
 # === CMB POWER SPECTRUM ===      
@@ -124,7 +135,7 @@ else:
     polCombList = ["TT"]
 
 theory = cc.theory
-nT,nP,nP = fmaps.whiteNoise2D([3.0,3.0,3.0],1.5,modLMap,TCMB = TCMB)
+nT,nP,nP = fmaps.whiteNoise2D([1.0,1.0,1.0],1.0,modLMap,TCMB = TCMB)
 gradCut = 2000
 cmbellmin = 200
 cmbellmax = 8000
@@ -158,11 +169,11 @@ qest = Estimator(templateLM,
 # pl.add(ls,Nls)
 # pl.done("output/nl.png")
 
-# szX = False
-# szY = False
+szX = False
+szY = False
 
-szX = True
-szY = True
+# szX = True
+# szY = True
 
 # szX = True
 # szY = False
@@ -171,24 +182,19 @@ szY = True
 # szY = True
 
 
-# === RUN N SIMS ===      
-kappaStack = thetaMap*0.
-trueKappaStack = thetaMap*0.
-szStack = thetaMap*0.
-lX = thetaMap*0.
-lY = thetaMap*0.
-N = 200
-massIndices = range(300)
-for i in range(N):
+
+
+startIndex = jobIndex*jobNum
+endIndex = (jobIndex+1)*jobNum
+
+
+for i in range(startIndex,endIndex):
     print i
     map = enmap.rand_map(shape, wcs, ps)/TCMB
 
 
-    massIndex = massIndices[i]
+    massIndex = i 
     inputKappaMap, szMap = getKappaSZ(b,snap,massIndex,px,thetaMap.shape)
-
-    trueKappaStack += inputKappaMap
-    szStack += szMap
 
     # === DEFLECTION MAP ===
     a = alphaMaker(thetaMap)
@@ -211,56 +217,18 @@ for i in range(N):
     if szY:
         lensedMapY += (szMap/TCMB)
     
-    if i==0:
-        pl = Plotter()
-        pl.plot2d(enmap.project(lensedMapX,shapeTen,wcsTen))
-        pl.done("output/lensedX.png")
-        pl = Plotter()
-        pl.plot2d(enmap.project(lensedMapY,shapeTen,wcsTen))
-        pl.done("output/lensedY.png")
-        pl = Plotter()
-        pl.plot2d(enmap.project(lensedMapY,shapeTen,wcsTen)-enmap.project(map,shapeTen,wcsTen))
-        pl.done("output/diff.png")
-
-
-    
     fotX = enmap.fft(lensedMapX,normalize=False)
     fotY = enmap.fft(lensedMapY,normalize=False)
 
     print "Reconstructing" , i , " ..."
     qest.updateTEB_X(fotX,alreadyFTed=True)
     qest.updateTEB_Y(fotY,alreadyFTed=True)
-    kappa = qest.getKappa(polCombList[0]).real
+    kappa = enmap.samewcs(qest.getKappa(polCombList[0]).real,thetaMap)
+
+    enmap.write_map(saveName+"_kappa_"+str(i)+"_"+str(snap)+".hdf",kappa)
+    enmap.write_map(saveName+"_inpkappa_"+str(i)+"_"+str(snap)+".hdf",inputKappaMap)
+    enmap.write_map(saveName+"_sz_"+str(i)+"_"+str(snap)+".hdf",szMap)
         
-    kappaStack += kappa
-    lX += lensedMapX
-    lY += lensedMapY
 
 
 
-pl = Plotter()
-pl.plot2d(kappaStack/N)
-pl.done("output/recon.png")
-
-pl = Plotter()
-pl.plot2d(trueKappaStack/N)
-pl.done("output/truestack.png")
-
-pl = Plotter()
-pl.plot2d(szStack/N)
-pl.done("output/szstack.png")
-
-
-
-fotX = enmap.fft(lX,normalize=False)
-fotY = enmap.fft(lY,normalize=False)
-
-print "Reconstructing" , i , " ..."
-qest.updateTEB_X(fotX,alreadyFTed=True)
-qest.updateTEB_Y(fotY,alreadyFTed=True)
-kappa = qest.getKappa(polCombList[0]).real
-
-cleanKappa = kappaStack - kappa
-pl = Plotter()
-pl.plot2d(cleanKappa/N)
-pl.done("output/cleanrecon.png")
