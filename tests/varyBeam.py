@@ -19,7 +19,7 @@ fsky = 0.4
 
 gradCut = 10000
 beamY = 1.5
-noiseX = 3.0*2.
+noiseX = 3.0#*2.
 noiseY = 3.0
 noiseTX = noiseX
 noisePX = np.sqrt(2.)*noiseTX
@@ -62,8 +62,12 @@ frange = np.arange(2.,3100.,1.)
 Clkk = theory.gCl("kk",frange)
 
 
-beamRange = np.arange(1.5,9.5,0.5)
+#beamRange = np.arange(1.5,9.5,0.5)
+#beamRange = np.arange(9.5,30.5,2.5)
 #beamRange = np.arange(1.5,5.0,0.5)
+
+beamX = 10.0
+noiseRange = np.arange(3.0,30.0,4.0)
 
 swap = False
 
@@ -74,7 +78,9 @@ for polComb in ['EB']:
         if polComb=='TT' and delens: continue
         pl = Plotter(scaleY='log',labelX="$L$",labelY="$C_L$")
         sns = []
-        for beamX in beamRange:
+        #for beamX in beamRange:
+        for noiseTX in noiseRange:
+            noisePX = np.sqrt(2.)*noiseTX
 
             myNls = NlGenerator(lmap,theory,gradCut=gradCut)
 
@@ -119,9 +125,13 @@ for polComb in ['EB']:
         #pl.legendOn(loc='lower left',labsize = 8)
         pl._ax.set_xlim(0,3000)
         pl._ax.set_ylim(1.e-9,1.e-6)
-        pl.done("beamVary_"+polComb+"_delens_"+str(delens)+"_noise2x.pdf")
+        pl.done("beamVary_"+polComb+"_delens_"+str(delens)+"_noiseVary.pdf")
 
-        pl = Plotter(labelX = "beamX (arcmin)",labelY="S/N auto",ftsize=14)
-        pl.add(beamRange,sns)
-        pl.done(polComb+str(delens)+"_sn_swap_"+str(swap)+"_noise2x.pdf")
+        # pl = Plotter(labelX = "beamX (arcmin)",labelY="S/N auto",ftsize=14)
+        # pl.add(beamRange,sns)
+        # pl.done(polComb+str(delens)+"_sn_swap_"+str(swap)+"_noiseVary.pdf")
+
+        pl = Plotter(labelX = "noiseX (muK-arcmin)",labelY="S/N auto",ftsize=14)
+        pl.add(noiseRange,sns)
+        pl.done(polComb+str(delens)+"_sn_swap_"+str(swap)+"_noiseVary.pdf")
 

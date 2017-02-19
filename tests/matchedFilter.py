@@ -8,8 +8,9 @@ import numpy as np
 from orphics.tools.cmb import loadTheorySpectraFromCAMB
 from alhazen.quadraticEstimator import NlGenerator,getMax
 
-Mexp = 14.4 #np.log10(2.e14)
-z = 1.0 #0.7
+#Mexp = 14.4 #np.log10(2.e14)
+Mexp = np.log10(5.e14)
+z = 0.5
 c = 1.18
 
 clusterParams = 'LACluster' # from ini file

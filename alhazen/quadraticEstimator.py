@@ -17,6 +17,18 @@ from orphics.tools.stats import timeit, bin2D
 import time
 import cPickle as pickle
 
+def sanitizePower(Nlbinned):
+    Nlbinned[Nlbinned<0.] = np.nan
+
+    # fill nans with interp
+    ok = -np.isnan(Nlbinned)
+    xp = ok.ravel().nonzero()[0]
+    fp = Nlbinned[-np.isnan(Nlbinned)]
+    x  = np.isnan(Nlbinned).ravel().nonzero()[0]
+    Nlbinned[np.isnan(Nlbinned)] = np.interp(x, xp, fp)
+    return Nlbinned
+
+
 def getMax(polComb,tellmax,pellmax):
     if polComb=='TT':
         return tellmax
@@ -700,24 +712,17 @@ class NlGenerator(object):
         data2d = self.N.Nlkk[polComb]
 
         centers, Nlbinned = self.binner.bin(data2d)
-
-        Nlbinned[Nlbinned<0.] = np.nan
-
-        # fill nans with interp
-        ok = -np.isnan(Nlbinned)
-        xp = ok.ravel().nonzero()[0]
-        fp = Nlbinned[-np.isnan(Nlbinned)]
-        x  = np.isnan(Nlbinned).ravel().nonzero()[0]
-        Nlbinned[np.isnan(Nlbinned)] = np.interp(x, xp, fp)
+        Nlbinned = sanitizePower(Nlbinned)
         
         return centers, Nlbinned
 
     def iterativeDelens(self,xy,dTolPercentage=1.0,halo=True):
         assert xy=='EB' or xy=='TB'
         origBB = self.N.lClFid2d['BB'].copy()
-        bin_edges = np.arange(100.,3000.,20.)
+        bin_edges = self.bin_edges #np.arange(100.,3000.,20.)
         delensBinner =  bin2D(self.N.modLMap, bin_edges)
         ells, oclbb = delensBinner.bin(origBB)
+        oclbb = sanitizePower(oclbb)
 
         ctol = np.inf
         inum = 0
@@ -731,8 +736,10 @@ class NlGenerator(object):
             print "Performing iteration ", inum+1
             Al2d = self.N.getNlkk2d(xy,halo)
             centers, nlkk = delensBinner.bin(self.N.Nlkk[xy])
+            nlkk = sanitizePower(nlkk)
             bbNoise2D = self.N.delensClBB(self.N.Nlkk[xy],halo)
             ells, dclbb = delensBinner.bin(bbNoise2D)
+            dclbb = sanitizePower(dclbb)
             if inum>0:
                 new = np.nanmean(nlkk)
                 old = np.nanmean(oldNl)

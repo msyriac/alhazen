@@ -11,7 +11,7 @@ from scipy.integrate import simps
 from orphics.tools.output import Plotter
 import flipper.liteMap as lm
 
-@timeit
+#@timeit
 def getProfiles(generator,stepfilter_ellmax,kappaMap,binner,N):
     profiles = []
     totstamp = 0.
@@ -45,8 +45,8 @@ def predictSN(polComb,noiseTY,noisePY,N,MM):
 
 
 
-@timeit
-def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05,saveId=None):
+#@timeit
+def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05,saveId=None,verbose=False):
     M = 10.**log10Moverh
 
     lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
@@ -72,7 +72,7 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     # print "estimated integral " , kInt[modRMap<fiveth500].mean()*np.pi*fiveth500**2.
     k500 = simps(simps(kInt, yy), xx)
     
-    print "integral of kappa inside disc ",k500
+    if verbose: print "integral of kappa inside disc ",k500
     Ukappa = kappaReal/k500
 
     # pl = Plotter()

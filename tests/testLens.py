@@ -92,9 +92,9 @@ thetaMap = np.sum(thetaMap**2,0)**0.5
 
 
 # === KAPPA MAP ===
-# kappaMap,r500 = NFWkappa(cc,massOverh,concentration,zL,thetaMap*180.*60./np.pi,sourceZ,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+kappaMap,r500 = NFWkappa(cc,massOverh,concentration,zL,thetaMap*180.*60./np.pi,sourceZ,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 snap = 43
-b = BattagliaSims(constDict)
+#b = BattagliaSims(constDict)
 
 # === CMB POWER SPECTRUM ===      
 ps = powspec.read_spectrum("data/cl_lensinput.dat")
@@ -124,7 +124,7 @@ else:
     polCombList = ["TT"]
 
 theory = cc.theory
-nT,nP,nP = fmaps.whiteNoise2D([3.0,3.0,3.0],1.5,modLMap,TCMB = TCMB)
+nT,nP,nP = fmaps.whiteNoise2D([0.01,0.0,3.0],0.01,modLMap,TCMB = TCMB)
 gradCut = 2000
 cmbellmin = 200
 cmbellmax = 8000
@@ -158,11 +158,11 @@ qest = Estimator(templateLM,
 # pl.add(ls,Nls)
 # pl.done("output/nl.png")
 
-# szX = False
-# szY = False
+szX = False
+szY = False
 
-szX = True
-szY = True
+# szX = True
+# szY = True
 
 # szX = True
 # szY = False
@@ -177,15 +177,17 @@ trueKappaStack = thetaMap*0.
 szStack = thetaMap*0.
 lX = thetaMap*0.
 lY = thetaMap*0.
-N = 200
+N = 20
 massIndices = range(300)
 for i in range(N):
     print i
     map = enmap.rand_map(shape, wcs, ps)/TCMB
 
 
-    massIndex = massIndices[i]
-    inputKappaMap, szMap = getKappaSZ(b,snap,massIndex,px,thetaMap.shape)
+    #massIndex = massIndices[i]
+    #inputKappaMap, szMap = getKappaSZ(b,snap,massIndex,px,thetaMap.shape)
+    inputKappaMap = kappaMap
+    szMap = 0.
 
     trueKappaStack += inputKappaMap
     szStack += szMap
@@ -233,8 +235,8 @@ for i in range(N):
     kappa = qest.getKappa(polCombList[0]).real
         
     kappaStack += kappa
-    lX += lensedMapX
-    lY += lensedMapY
+    # lX += lensedMapX
+    # lY += lensedMapY
 
 
 
@@ -252,15 +254,15 @@ pl.done("output/szstack.png")
 
 
 
-fotX = enmap.fft(lX,normalize=False)
-fotY = enmap.fft(lY,normalize=False)
+# fotX = enmap.fft(lX,normalize=False)
+# fotY = enmap.fft(lY,normalize=False)
 
-print "Reconstructing" , i , " ..."
-qest.updateTEB_X(fotX,alreadyFTed=True)
-qest.updateTEB_Y(fotY,alreadyFTed=True)
-kappa = qest.getKappa(polCombList[0]).real
+# print "Reconstructing" , i , " ..."
+# qest.updateTEB_X(fotX,alreadyFTed=True)
+# qest.updateTEB_Y(fotY,alreadyFTed=True)
+# kappa = qest.getKappa(polCombList[0]).real
 
-cleanKappa = kappaStack - kappa
-pl = Plotter()
-pl.plot2d(cleanKappa/N)
-pl.done("output/cleanrecon.png")
+# cleanKappa = kappaStack - kappa
+# pl = Plotter()
+# pl.plot2d(cleanKappa/N)
+# pl.done("output/cleanrecon.png")
