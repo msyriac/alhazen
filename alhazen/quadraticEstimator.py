@@ -651,7 +651,7 @@ class NlGenerator(object):
         self.N.bigell = bin_edges[len(bin_edges)-1]
         self.binner = bin2D(self.N.modLMap, bin_edges)
 
-    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],lxcutTX=0,lxcutTY=0,lycutTX=0,lycutTY=0,lxcutPX=0,lxcutPY=0,lycutPX=0,lycutPY=0,fgFileX=None,beamFileX=None,fgFileY=None,beamFileY=None):
+    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],lxcutTX=0,lxcutTY=0,lycutTX=0,lycutTY=0,lxcutPX=0,lxcutPY=0,lycutPX=0,lycutPY=0,fgFileX=None,beamFileX=None,fgFileY=None,beamFileY=None,noiseFileTX=None,noiseFileTY=None,noiseFilePX=None,noiseFilePY=None):
 
         def setDefault(A,B):
             if A is None:
@@ -671,9 +671,11 @@ class NlGenerator(object):
         self.N.lmax_P = max(pellmaxX,pellmaxY)
 
         nTX,nPX = fmaps.whiteNoise2D([noiseTX,noisePX],beamX,self.N.modLMap, \
-                                     TCMB=self.TCMB,lknees=lkneesX,alphas=alphasX,beamFile=beamFileX)
+                                     TCMB=self.TCMB,lknees=lkneesX,alphas=alphasX,beamFile=beamFileX, \
+                                     noiseFileT=noiseFileTX,noiseFileP=noiseFilePX)
         nTY,nPY = fmaps.whiteNoise2D([noiseTY,noisePY],beamY,self.N.modLMap, \
-                                     TCMB=self.TCMB,lknees=lkneesY,alphas=alphasY,beamFile=beamFileY)
+                                     TCMB=self.TCMB,lknees=lkneesY,alphas=alphasY,beamFile=beamFileY \
+                                     noiseFileT=noiseFileTY,noiseFileP=noiseFilePY))
         fMaskTX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminX,lmax=tellmaxX,lxcut=lxcutTX,lycut=lycutTX)
         fMaskTY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminY,lmax=tellmaxY,lxcut=lxcutTY,lycut=lycutTY)
         fMaskPX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminX,lmax=pellmaxX,lxcut=lxcutPX,lycut=lycutPX)
