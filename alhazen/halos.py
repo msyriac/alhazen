@@ -127,6 +127,7 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     varinv = filter.sum()
     std = np.sqrt(1./varinv)
     sn = k500/std
+    if verbose: print sn
 
     if saveId is not None:
         np.savetxt("data/"+saveId+"_m"+str(log10Moverh)+"_z"+str(z)+".txt",np.array([log10Moverh,z,1./sn]))
