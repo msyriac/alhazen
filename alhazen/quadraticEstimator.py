@@ -650,6 +650,7 @@ class NlGenerator(object):
     def updateBins(self,bin_edges):
         self.N.bigell = bin_edges[len(bin_edges)-1]
         self.binner = bin2D(self.N.modLMap, bin_edges)
+        self.bin_edges = bin_edges
 
     def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],lxcutTX=0,lxcutTY=0,lycutTX=0,lycutTY=0,lxcutPX=0,lxcutPY=0,lycutPX=0,lycutPY=0,fgFileX=None,beamFileX=None,fgFileY=None,beamFileY=None,noiseFileTX=None,noiseFileTY=None,noiseFilePX=None,noiseFilePY=None):
 
@@ -672,10 +673,10 @@ class NlGenerator(object):
 
         nTX,nPX = fmaps.whiteNoise2D([noiseTX,noisePX],beamX,self.N.modLMap, \
                                      TCMB=self.TCMB,lknees=lkneesX,alphas=alphasX,beamFile=beamFileX, \
-                                     noiseFileT=noiseFileTX,noiseFileP=noiseFilePX)
+                                     noiseFiles = [noiseFileTX,noiseFilePX])
         nTY,nPY = fmaps.whiteNoise2D([noiseTY,noisePY],beamY,self.N.modLMap, \
-                                     TCMB=self.TCMB,lknees=lkneesY,alphas=alphasY,beamFile=beamFileY \
-                                     noiseFileT=noiseFileTY,noiseFileP=noiseFilePY))
+                                     TCMB=self.TCMB,lknees=lkneesY,alphas=alphasY,beamFile=beamFileY, \
+                                     noiseFiles=[noiseFileTY,noiseFilePY])
         fMaskTX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminX,lmax=tellmaxX,lxcut=lxcutTX,lycut=lycutTX)
         fMaskTY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminY,lmax=tellmaxY,lxcut=lxcutTY,lycut=lycutTY)
         fMaskPX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminX,lmax=pellmaxX,lxcut=lxcutPX,lycut=lycutPX)
@@ -707,7 +708,7 @@ class NlGenerator(object):
 
         return nTX,nPX,nTY,nPY
 
-    @timeit
+    #@timeit
     def getNl(self,polComb='TT',halo=True):            
 
         AL = self.N.getNlkk2d(polComb,halo=halo)
@@ -718,7 +719,7 @@ class NlGenerator(object):
         
         return centers, Nlbinned
 
-    def iterativeDelens(self,xy,dTolPercentage=1.0,halo=True):
+    def iterativeDelens(self,xy,dTolPercentage=1.0,halo=True,verbose=True):
         assert xy=='EB' or xy=='TB'
         origBB = self.N.lClFid2d['BB'].copy()
         bin_edges = self.bin_edges #np.arange(100.,3000.,20.)
@@ -735,7 +736,7 @@ class NlGenerator(object):
         #pl = Plotter(scaleY='log',scaleX='log')
         #pl = Plotter(scaleY='log')
         while ctol>dTolPercentage:
-            print "Performing iteration ", inum+1
+            if verbose: print "Performing iteration ", inum+1
             Al2d = self.N.getNlkk2d(xy,halo)
             centers, nlkk = delensBinner.bin(self.N.Nlkk[xy])
             nlkk = sanitizePower(nlkk)
@@ -746,7 +747,7 @@ class NlGenerator(object):
                 new = np.nanmean(nlkk)
                 old = np.nanmean(oldNl)
                 ctol = np.abs(old-new)*100./new
-                print "Percentage difference between iterations is ",ctol, " compared to requested tolerance of ", dTolPercentage
+                if verbose: print "Percentage difference between iterations is ",ctol, " compared to requested tolerance of ", dTolPercentage
             oldNl = nlkk.copy()
             inum += 1
             #pl.add(centers,nlkk)
