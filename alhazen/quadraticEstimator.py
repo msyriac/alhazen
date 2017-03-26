@@ -193,7 +193,11 @@ class QuadNorm(object):
 
     def getCurlNlkk2d(self,XY,halo=False):
         pass
-            
+
+
+        
+
+    
     def getNlkk2d(self,XY,halo=False):
         lx,ly = self.lxMap,self.lyMap
         lmap = self.modLMap
