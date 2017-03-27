@@ -5,7 +5,7 @@ from alhazen.quadraticEstimator import Estimator
 import orphics.analysis.flatMaps as fmaps 
 from orphics.tools.cmb import loadTheorySpectraFromCAMB
 import numpy as np
-from astLib import astWCS, astCoords
+#from astLib import astWCS, astCoords
 import flipper.liteMap as lm
 from orphics.tools.io import Plotter
 from orphics.tools.stats import binInAnnuli
@@ -13,12 +13,12 @@ import sys
 
 from scipy.interpolate import interp1d
 #from scipy.fftpack import fft2,ifft2,fftshift,ifftshift,fftfreq
-from scipy.fftpack import fftshift,ifftshift,fftfreq
-from pyfftw.interfaces.scipy_fftpack import fft2
-from pyfftw.interfaces.scipy_fftpack import ifft2
+#from scipy.fftpack import fftshift,ifftshift,fftfreq
+# from pyfftw.interfaces.scipy_fftpack import fft2
+# from pyfftw.interfaces.scipy_fftpack import ifft2
 
-import pyfftw
-pyfftw.interfaces.cache.enable()
+# import pyfftw
+# pyfftw.interfaces.cache.enable()
 
 import flipper.fftTools as ft
 import orphics.tools.stats as stats
@@ -40,7 +40,8 @@ saveFile = None #"/astro/astronfs01/workarea/msyriac/act/normDec14_0_trimmed_ell
 trimmed = False
 cutout = False
 
-
+noiseT = 10.
+noiseP = np.sqrt(2.)*noiseT
 
 
 suffix = ""
@@ -52,8 +53,8 @@ if cutout:
     periodic = ""
     cutoutStr = "_cutout"
 
-#polCombList = ['TT','EE','EB','TB','TE','ET']
-polCombList = ['TT','EB']
+polCombList = ['TT','EE','EB','TB','TE','ET']
+#polCombList = ['TT','EB']
 colorList = ['red','blue','green','orange','purple','brown']
 
 simRoot = "/astro/astronfs01/workarea/msyriac/cmbSims/"
@@ -76,7 +77,7 @@ cambRoot = "/astro/u/msyriac/repos/actpLens/data/non-linear"
 
 TCMB = 2.7255e6
 #theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,TCMB = TCMB,lpad=4000)
-# !!!!!!!!!!!!!
+# !!!!!!!!!!!!! N2 bias
 theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=True,useTotal=False,TCMB = TCMB,lpad=(cmbellmax + 500))
 
 ellkk = np.arange(2,9000,1)
@@ -106,6 +107,10 @@ for polComb in polCombList:
 
 bin_edges = np.arange(kellmin,kellmax,80)
 
+whiteNoiseT = (np.pi / (180. * 60))**2.  * noiseT**2. #/ TCMB**2.  
+whiteNoiseP = (np.pi / (180. * 60))**2.  * noiseP**2. #/ TCMB**2.  
+
+
 for k,i in enumerate(myIs):
     print i
 
@@ -122,17 +127,32 @@ for k,i in enumerate(myIs):
         fMaskCMB = fmaps.fourierMask(lx,ly,modLMap,lmin=cmbellmin,lmax=cmbellmax)
         fMask = fmaps.fourierMask(lx,ly,modLMap,lmin=kellmin,lmax=kellmax)
 
+        ellNoise = np.arange(0,modLMap.max())
+        Ntt = ellNoise*0.+whiteNoiseT
+        Npp = ellNoise*0.+whiteNoiseP
+        Ntt[0] = 0.
+        Npp[0] = 0.
+        gGenT = fmaps.GRFGen(lensedTLm.copy(),ellNoise,Ntt,bufferFactor=1)
+        gGenP1 = fmaps.GRFGen(lensedTLm.copy(),ellNoise,Npp,bufferFactor=1)
+        gGenP2 = fmaps.GRFGen(lensedTLm.copy(),ellNoise,Npp,bufferFactor=1)
 
+    if noiseT>1.e-3: lensedTLm.data = lensedTLm.data + gGenT.getMap(stepFilterEll=None)
+    if noiseP>1.e-3: lensedQLm.data = lensedQLm.data + gGenP1.getMap(stepFilterEll=None)
+    if noiseP>1.e-3: lensedULm.data = lensedULm.data + gGenP2.getMap(stepFilterEll=None)
 
-
+        
     fot,foe,fob = fmaps.TQUtoFourierTEB(lensedTLm.data.copy().astype(float)/TCMB,lensedQLm.data.copy().astype(float)/TCMB,lensedULm.data.copy().astype(float)/TCMB,modLMap,thetaMap)
+
+
 
         
 
     fot[:,:] = (fot[:,:] / beamTemplate[:,:])
     foe[:,:] = (foe[:,:] / beamTemplate[:,:])
     fob[:,:] = (fob[:,:] / beamTemplate[:,:])
-    noise = fot.copy()*0.
+    filt_noiseT = fot.copy()*0.+gGenT.power/ beamTemplate[:,:]**2./TCMB**2.
+    filt_noiseE = fot.copy()*0.+gGenP1.power/ beamTemplate[:,:]**2./TCMB**2.
+    filt_noiseB = fot.copy()*0.+gGenP2.power/ beamTemplate[:,:]**2./TCMB**2.
     
 
     if k==0:
@@ -141,8 +161,8 @@ for k,i in enumerate(myIs):
         qest = Estimator(lensedTLm,
                          theory,
                          theorySpectraForNorm=None,
-                         noiseX2dTEB=[noise,noise,noise],
-                         noiseY2dTEB=[noise,noise,noise],
+                         noiseX2dTEB=[filt_noiseT,filt_noiseE,filt_noiseB],
+                         noiseY2dTEB=[filt_noiseT,filt_noiseE,filt_noiseB],
                          fmaskX2dTEB=[fMaskCMB]*3,
                          fmaskY2dTEB=[fMaskCMB]*3,
                          fmaskKappa=fMask,
@@ -245,6 +265,12 @@ else:
         statsRecon[polComb] = getStats(listAllReconPower[polComb])
         fp = interp1d(centers,statsRecon[polComb]['mean'],fill_value='extrapolate')
         pl.add(ellkk,(fp(ellkk))-Clkk,color=col,lw=2)
+
+        Nlkk2d = qest.N.Nlkk[polComb]
+        ncents, npow = stats.binInAnnuli(Nlkk2d, p2d.modLMap, bin_edges)
+        pl.add(ncents,npow,color=col,lw=2,ls="--")
+
+        
 
 
     avgInputPower  = totAllInputPower/N

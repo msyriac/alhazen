@@ -2,15 +2,13 @@ from __future__ import division
 import numpy as np
 import orphics.analysis.flatMaps as fmaps 
 
-'''
-This module relies heavily on FFTs, so the keywords
-fft2 and ifft2 are reserved for the chosen implementation.
-'''
 #from scipy.fftpack import fft2,ifft2,fftshift,ifftshift,fftfreq
 #from numpy.fft import fft2,ifft2,fftshift,ifftshift,fftfreq
 from scipy.fftpack import fftshift,ifftshift,fftfreq
-from pyfftw.interfaces.scipy_fftpack import fft2
-from pyfftw.interfaces.scipy_fftpack import ifft2
+#from pyfftw.interfaces.scipy_fftpack import fft2
+#from pyfftw.interfaces.scipy_fftpack import ifft2
+
+from enlib.fft import fft,ifft
 
 from orphics.tools.stats import timeit, bin2D
 
@@ -54,6 +52,7 @@ class QuadNorm(object):
         self.lxMap,self.lyMap,self.modLMap,self.thetaMap,self.lx,self.ly = fmaps.getFTAttributesFromLiteMap(templateMap)
         self.lxHatMap = self.lxMap*np.nan_to_num(1. / self.modLMap)
         self.lyHatMap = self.lyMap*np.nan_to_num(1. / self.modLMap)
+        B = fft(self.modLMap,axes=[-2,-1],flags=['FFTW_MEASURE'])
 
 
         self.uClNow2d = {}
@@ -192,13 +191,10 @@ class QuadNorm(object):
         return W
 
     def getCurlNlkk2d(self,XY,halo=False):
-        pass
-
-
-        
-
+        raise NotImplementedError
     
     def getNlkk2d(self,XY,halo=False):
+        if not(halo): raise NotImplementedError
         lx,ly = self.lxMap,self.lyMap
         lmap = self.modLMap
 
@@ -232,26 +228,26 @@ class QuadNorm(object):
                     preGX = ell2*clunlenTTArrNow*WY
                     
 
-                    calc = ell1*ell2*fft2(ifft2(preF)*ifft2(preG)+ifft2(preFX)*ifft2(preGX))
+                    calc = ell1*ell2*fft(ifft(preF,axes=[-2,-1],normalize=True)*ifft(preG,axes=[-2,-1],normalize=True)+ifft(preFX,axes=[-2,-1],normalize=True)*ifft(preGX,axes=[-2,-1],normalize=True),axes=[-2,-1])
                     allTerms += [calc]
                     
 
-            else:
+            # else:
 
-                clunlenTTArr = self.uClFid2d['TT'].copy()
+            #     clunlenTTArr = self.uClFid2d['TT'].copy()
 
-                preG = self.WY('TT') #np.nan_to_num(1./cltotTTArrY)
+            #     preG = self.WY('TT') #np.nan_to_num(1./cltotTTArrY)
 
-                rfact = 2.**0.25
-                for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
-                    preF = ell1*ell2*clunlenTTArrNow*clunlenTTArr*np.nan_to_num(1./cltotTTArrX)/2.            
-                    preFX = ell1*clunlenTTArrNow*np.nan_to_num(1./cltotTTArrX)
-                    preGX = ell2*clunlenTTArr*np.nan_to_num(1./cltotTTArrY)
+            #     rfact = 2.**0.25
+            #     for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
+            #         preF = ell1*ell2*clunlenTTArrNow*clunlenTTArr*np.nan_to_num(1./cltotTTArrX)/2.            
+            #         preFX = ell1*clunlenTTArrNow*np.nan_to_num(1./cltotTTArrX)
+            #         preGX = ell2*clunlenTTArr*np.nan_to_num(1./cltotTTArrY)
 
 
                     
-                    calc = 2.*ell1*ell2*fft2(ifft2(preF)*ifft2(preG)+ifft2(preFX)*ifft2(preGX)/2.)
-                    allTerms += [calc]
+            #         calc = 2.*ell1*ell2*fft(ifft(preF,axes=[-2,-1])*ifft(preG,axes=[-2,-1])+ifft(preFX,axes=[-2,-1])*ifft(preGX,axes=[-2,-1])/2.,axes=[-2,-1])
+            #         allTerms += [calc]
           
 
         elif XY == 'EE':
@@ -284,26 +280,26 @@ class QuadNorm(object):
                     for trigfact in [cossqf,sinsqf,np.sqrt(2.)*sinf*cosf]:
                         preF = trigfact*ell1*ell2*clunlenEEArrNow*WXY
                         preG = trigfact*WY
-                        allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
+                        allTerms += [ell1*ell2*fft(ifft(preF,axes=[-2,-1],normalize=True)*ifft(preG,axes=[-2,-1],normalize=True),axes=[-2,-1])]
                         
                         preFX = trigfact*ell1*clunlenEEArrNow*WY
                         preGX = trigfact*ell2*WXY
 
-                        allTerms += [ell1*ell2*fft2(ifft2(preFX)*ifft2(preGX))]
+                        allTerms += [ell1*ell2*fft(ifft(preFX,axes=[-2,-1],normalize=True)*ifft(preGX,axes=[-2,-1],normalize=True),axes=[-2,-1])]
 
                 
-            else:
+            # else:
 
 
-                rfact = 2.**0.25
-                for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
-                    for trigfact in [cossqf,sinsqf,np.sqrt(2.)*sinf*cosf]:
-                        preF = trigfact*ell1*ell2*clunlenEEArrNow*clunlenEEArr*np.nan_to_num(1./cltotEEArr)/2.
-                        preG = trigfact*np.nan_to_num(1./cltotEEArr)
-                        preFX = trigfact*ell1*clunlenEEArrNow*np.nan_to_num(1./cltotEEArr)
-                        preGX = trigfact*ell2*clunlenEEArr*np.nan_to_num(1./cltotEEArr)
+            #     rfact = 2.**0.25
+            #     for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
+            #         for trigfact in [cossqf,sinsqf,np.sqrt(2.)*sinf*cosf]:
+            #             preF = trigfact*ell1*ell2*clunlenEEArrNow*clunlenEEArr*np.nan_to_num(1./cltotEEArr)/2.
+            #             preG = trigfact*np.nan_to_num(1./cltotEEArr)
+            #             preFX = trigfact*ell1*clunlenEEArrNow*np.nan_to_num(1./cltotEEArr)
+            #             preGX = trigfact*ell2*clunlenEEArr*np.nan_to_num(1./cltotEEArr)
 
-                        allTerms += [2.*ell1*ell2*fft2(ifft2(preF)*ifft2(preG)+ifft2(preFX)*ifft2(preGX)/2.)]
+            #             allTerms += [2.*ell1*ell2*fft2(ifft2(preF)*ifft2(preG)+ifft2(preFX)*ifft2(preGX)/2.)]
 
 
             
@@ -342,7 +338,7 @@ class QuadNorm(object):
                 preG = WY
 
                 for termF,termG in zip(termsF,termsG):
-                    allTerms += [ellsq*fft2(ifft2(termF(preF,lxhat,lyhat))*ifft2(termG(preG,lxhat,lyhat)))]
+                    allTerms += [ellsq*fft(ifft(termF(preF,lxhat,lyhat),axes=[-2,-1],normalize=True)*ifft(termG(preG,lxhat,lyhat),axes=[-2,-1],normalize=True),axes=[-2,-1])]
 
 
         elif XY=='ET':
@@ -373,50 +369,50 @@ class QuadNorm(object):
                 for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
                     preF = ell1*ell2*clunlenTEArrNow*WXY
                     preG = WY
-                    allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
+                    allTerms += [ell1*ell2*fft(ifft(preF,axes=[-2,-1],normalize=True)*ifft(preG,axes=[-2,-1],normalize=True),axes=[-2,-1])]
                     for trigfact in [cosf,sinf]:
 
                         preFX = trigfact*ell1*clunlenTEArrNow*WY
                         preGX = trigfact*ell2*WXY
 
-                        allTerms += [ell1*ell2*fft2(ifft2(preFX)*ifft2(preGX))]
+                        allTerms += [ell1*ell2*fft(ifft(preFX,axes=[-2,-1],normalize=True)*ifft(preGX,axes=[-2,-1],normalize=True),axes=[-2,-1])]
 
 
-            else:
+            # else:
 
 
 
-                sin2phi = lambda lxhat,lyhat: (2.*lxhat*lyhat)
-                cos2phi = lambda lxhat,lyhat: (lyhat*lyhat-lxhat*lxhat)
+            #     sin2phi = lambda lxhat,lyhat: (2.*lxhat*lyhat)
+            #     cos2phi = lambda lxhat,lyhat: (lyhat*lyhat-lxhat*lxhat)
 
-                lx = self.lxMap
-                ly = self.lyMap
+            #     lx = self.lxMap
+            #     ly = self.lyMap
 
             
-                lxhat = self.lxHatMap
-                lyhat = self.lyHatMap
+            #     lxhat = self.lxHatMap
+            #     lyhat = self.lyHatMap
 
-                sinf = sin2phi(lxhat,lyhat)
-                sinsqf = sinf**2.
-                cosf = cos2phi(lxhat,lyhat)
-                cossqf = cosf**2.
+            #     sinf = sin2phi(lxhat,lyhat)
+            #     sinsqf = sinf**2.
+            #     cosf = cos2phi(lxhat,lyhat)
+            #     cossqf = cosf**2.
                 
                 
-                rfact = 2.**0.25
-                for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
-                    preF = ell1*ell2*clunlenTEArrNow*clunlenTEArr*np.nan_to_num(1./cltotEEArr)
-                    preG = np.nan_to_num(1./cltotTTArr)
-                    allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
-                    for trigfact in [cossqf,sinsqf,np.sqrt(2.)*sinf*cosf]:
-                        preF = np.nan_to_num(1./cltotEEArr)
-                        preG = trigfact*ell1*ell2*clunlenTEArrNow*clunlenTEArr*np.nan_to_num(1./cltotTTArr)
-                        allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
-                    for trigfact in [cosf,sinf]:
+            #     rfact = 2.**0.25
+            #     for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
+            #         preF = ell1*ell2*clunlenTEArrNow*clunlenTEArr*np.nan_to_num(1./cltotEEArr)
+            #         preG = np.nan_to_num(1./cltotTTArr)
+            #         allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
+            #         for trigfact in [cossqf,sinsqf,np.sqrt(2.)*sinf*cosf]:
+            #             preF = np.nan_to_num(1./cltotEEArr)
+            #             preG = trigfact*ell1*ell2*clunlenTEArrNow*clunlenTEArr*np.nan_to_num(1./cltotTTArr)
+            #             allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
+            #         for trigfact in [cosf,sinf]:
                         
-                        preFX = trigfact*ell1*clunlenTEArrNow*np.nan_to_num(1./cltotEEArr)
-                        preGX = trigfact*ell2*clunlenTEArr*np.nan_to_num(1./cltotTTArr)
+            #             preFX = trigfact*ell1*clunlenTEArrNow*np.nan_to_num(1./cltotEEArr)
+            #             preGX = trigfact*ell2*clunlenTEArr*np.nan_to_num(1./cltotTTArr)
 
-                        allTerms += [2.*ell1*ell2*fft2(ifft2(preFX)*ifft2(preGX))]
+            #             allTerms += [2.*ell1*ell2*fft2(ifft2(preFX)*ifft2(preGX))]
 
                     
 
@@ -449,50 +445,50 @@ class QuadNorm(object):
                     for trigfact in [cossqf,sinsqf,np.sqrt(2.)*sinf*cosf]:
                         preF = trigfact*ell1*ell2*clunlenTEArrNow*WXY
                         preG = trigfact*WY
-                        allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
+                        allTerms += [ell1*ell2*fft(ifft(preF,axes=[-2,-1],normalize=True)*ifft(preG,axes=[-2,-1],normalize=True),axes=[-2,-1])]
                     for trigfact in [cosf,sinf]:
                         
                         preFX = trigfact*ell1*clunlenTEArrNow*WY
                         preGX = trigfact*ell2*WXY
 
-                        allTerms += [ell1*ell2*fft2(ifft2(preFX)*ifft2(preGX))]
+                        allTerms += [ell1*ell2*fft(ifft(preFX,axes=[-2,-1],normalize=True)*ifft(preGX,axes=[-2,-1],normalize=True),axes=[-2,-1])]
 
                 
-            else:
+            # else:
 
 
 
-                sin2phi = lambda lxhat,lyhat: (2.*lxhat*lyhat)
-                cos2phi = lambda lxhat,lyhat: (lyhat*lyhat-lxhat*lxhat)
+            #     sin2phi = lambda lxhat,lyhat: (2.*lxhat*lyhat)
+            #     cos2phi = lambda lxhat,lyhat: (lyhat*lyhat-lxhat*lxhat)
 
-                lx = self.lxMap
-                ly = self.lyMap
+            #     lx = self.lxMap
+            #     ly = self.lyMap
 
             
-                lxhat = self.lxHatMap
-                lyhat = self.lyHatMap
+            #     lxhat = self.lxHatMap
+            #     lyhat = self.lyHatMap
 
-                sinf = sin2phi(lxhat,lyhat)
-                sinsqf = sinf**2.
-                cosf = cos2phi(lxhat,lyhat)
-                cossqf = cosf**2.
+            #     sinf = sin2phi(lxhat,lyhat)
+            #     sinsqf = sinf**2.
+            #     cosf = cos2phi(lxhat,lyhat)
+            #     cossqf = cosf**2.
                 
                 
-                rfact = 2.**0.25
-                for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
-                    for trigfact in [cossqf,sinsqf,np.sqrt(2.)*sinf*cosf]:
-                        preF = trigfact*ell1*ell2*clunlenTEArrNow* self.WXY('TE')#clunlenTEArr*np.nan_to_num(1./cltotTTArr)
-                        preG = trigfact*self.WY('EE')#np.nan_to_num(1./cltotEEArr)
-                        allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
-                    preF = self.WY('TT')#np.nan_to_num(1./cltotTTArr)
-                    preG = ell1*ell2*clunlenTEArrNow* self.WXY('ET') #*clunlenTEArr*np.nan_to_num(1./cltotEEArr)
-                    allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
-                    for trigfact in [cosf,sinf]:
+            #     rfact = 2.**0.25
+            #     for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
+            #         for trigfact in [cossqf,sinsqf,np.sqrt(2.)*sinf*cosf]:
+            #             preF = trigfact*ell1*ell2*clunlenTEArrNow* self.WXY('TE')#clunlenTEArr*np.nan_to_num(1./cltotTTArr)
+            #             preG = trigfact*self.WY('EE')#np.nan_to_num(1./cltotEEArr)
+            #             allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
+            #         preF = self.WY('TT')#np.nan_to_num(1./cltotTTArr)
+            #         preG = ell1*ell2*clunlenTEArrNow* self.WXY('ET') #*clunlenTEArr*np.nan_to_num(1./cltotEEArr)
+            #         allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
+            #         for trigfact in [cosf,sinf]:
                         
-                        preFX = trigfact*ell1*clunlenTEArrNow*self.WY('TT')#np.nan_to_num(1./cltotTTArr)
-                        preGX = trigfact*ell2* self.WXY('ET')#*clunlenTEArr*np.nan_to_num(1./cltotEEArr)
+            #             preFX = trigfact*ell1*clunlenTEArrNow*self.WY('TT')#np.nan_to_num(1./cltotTTArr)
+            #             preGX = trigfact*ell2* self.WXY('ET')#*clunlenTEArr*np.nan_to_num(1./cltotEEArr)
 
-                        allTerms += [2.*ell1*ell2*fft2(ifft2(preFX)*ifft2(preGX))]
+            #             allTerms += [2.*ell1*ell2*fft2(ifft2(preFX)*ifft2(preGX))]
 
 
                 
@@ -529,7 +525,7 @@ class QuadNorm(object):
                 preG = WY
 
                 for termF,termG in zip(termsF,termsG):
-                    allTerms += [ellsq*fft2(ifft2(termF(preF,lxhat,lyhat))*ifft2(termG(preG,lxhat,lyhat)))]
+                    allTerms += [ellsq*fft(ifft(termF(preF,lxhat,lyhat),axes=[-2,-1],normalize=True)*ifft(termG(preG,lxhat,lyhat),axes=[-2,-1],normalize=True),axes=[-2,-1])]
                     
 
             
@@ -601,7 +597,7 @@ class QuadNorm(object):
                 preF2 = trigfactIn*ellsq*clunlenEEArr**2.*np.nan_to_num(1./clunlentotEEArr)
                 preG2 = ellsq*clPPArr**2.*np.nan_to_num(1./cltotPPArr)
 
-                allTerms += [trigfactOut*(fft2(ifft2(preF1)*ifft2(preG1) - ifft2(preF2)*ifft2(preG2)))]
+                allTerms += [trigfactOut*(fft(ifft(preF1,axes=[-2,-1],normalize=True)*ifft(preG1,axes=[-2,-1],normalize=True) - ifft(preF2,axes=[-2,-1],normalize=True)*ifft(preG2,axes=[-2,-1],normalize=True),axes=[-2,-1]))]
 
 
         
@@ -901,7 +897,7 @@ class Estimator(object):
         if alreadyFTed:
             self.kT = T2DData
         else:
-            self.kT = fft2(T2DData)
+            self.kT = fft(T2DData,axes=[-2,-1])
         self.kGradx['T'] = lx*self.kT.copy()*1j
         self.kGrady['T'] = ly*self.kT.copy()*1j
 
@@ -909,14 +905,14 @@ class Estimator(object):
             if alreadyFTed:
                 self.kE = E2DData
             else:
-                self.kE = fft2(E2DData)
+                self.kE = fft(E2DData,axes=[-2,-1])
             self.kGradx['E'] = 1.j*lx*self.kE.copy()
             self.kGrady['E'] = 1.j*ly*self.kE.copy()
         if B2DData is not None:
             if alreadyFTed:
                 self.kB = B2DData
             else:
-                self.kB = fft2(B2DData)
+                self.kB = fft(B2DData,axes=[-2,-1])
             self.kGradx['B'] = 1.j*lx*self.kB.copy()
             self.kGrady['B'] = 1.j*ly*self.kB.copy()
         
@@ -932,14 +928,14 @@ class Estimator(object):
             if alreadyFTed:
                 self.kHigh['T']=T2DData
             else:
-                self.kHigh['T']=fft2(T2DData)
+                self.kHigh['T']=fft(T2DData,axes=[-2,-1])
         else:
             self.kHigh['T']=self.kT.copy()
         if E2DData is not None:
             if alreadyFTed:
                 self.kHigh['E']=E2DData
             else:
-                self.kHigh['E']=fft2(E2DData)
+                self.kHigh['E']=fft(E2DData,axes=[-2,-1])
         else:
             try:
                 self.kHigh['E']=self.kE.copy()
@@ -950,7 +946,7 @@ class Estimator(object):
             if alreadyFTed:
                 self.kHigh['B']=B2DData
             else:
-                self.kHigh['B']=fft2(B2DData)
+                self.kHigh['B']=fft(B2DData,axes=[-2,-1])
         else:
             try:
                 self.kHigh['B']=self.kB.copy()
@@ -982,16 +978,16 @@ class Estimator(object):
 
         if self.verbose: startTime = time.time()
 
-        HighMapStar = ifft2(self.kHigh[Y]*WY*phaseY*fMask*phaseB).conjugate()
-        kPx = fft2(ifft2(self.kGradx[X]*WXY*phaseY)*HighMapStar)
-        kPy = fft2(ifft2(self.kGrady[X]*WXY*phaseY)*HighMapStar)
-        rawKappa = ifft2(1.j*lx*kPx*fMask + 1.j*ly*kPy*fMask).real
+        HighMapStar = ifft(self.kHigh[Y]*WY*phaseY*fMask*phaseB,axes=[-2,-1],normalize=True).conjugate()
+        kPx = fft(ifft(self.kGradx[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])
+        kPy = fft(ifft(self.kGrady[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])
+        rawKappa = ifft(1.j*lx*kPx*fMask + 1.j*ly*kPy*fMask,axes=[-2,-1],normalize=True).real
         AL = self.AL[XY]*fMask
 
 
-        kappaft = -AL*fft2(rawKappa)
+        kappaft = -AL*fft(rawKappa,axes=[-2,-1])
         #if weightedFt: return np.nan_to_num(kappaft/self.N.Nlkk[XY]),np.nan_to_num(1./self.N.Nlkk[XY])
-        self.kappa = ifft2(kappaft)
+        self.kappa = ifft(kappaft,axes=[-2,-1],normalize=True)
 
 
         if self.verbose:
@@ -1000,8 +996,8 @@ class Estimator(object):
 
         if self.doCurl:
             OmAL = self.OmAL[XY]*fMask
-            rawCurl = ifft2(1.j*lx*kPy - 1.j*ly*kPx).real
-            self.curl = -ifft2(OmAL*fft2(rawCurl))
+            rawCurl = ifft(1.j*lx*kPy - 1.j*ly*kPx,axes=[-2,-1],normalize=True).real
+            self.curl = -ifft(OmAL*fft(rawCurl,axes=[-2,-1]),axes=[-2,-1],normalize=True)
             return self.kappa, self.curl
 
 
