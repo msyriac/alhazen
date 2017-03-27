@@ -15,11 +15,12 @@ from scipy.interpolate import interp1d
 from numpy.fft import fftshift
 
 #polCombList=['TT','EB','EE','TB']
-polCombList=['TT','EB','TE','ET','EE','TB']
+#polCombList=['TT','EB','TE','ET','EE','TB']
+polCombList=['TT']
 
 
 halo = False
-num_ells = 500
+num_ells = 50
 
 # beamArcmin = 1.0
 # noiseT = 1.0
@@ -252,6 +253,8 @@ for polComb in polCombList:
         Alinv = integral/((2.*np.pi)**2.)/L**2.
         Als[polComb].append(1./(Alinv))
 
+for alpha,beta in [('TT','TE'),('EE','TE'),('EB','TB'),('TT','EE')]:
+        
 for polComb in polCombList:
     Als[polComb] = np.array(Als[polComb])*Ls**2./4.
     print Als[polComb]
