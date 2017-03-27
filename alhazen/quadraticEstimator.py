@@ -192,7 +192,7 @@ class QuadNorm(object):
 
     def getCurlNlkk2d(self,XY,halo=False):
         raise NotImplementedError
-            
+    
     def getNlkk2d(self,XY,halo=False):
         if not(halo): raise NotImplementedError
         lx,ly = self.lxMap,self.lyMap
