@@ -8,7 +8,7 @@ from scipy.fftpack import fftshift,ifftshift,fftfreq
 from pyfftw.interfaces.scipy_fftpack import fft2
 from pyfftw.interfaces.scipy_fftpack import ifft2
 from scipy.integrate import simps
-from orphics.tools.output import Plotter
+import orphics.tools.io as io
 import flipper.liteMap as lm
 
 #@timeit
@@ -46,7 +46,7 @@ def predictSN(polComb,noiseTY,noisePY,N,MM):
 
 
 #@timeit
-def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05,saveId=None,verbose=False):
+def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05,saveId=None,verbose=False,rayleighSigmaArcmin=None,returnKappa=False):
     M = 10.**log10Moverh
 
     lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
@@ -75,14 +75,27 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     if verbose: print "integral of kappa inside disc ",k500
     Ukappa = kappaReal/k500
 
+
+    
     # pl = Plotter()
     # pl.plot2d(Ukappa)
     # pl.done("output/kappa.png")
 
     ellmax = kellmax
     ellmin = kellmin
+
+    
     
     Uft = fft2(Ukappa)
+
+    if rayleighSigmaArcmin is not None:
+        Prayleigh = rayleigh(modRMap*180.*60./np.pi,rayleighSigmaArcmin)
+        outDir = "/gpfs01/astro/www/msyriac/plots/"
+        # io.quickPlot2d(Prayleigh,outDir+"rayleigh.png")
+        rayK = fft2(ifftshift(Prayleigh))
+        rayK /= rayK[modLMap<1.e-3]
+        Uft = Uft.copy()*rayK
+    
     Upower = np.real(Uft*Uft.conjugate())
 
     
@@ -132,12 +145,16 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     if saveId is not None:
         np.savetxt("data/"+saveId+"_m"+str(log10Moverh)+"_z"+str(z)+".txt",np.array([log10Moverh,z,1./sn]))
 
-
+    if returnKappa:
+        return sn,ifft2(Uft).real*k500
     return sn
     
     
 
-        
+def rayleigh(theta,sigma):
+    sigmasq = sigma*sigma
+    return np.exp(-0.5*theta*theta/sigmasq)
+    #return theta/sigmasq*np.exp(-0.5*theta*theta/sigmasq)
         
 
 
