@@ -40,7 +40,7 @@ saveFile = None #"/astro/astronfs01/workarea/msyriac/act/normDec14_0_trimmed_ell
 trimmed = False
 cutout = False
 
-noiseT = 10.
+noiseT = 5.
 noiseP = np.sqrt(2.)*noiseT
 
 
@@ -295,7 +295,7 @@ else:
     pl.legendOn(labsize=10,loc='upper right')
     pl._ax.set_xlim(kellmin,kellmax)
     pl._ax.axhline(y=0.,ls="--",color='black',alpha=0.5)
-    #pl._ax.set_ylim(-10.,5.)
+    pl._ax.set_ylim(-10.,10.)
     pl.done("tests/output/percent.png")
 
     # cross compare to power of input (bias)
