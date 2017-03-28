@@ -23,8 +23,8 @@ polCombList=['TT','EB','TE','ET','EE','TB']
 #polCombList=['TT']
 
 
-halo = True
-num_ells = 300
+halo = False
+num_ells = 150 #300
 
 beamArcmin = 1.0
 noiseT = 1.0
@@ -34,7 +34,7 @@ cmbellmin = 50
 cmbellmax = 8000
 kellmin = 2
 kellmax = 8000
-gradCut = 2000 #None
+gradCut = None
 
 # hu reproduce
 # beamArcmin = 7.0
@@ -49,7 +49,7 @@ gradCut = 2000 #None
 
 degx = 5.
 degy = 5.
-px = 1.0
+px = 1.5
 
 
 
@@ -57,11 +57,12 @@ px = 1.0
 
 TCMB = 2.7255e6
 
-# degx = 15.
-# degy = 15.
-# px = 0.5
 hugeTemplate = lm.makeEmptyCEATemplate(degx,degy,pixScaleXarcmin=px,pixScaleYarcmin=px)
 lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(hugeTemplate)
+
+nfreq = modLMap.max()
+assert nfreq>cmbellmax
+assert nfreq>kellmax
 
 from orphics.tools.cmb import loadTheorySpectraFromCAMB
 cambRoot = os.environ['HOME']+"/repos/cmb-lensing-projections/data/TheorySpectra/ell28k_highacc"
@@ -75,13 +76,6 @@ Nlfuncdict['BB'] = cmb.get_noise_func(beamArcmin,noiseP,TCMB=TCMB)
 
 
 print modLMap.shape
-# modLMap = fftshift(modLMap)
-# lxMap = fftshift(lxMap)
-# lyMap = fftshift(lyMap)
-# lx = fftshift(lx)
-# ly = fftshift(ly)
-
-
 dlx = np.diff(lxMap,axis=1)[0,0]
 dly = np.diff(lyMap,axis=0)[0,0]
 
@@ -116,16 +110,6 @@ for polComb in polCombList:
     YY = Y+Y
 
 
-    # do this correctly for each polcomb
-    # if halo:
-    #     WXYl1 = WXY(XY,theory,Nlfuncdict,l1)
-    #     WXYl1[l1<cmbellmin]=0.
-    #     WXYl1[l1>cmbellmax]=0.
-    #     if gradCut is not None:
-    #         WXYl1[l1>gradCut]=0.
-        
-
-
     for L in Ls:
 
         lx2 = L - lx1
@@ -134,11 +118,6 @@ for polComb in polCombList:
         l2 = np.sqrt(l2sq)
         Ll1 = L*lx1
         Ll2 = L*lx2
-
-        # if halo:
-        #     WYl2 = WY(YY,theory,Nlfuncdict,l2) 
-        #     WYl2[l2<cmbellmin]=0.
-        #     WYl2[l2>cmbellmax]=0.
 
         phi_l2 = np.arctan2(lx2,ly2)    
 
@@ -150,21 +129,9 @@ for polComb in polCombList:
             cosDelta = None
             sinDelta = None
 
-        # if Y=='T':
-        #     cfact = 1.
-        # elif Y=='E':
-        #     cfact = cosDelta
-        # elif Y=='B':
-        #     cfact = sinDelta
-        # else:
-        #     raise ValueError
-
         f = fXY(XY,theory,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta)
             
 
-        # if halo:
-        #     Falpha = Ll1*WXYl1*WYl2*cfact
-        # else:
         if True:
             if (XY in ['TE','ET']):
                 fS = fXY(XY,theory,Ll2,Ll1,l2,l1,cos2phi=cosDelta,sin2phi=-sinDelta)
@@ -178,15 +145,13 @@ for polComb in polCombList:
             Falpha[l2>cmbellmax]=0.
         
         integral = (Falpha*f).sum()*dlx*dly
-        #Alinv = 2.*integral/((2.*np.pi)**2.)/L**2.
         Alinv = integral/((2.*np.pi)**2.)/L**2.
         Als[polComb].append(1./(Alinv))
 
 
 
 for polComb in polCombList:
-    Als[polComb] = np.array(Als[polComb])#*Ls**2./4.
-    #print Nls[polComb]
+    Als[polComb] = np.array(Als[polComb])
 print time.time()-st," seconds."
 
 crosses = {}
