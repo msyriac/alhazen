@@ -12,7 +12,7 @@ from orphics.tools.stats import binInAnnuli
 import sys
 
 from scipy.interpolate import interp1d
-#from scipy.fftpack import fft2,ifft2,fftshift,ifftshift,fftfreq
+from scipy.fftpack import fft2,ifft2,fftshift,ifftshift,fftfreq
 #from scipy.fftpack import fftshift,ifftshift,fftfreq
 # from pyfftw.interfaces.scipy_fftpack import fft2
 # from pyfftw.interfaces.scipy_fftpack import ifft2
@@ -40,7 +40,7 @@ saveFile = None #"/astro/astronfs01/workarea/msyriac/act/normDec14_0_trimmed_ell
 trimmed = False
 cutout = False
 
-noiseT = 5.
+noiseT = 30.
 noiseP = np.sqrt(2.)*noiseT
 
 
@@ -53,9 +53,11 @@ if cutout:
     periodic = ""
     cutoutStr = "_cutout"
 
-polCombList = ['TT','EE','EB','TB','TE','ET']
-#polCombList = ['TT','EB']
+#polCombList = ['TT','EE','EB','TB','TE','ET']
+polCombList = ['TT']
 colorList = ['red','blue','green','orange','purple','brown']
+tonly = False
+if polCombList==['TT']: tonly=True
 
 simRoot = "/astro/astronfs01/workarea/msyriac/cmbSims/"
 
@@ -140,6 +142,10 @@ for k,i in enumerate(myIs):
     if noiseP>1.e-3: lensedQLm.data = lensedQLm.data + gGenP1.getMap(stepFilterEll=None)
     if noiseP>1.e-3: lensedULm.data = lensedULm.data + gGenP2.getMap(stepFilterEll=None)
 
+    # pl = Plotter()
+    # pl.plot2d(lensedTLm.data)
+    # pl.done("map.png")
+    # sys.exit()
         
     fot,foe,fob = fmaps.TQUtoFourierTEB(lensedTLm.data.copy().astype(float)/TCMB,lensedQLm.data.copy().astype(float)/TCMB,lensedULm.data.copy().astype(float)/TCMB,modLMap,thetaMap)
 
@@ -167,7 +173,7 @@ for k,i in enumerate(myIs):
                          fmaskY2dTEB=[fMaskCMB]*3,
                          fmaskKappa=fMask,
                          doCurl=False,
-                         TOnly=False,
+                         TOnly=tonly,
                          halo=True,
                          gradCut=cmbellmax,verbose=True,
                          loadPickledNormAndFilters=loadFile,
@@ -184,6 +190,10 @@ for k,i in enumerate(myIs):
 
         kappa = qest.getKappa(polComb)
 
+        # pl = Plotter()
+        # pl.plot2d(fftshift(qest.AL[polComb]))
+        # pl.done("al.png")
+        # sys.exit()
 
         reconLm = lensedTLm.copy()
         reconLm.data[:,:] = kappa[:,:].real

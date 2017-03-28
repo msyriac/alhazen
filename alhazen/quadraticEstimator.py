@@ -52,7 +52,7 @@ class QuadNorm(object):
         self.lxMap,self.lyMap,self.modLMap,self.thetaMap,self.lx,self.ly = fmaps.getFTAttributesFromLiteMap(templateMap)
         self.lxHatMap = self.lxMap*np.nan_to_num(1. / self.modLMap)
         self.lyHatMap = self.lyMap*np.nan_to_num(1. / self.modLMap)
-        B = fft(self.modLMap,axes=[-2,-1],flags=['FFTW_MEASURE'])
+        #B = fft(self.modLMap,axes=[-2,-1],flags=['FFTW_MEASURE'])
 
 
         self.uClNow2d = {}
@@ -607,7 +607,6 @@ class QuadNorm(object):
         ClBBres[np.where(np.logical_or(self.modLMap >= self.bigell, self.modLMap == 0.))] = 0.
         ClBBres *= self.Nx * self.Ny 
         ClBBres[self.fMaskYY['EE']==0] = 0.
-        from orphics.tools.io import Plotter
                 
         
         area =self.Nx*self.Ny*self.pixScaleX*self.pixScaleY
@@ -982,13 +981,14 @@ class Estimator(object):
         kPx = fft(ifft(self.kGradx[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])
         kPy = fft(ifft(self.kGrady[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])
         rawKappa = ifft(1.j*lx*kPx*fMask + 1.j*ly*kPy*fMask,axes=[-2,-1],normalize=True).real
-        AL = self.AL[XY]*fMask
+        AL = np.nan_to_num(self.AL[XY])*fMask
 
 
         kappaft = -AL*fft(rawKappa,axes=[-2,-1])
         #if weightedFt: return np.nan_to_num(kappaft/self.N.Nlkk[XY]),np.nan_to_num(1./self.N.Nlkk[XY])
         self.kappa = ifft(kappaft,axes=[-2,-1],normalize=True)
 
+        assert not(np.any(np.isnan(self.kappa)))
 
         if self.verbose:
             elapTime = time.time() - startTime
