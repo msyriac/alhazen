@@ -97,7 +97,7 @@ class QuadNorm(object):
         These Cls belong in the Wiener filters, and will not
         be perturbed if/when calculating derivatives.
         '''
-        self.uClFid2d[XY] = power2dData.copy()
+        self.uClFid2d[XY] = power2dData.copy()+0.j
     def addUnlensedNorm2DPower(self,XY,power2dData):
         '''
         XY = TT, TE, EE, EB or TB
@@ -105,7 +105,7 @@ class QuadNorm(object):
         These Cls belong in the CMB normalization, and will
         be perturbed if/when calculating derivatives.
         '''
-        self.uClNow2d[XY] = power2dData.copy()
+        self.uClNow2d[XY] = power2dData.copy()+0.j
     def addLensedFilter2DPower(self,XY,power2dData):
         '''
         XY = TT, TE, EE, EB or TB
@@ -113,7 +113,7 @@ class QuadNorm(object):
         These Cls belong in the Wiener filters, and will not
         be perturbed if/when calculating derivatives.
         '''
-        self.lClFid2d[XY] = power2dData.copy()
+        self.lClFid2d[XY] = power2dData.copy()+0.j
     def addNoise2DPowerXX(self,XX,power2dData,fourierMask=None):
         '''
         Noise power for the X leg of the quadratic estimator
@@ -124,7 +124,7 @@ class QuadNorm(object):
         fftshift state as power2d.powerMap
         '''
         # check if fourier mask is int!
-        self.noiseXX2d[XX] = power2dData.copy()
+        self.noiseXX2d[XX] = power2dData.copy()+0.j
         if fourierMask is not None:
             self.noiseXX2d[XX][fourierMask==0] = np.inf
             self.fMaskXX[XX] = fourierMask
@@ -144,7 +144,7 @@ class QuadNorm(object):
         fftshift state as power2d.powerMap
         '''
         # check if fourier mask is int!
-        self.noiseYY2d[YY] = power2dData.copy()
+        self.noiseYY2d[YY] = power2dData.copy()+0.j
         if fourierMask is not None:
             self.noiseYY2d[YY][fourierMask==0] = np.inf
             self.fMaskYY[YY] = fourierMask
@@ -160,7 +160,7 @@ class QuadNorm(object):
         Used if delensing
         power2d is a flipper power2d object            
         '''
-        self.clkk2d = power2dData.copy()
+        self.clkk2d = power2dData.copy()+0.j
         self.clpp2d = self.clkk2d.copy()*4./(self.modLMap**2.)/((self.modLMap+1.)**2.)
 
 
@@ -282,10 +282,13 @@ class QuadNorm(object):
                         preG = trigfact*WY
                         allTerms += [ell1*ell2*fft(ifft(preF,axes=[-2,-1],normalize=True)*ifft(preG,axes=[-2,-1],normalize=True),axes=[-2,-1])]
                         
+                        #allTerms += [ell1*ell2*fft2(ifft2(preF)*ifft2(preG))]
+                        
                         preFX = trigfact*ell1*clunlenEEArrNow*WY
                         preGX = trigfact*ell2*WXY
 
                         allTerms += [ell1*ell2*fft(ifft(preFX,axes=[-2,-1],normalize=True)*ifft(preGX,axes=[-2,-1],normalize=True),axes=[-2,-1])]
+                        #allTerms += [ell1*ell2*fft2(ifft2(preFX)*ifft2(preGX))]
 
                 
             # else:

@@ -153,8 +153,8 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
 
 def rayleigh(theta,sigma):
     sigmasq = sigma*sigma
-    return np.exp(-0.5*theta*theta/sigmasq)
-    #return theta/sigmasq*np.exp(-0.5*theta*theta/sigmasq)
+    #return np.exp(-0.5*theta*theta/sigmasq)
+    return theta/sigmasq*np.exp(-0.5*theta*theta/sigmasq)
         
 
 
