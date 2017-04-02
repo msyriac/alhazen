@@ -9,9 +9,9 @@ from orphics.tools.cmb import loadTheorySpectraFromCAMB
 from alhazen.quadraticEstimator import NlGenerator,getMax
 
 #Mexp = 14.4 #np.log10(2.e14)
-Mexp = np.log10(5.e14)
+Mexp = np.log10(2.e14)
 z = 0.5
-c = 1.18
+c = 3.0 #1.18
 
 clusterParams = 'LACluster' # from ini file
 cosmologyName = 'LACosmology' # from ini file
@@ -26,7 +26,7 @@ lmax = 8000
 cosmoDict = dictFromSection(Config,cosmologyName)
 constDict = dictFromSection(Config,'constants')
 clusterDict = dictFromSection(Config,clusterParams)
-cc = ClusterCosmology(cosmoDict,constDict,lmax)
+cc = ClusterCosmology(cosmoDict,constDict,lmax,pickling=True)
 theory = cc.theory
 
 
@@ -35,35 +35,34 @@ theory = cc.theory
 
 
 # Make a CMB Noise Curve
-# cambRoot = "data/ell28k_highacc"
-# gradCut = 2000
-# halo = True
-# beamX = 1.0
-# beamY = 1.0
-# noiseTX = 10.0
-# noisePX = 14.14
-# noiseTY = 10.0
-# noisePY = 14.14
-# tellmin = 2
-# tellmax = 8000
-# gradCut = 2000
-# pellmin = 2
-# pellmax = 8000
-# polComb = 'TT'
-# kmin = 100
-# kmax = getMax(polComb,tellmax,pellmax)
+cambRoot = "data/ell28k_highacc"
+gradCut = 2000
+halo = True
+beamX = 7.0
+beamY = 1.5
+noiseTX = 40.0
+noisePX = 14.14
+noiseTY = 11.0
+noisePY = 14.14
+tellmin = 2
+tellmax = 8000
+pellmin = 2
+pellmax = 8000
+polComb = 'EB'
+kmin = 100
+kmax = getMax(polComb,tellmax,pellmax)
 
-# deg = 10.
-# px = 0.5
-# dell = 10
-# bin_edges = np.arange(kmin,kmax,dell)+dell
-# theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
-# lmap = lm.makeEmptyCEATemplate(raSizeDeg=deg, decSizeDeg=deg,pixScaleXarcmin=px,pixScaleYarcmin=px)
-# myNls = NlGenerator(lmap,theory,bin_edges,gradCut=gradCut)
-# myNls.updateNoise(beamX,noiseTX,noisePX,tellmin,tellmax,pellmin,pellmax,beamY=beamY,noiseTY=noiseTY,noisePY=noisePY)
-# ls,Nls = myNls.getNl(polComb=polComb,halo=halo)
+deg = 10.
+px = 0.5
+dell = 10
+bin_edges = np.arange(kmin,kmax,dell)+dell
+theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
+lmap = lm.makeEmptyCEATemplate(raSizeDeg=deg, decSizeDeg=deg,pixScaleXarcmin=px,pixScaleYarcmin=px)
+myNls = NlGenerator(lmap,theory,bin_edges,gradCut=gradCut)
+myNls.updateNoise(beamX,noiseTX,noisePX,tellmin,tellmax,pellmin,pellmax,beamY=beamY,noiseTY=noiseTY,noisePY=noisePY)
+ls,Nls = myNls.getNl(polComb=polComb,halo=halo)
 
-ls,Nls = np.loadtxt("../SZ_filter/data/LA_pol_Nl.txt",unpack=True,delimiter=',')
+# ls,Nls = np.loadtxt("../SZ_filter/data/LA_pol_Nl.txt",unpack=True,delimiter=',')
 
 ellkk = np.arange(2,9000,1)
 Clkk = theory.gCl("kk",ellkk)    
@@ -76,8 +75,8 @@ pl.done("output/nl.png")
 
 
 
-overdensity=500.
-critical=True
+overdensity=200.
+critical=False
 atClusterZ=True
 
 
