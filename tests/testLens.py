@@ -64,7 +64,7 @@ Config.read(iniFile)
 lmax = 8000
 cosmoDict = dictFromSection(Config,cosmologyName)
 constDict = dictFromSection(Config,'constants')
-cc = ClusterCosmology(cosmoDict,constDict,lmax)
+cc = ClusterCosmology(cosmoDict,constDict,lmax,pickling=True)
 TCMB = 2.7255e6
 
 # === NFW CLUSTER ===
@@ -93,7 +93,12 @@ thetaMap = np.sum(thetaMap**2,0)**0.5
 
 
 # === KAPPA MAP ===
-kappaMap,r500 = NFWkappa(cc,massOverh,concentration,zL,thetaMap*180.*60./np.pi,sourceZ,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+comL = cc.results.comoving_radial_distance(zL)*cc.h
+zstar = 1100.
+comS = cc.results.comoving_radial_distance(zstar)*cc.h
+winAtLens = (comS-comL)/comS
+
+kappaMap,r500 = NFWkappa(cc,massOverh,concentration,zL,thetaMap*180.*60./np.pi,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 snap = 43
 #b = BattagliaSims(constDict)
 
@@ -178,7 +183,7 @@ trueKappaStack = thetaMap*0.
 szStack = thetaMap*0.
 lX = thetaMap*0.
 lY = thetaMap*0.
-N = 20
+N = 2000
 massIndices = range(300)
 for i in range(N):
     print i
@@ -206,7 +211,8 @@ for i in range(N):
 
 
     lensedTQU = lensing.displace_map(map, pix,order=5)
-    lensedMapX = ifft(enmap.map2harm(lensedTQU),axes=[-2,-1],normalize=True).real 
+    #lensedMapX = ifft(enmap.map2harm(lensedTQU),axes=[-2,-1],normalize=True).real 
+    lensedMapX = enmap.ifft(enmap.map2harm(lensedTQU),normalize=True).real 
     lensedMapY = lensedMapX.copy()
 
     if szX:
@@ -214,16 +220,16 @@ for i in range(N):
     if szY:
         lensedMapY += (szMap/TCMB)
     
-    if i==0:
-        pl = Plotter()
-        pl.plot2d(enmap.project(lensedMapX,shapeTen,wcsTen))
-        pl.done("output/lensedX.png")
-        pl = Plotter()
-        pl.plot2d(enmap.project(lensedMapY,shapeTen,wcsTen))
-        pl.done("output/lensedY.png")
-        pl = Plotter()
-        pl.plot2d(enmap.project(lensedMapY,shapeTen,wcsTen)-enmap.project(map,shapeTen,wcsTen))
-        pl.done("output/diff.png")
+    # if i==0:
+    #     pl = Plotter()
+    #     pl.plot2d(enmap.project(lensedMapX,shapeTen,wcsTen))
+    #     pl.done("output/lensedX.png")
+    #     pl = Plotter()
+    #     pl.plot2d(enmap.project(lensedMapY,shapeTen,wcsTen))
+    #     pl.done("output/lensedY.png")
+    #     pl = Plotter()
+    #     pl.plot2d(enmap.project(lensedMapY,shapeTen,wcsTen)-enmap.project(map,shapeTen,wcsTen))
+    #     pl.done("output/diff.png")
 
 
     

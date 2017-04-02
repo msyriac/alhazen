@@ -68,7 +68,7 @@ winAtLens = (comS-comL)/comS
 kappas = halos.kappa_nfw(thetas,z,comL,M500,c500,R500,winAtLens)
 kappas2 = halos.kappa_generic(thetas,z,comL,rhofunc,winAtLens)
 
-kappas3,r500Ret = halos.NFWkappa(cc,M500,c500,z,thetas*180.*60./np.pi,zstar,overdensity=delta,critical=True,atClusterZ=True)
+kappas3,r500Ret = halos.NFWkappa(cc,M500,c500,z,thetas*180.*60./np.pi,winAtLens,overdensity=delta,critical=True,atClusterZ=True)
 
 pl = Plotter(scaleY='log',scaleX='log',labelX="$\\theta$ (arcmin)",labelY="$\\kappa$")
 pl.add(thetas*180.*60./np.pi,kappas)

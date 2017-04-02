@@ -68,7 +68,7 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     
         
     cc = clusterCosmology
-    kappaReal, r500 = NFWkappa(cc,M,c,z,modRMap*180.*60./np.pi,sourceZ=cc.cmbZ,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+    kappaReal, r500 = NFWkappa(cc,M,c,z,modRMap*180.*60./np.pi,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
     
     dAz = cc.results.angular_diameter_distance(z)
     th500 = r500/dAz
@@ -159,7 +159,9 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     if returnKappa:
         return sn,ifft2(Uft).real*k500
     return sn
-    
+
+
+
     
 
 def rayleigh(theta,sigma):
@@ -169,17 +171,14 @@ def rayleigh(theta,sigma):
         
 
 
-def NFWkappa(cc,massOverh,concentration,zL,thetaArc,sourceZ,overdensity=500.,critical=True,atClusterZ=True): #theta in arcminutes
+#def NFWkappa(cc,massOverh,concentration,zL,thetaArc,sourceZ,overdensity=500.,critical=True,atClusterZ=True):
+def NFWkappa(cc,massOverh,concentration,zL,thetaArc,winAtLens,overdensity=500.,critical=True,atClusterZ=True):
 
-
-
-
-
-
-    cmbZ = sourceZ
+    # cmbZ = sourceZ
     comL  = (cc.results.comoving_radial_distance(zL) )*cc.h
-    comS  = (cc.results.comoving_radial_distance(cmbZ) )*cc.h
-    comLS = comS-comL
+    # comS  = (cc.results.comoving_radial_distance(cmbZ) )*cc.h
+    # comLS = comS-comL
+    
 
     
 
@@ -205,7 +204,8 @@ def NFWkappa(cc,massOverh,concentration,zL,thetaArc,sourceZ,overdensity=500.,cri
 
     const12 = 9.571e-20 # 2G/c^2 in Mpc / solar mass 
     fc = np.log(1.+c) - (c/(1.+c))    
-    const3 = comL * comLS * (1.+zL) / comS #  Mpc
+    #const3 = comL * comLS * (1.+zL) / comS #  Mpc
+    const3 = comL *  (1.+zL) *winAtLens #  Mpc
     const4 = M / (rS*rS) #solar mass / MPc^2
     const5 = 1./fc
     
@@ -238,9 +238,9 @@ def getDLnMCMB(ells,Nls,clusterCosmology,log10Moverh,z,concentration,arcStamp,px
     xMap,yMap,modRMap,xx,xy = fmaps.getRealAttributes(lmap)
     lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(lmap)
 
-    kappaMap,retR500 = NFWkappa(cc,M,concentration,z,modRMap*180.*60./np.pi,cc.cmbZ,overdensity,critical,atClusterZ)
+    kappaMap,retR500 = NFWkappa(cc,M,concentration,z,modRMap*180.*60./np.pi,winAtLens,overdensity,critical,atClusterZ)
     finetheta = np.arange(0.01,arc_upto,0.01)
-    finekappa,retR500 = NFWkappa(cc,M,concentration,z,finetheta,cc.cmbZ,overdensity,critical,atClusterZ)
+    finekappa,retR500 = NFWkappa(cc,M,concentration,z,finetheta,winAtLens,overdensity,critical,atClusterZ)
     kappaMap = fmaps.stepFunctionFilterLiteMap(kappaMap,modLMap,stepfilter_ellmax)
 
     generator = fmaps.GRFGen(lmap,ells,Nls)
@@ -314,7 +314,7 @@ def getDLnMCMB(ells,Nls,clusterCosmology,log10Moverh,z,concentration,arcStamp,px
 # NFW dimensionless form
 fnfw = lambda x: 1./(x*((1.+x)**2.))
 Gval = 4.517e-48 # Newton G in Mpc,seconds,Msun units
-cval = 9.716e-15 # speef of light in Mpc,second units
+cval = 9.716e-15 # speed of light in Mpc,second units
 
 # NFW density (M/L^3) as a function of distance from center of cluster
 def rho_nfw(M,c,R):
@@ -345,8 +345,4 @@ def kappa_generic(theta,z,comLMpcOverh,rhoFunc,windowAtLens,pmaxN=2000,numps=500
     # increase numps for lower z/theta and pmaxN for higher z/theta
     return 4.*np.pi*Gval*(1+z)*comLMpcOverh*windowAtLens*projected_rho(theta,comLMpcOverh,rhoFunc,pmaxN,numps)/cval**2.
 
-class KappaMaker(object):
 
-    def __init__(self,clusterCosmology,clusterZ):
-
-        pass
