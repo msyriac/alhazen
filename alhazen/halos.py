@@ -11,6 +11,17 @@ from scipy.integrate import simps
 import orphics.tools.io as io
 import flipper.liteMap as lm
 
+# g(x) = g(theta/thetaS) HuDeDeoVale 2007
+gnfw = lambda x: np.piecewise(x, [x>1., x<1., x==1.], \
+                            [lambda y: (1./(y*y - 1.)) * \
+                             ( 1. - ( (2./np.sqrt(y*y - 1.)) * np.arctan(np.sqrt((y-1.)/(y+1.))) ) ), \
+                             lambda y: (1./(y*y - 1.)) * \
+                            ( 1. - ( (2./np.sqrt(-(y*y - 1.))) * np.arctanh(np.sqrt(-((y-1.)/(y+1.)))) ) ), \
+                        lambda y: (1./3.)])
+
+f_c = lambda c: np.log(1.+c) - (c/(1.+c))
+
+
 #@timeit
 def getProfiles(generator,stepfilter_ellmax,kappaMap,binner,N):
     profiles = []
@@ -161,33 +172,27 @@ def rayleigh(theta,sigma):
 def NFWkappa(cc,massOverh,concentration,zL,thetaArc,sourceZ,overdensity=500.,critical=True,atClusterZ=True): #theta in arcminutes
 
 
-    gnfw = lambda x: np.piecewise(x, [x>1., x<1., x==1.], \
-                                [lambda y: (1./(y*y - 1.)) * \
-                                 ( 1. - ( (2./np.sqrt(y*y - 1.)) * np.arctan(np.sqrt((y-1.)/(y+1.))) ) ), \
-                                 lambda y: (1./(y*y - 1.)) * \
-                                ( 1. - ( (2./np.sqrt(-(y*y - 1.))) * np.arctanh(np.sqrt(-((y-1.)/(y+1.)))) ) ), \
-                            lambda y: (1./3.)])
 
 
 
 
     cmbZ = sourceZ
-    comL  = cc.results.comoving_radial_distance(zL) 
-    comS  = cc.results.comoving_radial_distance(cmbZ) 
+    comL  = (cc.results.comoving_radial_distance(zL) )*cc.h
+    comS  = (cc.results.comoving_radial_distance(cmbZ) )*cc.h
     comLS = comS-comL
 
     
 
     c = concentration
-    M = massOverh*cc.h
+    M = massOverh#/cc.h
 
     zdensity = 0.
     if atClusterZ: zdensity = zL
 
     if critical:
-        r500 = cc.rdel_c(M,zdensity,overdensity).flatten()[0] *cc.h # R500 in Mpc No 1/h
+        r500 = cc.rdel_c(M,zdensity,overdensity).flatten()[0] #/cc.h # R500 in Mpc No 1/h
     else:
-        r500 = cc.rdel_m(M,zdensity,overdensity) *cc.h # R500 in Mpc No 1/h
+        r500 = cc.rdel_m(M,zdensity,overdensity) #/cc.h # R500 in Mpc No 1/h
 
 
     conv=np.pi/(180.*60.)
@@ -304,3 +309,39 @@ def getDLnMCMB(ells,Nls,clusterCosmology,log10Moverh,z,concentration,arcStamp,px
         np.savetxt("data/"+saveId+"_m"+str(log10Moverh)+"_z"+str(z)+".txt",np.array([log10Moverh,z,1./sn]))
     
     return 1./sn
+
+
+# NFW dimensionless form
+fnfw = lambda x: 1./(x*((1.+x)**2.))
+Gval = 4.517e-48 # Newton G in Mpc,seconds,Msun units
+cval = 9.716e-15 # speef of light in Mpc,second units
+
+# NFW density (M/L^3) as a function of distance from center of cluster
+def rho_nfw(M,c,R):
+    return lambda r: 1./(4.*np.pi)*((c/R)**3.)*M/f_c(c)*fnfw(c*r/R)
+
+# NFW projected along line of sight (M/L^2) as a function of angle on the sky in radians
+def proj_rho_nfw(theta,comL,M,c,R):
+    thetaS = R/c/comL
+    return 1./(4.*np.pi)*((c/R)**2.)*M/f_c(c)*(2.*gnfw(theta/thetaS))
+
+# Generic profile projected along line of sight (M/L^2) as a function of angle on the sky in radians
+# rhoFunc is density (M/L^3) as a function of distance from center of cluster
+def projected_rho(theta,comL,rhoFunc,pmaxN=200,numps=10000):
+    # g(x) = \int dl rho(sqrt(l**2+x**2)) = g(theta/thetaS)
+    pzrange = np.linspace(-pmaxN,pmaxN,numps)
+    g = np.trapz(rhoFunc(np.sqrt(pzrange**2.+(theta*comL)**2.)),pzrange)
+    return g
+
+
+def kappa_nfw(theta,z,comLMpcOverh,M,c,R,windowAtLens):
+    return 4.*np.pi*Gval*(1+z)*comLMpcOverh*windowAtLens*proj_rho_nfw(theta,comLMpcOverh,M,c,R)/cval**2.
+
+def kappa_generic(theta,z,comLMpcOverh,rhoFunc,windowAtLens,pmaxN=200,numps=10000):
+    return 4.*np.pi*Gval*(1+z)*comLMpcOverh*windowAtLens*projected_rho(theta,comLMpcOverh,rhoFunc,pmaxN,numps)/cval**2.
+
+class KappaMaker(object):
+
+    def __init__(self,clusterCosmology,clusterZ):
+
+        pass
