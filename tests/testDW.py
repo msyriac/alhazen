@@ -40,8 +40,9 @@ saveFile = None #"/astro/astronfs01/workarea/msyriac/act/normDec14_0_trimmed_ell
 trimmed = False
 cutout = False
 
-noiseT = 5.
-noiseP = np.sqrt(2.)*noiseT
+noiseT = 3.
+noiseP = 4.24
+#np.sqrt(2.)*noiseT
 
 
 suffix = ""
@@ -55,6 +56,7 @@ if cutout:
 
 #polCombList = ['TT','EE','EB','TB','TE','ET']
 polCombList = ['TT','EB']
+#polCombList = ['EB']
 colorList = ['red','blue','green','orange','purple','brown']
 tonly = False
 if polCombList==['TT']: tonly=True
@@ -69,6 +71,7 @@ kappaPath = lambda x: simRoot + "phiMaps_" + str(x).zfill(5) + "/kappaMap_sample
 simRoot1 = "/astro/astronfs01/workarea/msyriac/cmbSims/"
 beamPath = simRoot1 + "beam_0.txt"
 l,beamells = np.loadtxt(beamPath,unpack=True,usecols=[0,1])
+
 
 cmbellmin = 100
 cmbellmax = 3000
@@ -110,8 +113,8 @@ for polComb in polCombList:
 
 bin_edges = np.arange(kellmin,kellmax,80)
 
-whiteNoiseT = (np.pi / (180. * 60))**2.  * noiseT**2. #/ TCMB**2.  
-whiteNoiseP = (np.pi / (180. * 60))**2.  * noiseP**2. #/ TCMB**2.  
+whiteNoiseT = (np.pi / (180. * 60))**2.  * noiseT**2. / TCMB**2.  
+whiteNoiseP = (np.pi / (180. * 60))**2.  * noiseP**2. / TCMB**2.  
 
 
 for k,i in enumerate(myIs):
@@ -126,44 +129,54 @@ for k,i in enumerate(myIs):
 
     if k==0:
         lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(lensedTLm)
-        beamTemplate = fmaps.makeTemplate(l,beamells,modLMap)
+        beamTemplate = fmaps.makeTemplate(l,beamells,modLMap)*0.+1. # !!!!!!!!!!!!!
         fMaskCMB = fmaps.fourierMask(lx,ly,modLMap,lmin=cmbellmin,lmax=cmbellmax)
         fMask = fmaps.fourierMask(lx,ly,modLMap,lmin=kellmin,lmax=kellmax)
-
         ellNoise = np.arange(0,modLMap.max())
-        Ntt = ellNoise*0.+whiteNoiseT
-        Npp = ellNoise*0.+whiteNoiseP
+        Ntt = ellNoise*0.+np.nan_to_num(whiteNoiseT)
+        Npp = ellNoise*0.+np.nan_to_num(whiteNoiseP)
         Ntt[0] = 0.
         Npp[0] = 0.
         gGenT = fmaps.GRFGen(lensedTLm.copy(),ellNoise,Ntt,bufferFactor=1)
         gGenP1 = fmaps.GRFGen(lensedTLm.copy(),ellNoise,Npp,bufferFactor=1)
         gGenP2 = fmaps.GRFGen(lensedTLm.copy(),ellNoise,Npp,bufferFactor=1)
 
-    lensedTLm.data = fmaps.convolveBeam(lensedTLm.data,modLMap,beamTemplate)
-    lensedQLm.data = fmaps.convolveBeam(lensedQLm.data,modLMap,beamTemplate)
-    lensedULm.data = fmaps.convolveBeam(lensedULm.data,modLMap,beamTemplate)
+    lensedTLm.data = fmaps.convolveBeam(lensedTLm.data,modLMap,beamTemplate)/TCMB
+    lensedQLm.data = fmaps.convolveBeam(lensedQLm.data,modLMap,beamTemplate)/TCMB
+    lensedULm.data = fmaps.convolveBeam(lensedULm.data,modLMap,beamTemplate)/TCMB
         
     if noiseT>1.e-3: lensedTLm.data = lensedTLm.data + gGenT.getMap(stepFilterEll=None)
     if noiseP>1.e-3: lensedQLm.data = lensedQLm.data + gGenP1.getMap(stepFilterEll=None)
     if noiseP>1.e-3: lensedULm.data = lensedULm.data + gGenP2.getMap(stepFilterEll=None)
 
         
-    fot,foe,fob = fmaps.TQUtoFourierTEB(lensedTLm.data.copy().astype(float)/TCMB,lensedQLm.data.copy().astype(float)/TCMB,lensedULm.data.copy().astype(float)/TCMB,modLMap,thetaMap)
+    fot,foe,fob = fmaps.TQUtoFourierTEB(lensedTLm.data.copy().astype(float),lensedQLm.data.copy().astype(float),lensedULm.data.copy().astype(float),modLMap,thetaMap)
 
+    # rT = ifft2(fot).real + gGenT.getMap(stepFilterEll=None)
+    # rE = ifft2(foe).real + gGenP1.getMap(stepFilterEll=None)
+    # rB = ifft2(fob).real + gGenP2.getMap(stepFilterEll=None)
+    
+    # fot = fft2(rT)
+    # foe = fft2(rE)
+    # fob = fft2(rB)
+    
         
 
-    fot[:,:] = (fot[:,:] / beamTemplate[:,:])
-    foe[:,:] = (foe[:,:] / beamTemplate[:,:])
-    fob[:,:] = (fob[:,:] / beamTemplate[:,:])
+    fot[:,:] = np.nan_to_num(fot[:,:] / beamTemplate[:,:])
+    foe[:,:] = np.nan_to_num(foe[:,:] / beamTemplate[:,:])
+    fob[:,:] = np.nan_to_num(fob[:,:] / beamTemplate[:,:])
     
-    filt_noiseT = fot.copy()*0.+gGenT.power/ beamTemplate[:,:]**2./TCMB**2.
-    filt_noiseE = fot.copy()*0.+gGenP1.power/ beamTemplate[:,:]**2./TCMB**2.
-    filt_noiseB = fot.copy()*0.+gGenP2.power/ beamTemplate[:,:]**2./TCMB**2.
+    filt_noiseT = fot.copy()*0.+np.nan_to_num(gGenT.power/ beamTemplate[:,:]**2.)
+    filt_noiseE = fot.copy()*0.+np.nan_to_num(gGenP1.power/ beamTemplate[:,:]**2.)
+    filt_noiseB = fot.copy()*0.+np.nan_to_num(gGenP2.power/ beamTemplate[:,:]**2.)
 
-    # filt_noiseT = fot.copy()*0.+gGenT.power**2./TCMB**2.
-    # filt_noiseE = fot.copy()*0.+gGenP1.power**2./TCMB**2.
-    # filt_noiseB = fot.copy()*0.+gGenP2.power**2./TCMB**2.
+    # filt_noiseT = fot.copy()*0.+gGenT.power**2.#/TCMB**2.
+    # filt_noiseE = fot.copy()*0.+gGenP1.power**2.#/TCMB**2.
+    # filt_noiseB = fot.copy()*0.+gGenP2.power**2.#/TCMB**2.
     
+    # filt_noiseT = fot.copy()*0.
+    # filt_noiseE = fot.copy()*0.
+    # filt_noiseB = fot.copy()*0.
 
     if k==0:
 
@@ -182,7 +195,6 @@ for k,i in enumerate(myIs):
                          gradCut=cmbellmax,verbose=True,
                          loadPickledNormAndFilters=loadFile,
                          savePickledNormAndFilters=saveFile)
-
 
 
 
@@ -251,7 +263,7 @@ else:
         listAllReconPower[polComb] = np.array(listReconPower[polComb],dtype=np.float64)
     
 
-    rcvInputPowerMat = listAllReconPower['TT'].copy()*0.
+    rcvInputPowerMat = listAllReconPower[polCombList[0]].copy()*0.
 
 
 
@@ -273,7 +285,8 @@ else:
 
     pl = Plotter(scaleY='log')
     pl.add(ellkk,Clkk,color='black',lw=2)
-    
+    clkkfunc = interp1d(ellkk,Clkk,bounds_error=False,fill_value=0.)
+    clkk2d = clkkfunc(p2d.modLMap)
 
     for polComb,col in zip(polCombList,colorList):
         statsCross[polComb] = getStats(listAllCrossPower[polComb])
@@ -281,18 +294,21 @@ else:
 
         statsRecon[polComb] = getStats(listAllReconPower[polComb])
         fp = interp1d(centers,statsRecon[polComb]['mean'],fill_value='extrapolate')
-        pl.add(ellkk,(fp(ellkk))-Clkk,color=col,lw=2)
+        #pl.add(ellkk,(fp(ellkk))-Clkk,color=col,lw=2)
+        pl.add(centers,statsRecon[polComb]['mean'],color=col,lw=2)
 
-        Nlkk2d = qest.N.Nlkk[polComb]
+        Nlkk2d = qest.N.Nlkk[polComb]+clkk2d
         ncents, npow = stats.binInAnnuli(Nlkk2d, p2d.modLMap, bin_edges)
         pl.add(ncents,npow,color=col,lw=2,ls="--")
 
+        dell,dwcls = np.loadtxt("data/dwpoints"+polComb+".csv",delimiter=',',unpack=True)
+        dwclkk = ((dell*(dell+1.))**2.)*dwcls*2.*np.pi/((dell+0.5)**4.)/4.
+        pl.add(dell,dwclkk,ls="none",marker="x",label="quicklens "+polComb,color=col)
         
 
 
     avgInputPower  = totAllInputPower/N
     pl.add(centers,avgInputPower,color='cyan',lw=3) # ,label = "input x input"
-
 
     pl.legendOn(labsize=10,loc='lower left')
     pl._ax.set_xlim(kellmin,kellmax)

@@ -161,7 +161,7 @@ class QuadNorm(object):
         power2d is a flipper power2d object            
         '''
         self.clkk2d = power2dData.copy()+0.j
-        self.clpp2d = self.clkk2d.copy()*4./(self.modLMap**2.)/((self.modLMap+1.)**2.)
+        self.clpp2d = 0.j+self.clkk2d.copy()*4./(self.modLMap**2.)/((self.modLMap+1.)**2.)
 
 
     def WXY(self,XY):
@@ -992,6 +992,20 @@ class Estimator(object):
         self.kappa = ifft(kappaft,axes=[-2,-1],normalize=True)
 
         assert not(np.any(np.isnan(self.kappa)))
+        # from orphics.tools.io import Plotter
+        # pl = Plotter()
+        # #pl.plot2d(np.nan_to_num(self.kappa))
+        # pl.plot2d((self.kappa.real))
+        # pl.done("output/nankappa.png")
+        # sys.exit(0)
+        # try:
+        #     assert not(np.any(np.isnan(self.kappa)))
+        # except:
+        #     from orphics.tools.io import Plotter
+        #     pl = Plotter()
+        #     pl.plot2d(np.nan_to_num(self.kappa))
+        #     pl.done("output/nankappa.png")
+        #     sys.exit(0)
 
         if self.verbose:
             elapTime = time.time() - startTime

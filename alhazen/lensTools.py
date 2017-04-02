@@ -7,8 +7,7 @@ import numpy as np
 
 from pyfftw.interfaces.scipy_fftpack import fft2
 from pyfftw.interfaces.scipy_fftpack import ifft2
-
-
+from enlib.fft import fft,ifft
 
 class alphaMaker(object):
 
@@ -21,7 +20,7 @@ class alphaMaker(object):
 
         kernels = thetaMap/thetaModSqMap/np.pi
 
-        self.ftkernels = enmap.fft(kernels,normalize=False)
+        self.ftkernels = fft(kernels,axes=[-2,-1])
 
 
 
@@ -29,13 +28,13 @@ class alphaMaker(object):
     def kappaToAlpha(self,kappaMap,test=False):
         
 
-        fKappa = enmap.fft(kappaMap,normalize=False)
+        fKappa = fft(kappaMap,axes=[-2,-1])
         fAlpha = self.ftkernels * fKappa
         pixScaleY, pixScaleX = kappaMap.pixshape()
         Ny,Nx = kappaMap.shape
 
         #retAlpha = (np.fft.ifftshift(enmap.ifft(fAlpha,normalize=False).real)+kappaMap*0.)*pixScaleY*pixScaleX/Nx/Ny
-        retAlpha = -(np.fft.ifftshift(enmap.ifft(fAlpha,normalize=False).real[::-1])+kappaMap*0.)*pixScaleY*pixScaleX/Nx/Ny
+        retAlpha = -(np.fft.ifftshift(ifft(fAlpha,axes=[-2,-1],normalize=False).real[::-1])+kappaMap*0.)*pixScaleY*pixScaleX/Nx/Ny
         
         if test:
             newKap = -np.nan_to_num(0.5*enmap.div(retAlpha)) 

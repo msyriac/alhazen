@@ -10,6 +10,7 @@ from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 from szlib.szcounts import ClusterCosmology
 from orphics.tools.stats import bin2D
 from szlib.sims import BattagliaSims
+from enlib.fft import fft,ifft
 print "Done importing modules..."
 
 def getKappaSZ(bSims,snap,massIndex,px,thetaMapshape):
@@ -205,7 +206,7 @@ for i in range(N):
 
 
     lensedTQU = lensing.displace_map(map, pix,order=5)
-    lensedMapX = enmap.ifft(enmap.map2harm(lensedTQU)).real 
+    lensedMapX = ifft(enmap.map2harm(lensedTQU),axes=[-2,-1],normalize=True).real 
     lensedMapY = lensedMapX.copy()
 
     if szX:
@@ -226,8 +227,8 @@ for i in range(N):
 
 
     
-    fotX = enmap.fft(lensedMapX,normalize=False)
-    fotY = enmap.fft(lensedMapY,normalize=False)
+    fotX = fft(lensedMapX,axes=[-2,-1])
+    fotY = fft(lensedMapY,axes=[-2,-1])
 
     print "Reconstructing" , i , " ..."
     qest.updateTEB_X(fotX,alreadyFTed=True)
