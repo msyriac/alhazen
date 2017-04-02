@@ -184,15 +184,15 @@ def NFWkappa(cc,massOverh,concentration,zL,thetaArc,sourceZ,overdensity=500.,cri
     
 
     c = concentration
-    M = massOverh#/cc.h
+    M = massOverh
 
     zdensity = 0.
     if atClusterZ: zdensity = zL
 
     if critical:
-        r500 = cc.rdel_c(M,zdensity,overdensity).flatten()[0] #/cc.h # R500 in Mpc No 1/h
+        r500 = cc.rdel_c(M,zdensity,overdensity).flatten()[0] # R500 in Mpc/h
     else:
-        r500 = cc.rdel_m(M,zdensity,overdensity) #/cc.h # R500 in Mpc No 1/h
+        r500 = cc.rdel_m(M,zdensity,overdensity) # R500 in Mpc/h
 
 
     conv=np.pi/(180.*60.)
@@ -327,17 +327,22 @@ def proj_rho_nfw(theta,comL,M,c,R):
 
 # Generic profile projected along line of sight (M/L^2) as a function of angle on the sky in radians
 # rhoFunc is density (M/L^3) as a function of distance from center of cluster
-def projected_rho(theta,comL,rhoFunc,pmaxN=200,numps=10000):
+@timeit
+def projected_rho(thetas,comL,rhoFunc,pmaxN=2000,numps=500000):
+    # default integration times are good to 0.01% for z=0.1 to 3
+    # increase numps for lower z/theta and pmaxN for higher z/theta
     # g(x) = \int dl rho(sqrt(l**2+x**2)) = g(theta/thetaS)
     pzrange = np.linspace(-pmaxN,pmaxN,numps)
-    g = np.trapz(rhoFunc(np.sqrt(pzrange**2.+(theta*comL)**2.)),pzrange)
+    g = np.array([np.trapz(rhoFunc(np.sqrt(pzrange**2.+(theta*comL)**2.)),pzrange) for theta in thetas])
     return g
 
 
 def kappa_nfw(theta,z,comLMpcOverh,M,c,R,windowAtLens):
     return 4.*np.pi*Gval*(1+z)*comLMpcOverh*windowAtLens*proj_rho_nfw(theta,comLMpcOverh,M,c,R)/cval**2.
 
-def kappa_generic(theta,z,comLMpcOverh,rhoFunc,windowAtLens,pmaxN=200,numps=10000):
+def kappa_generic(theta,z,comLMpcOverh,rhoFunc,windowAtLens,pmaxN=2000,numps=500000):
+    # default integration times are good to 0.01% for z=0.1 to 3
+    # increase numps for lower z/theta and pmaxN for higher z/theta
     return 4.*np.pi*Gval*(1+z)*comLMpcOverh*windowAtLens*projected_rho(theta,comLMpcOverh,rhoFunc,pmaxN,numps)/cval**2.
 
 class KappaMaker(object):

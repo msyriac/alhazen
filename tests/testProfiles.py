@@ -4,6 +4,7 @@ from ConfigParser import SafeConfigParser
 from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 import alhazen.halos as halos
 from scipy.interpolate import interp1d
+from orphics.theory.cosmology import LimberCosmology
 
 def npspace(minim,maxim,num,scale="lin"):
     if scale=="lin" or scale=="linear":
@@ -45,9 +46,9 @@ pl.done("output/rhos.png")
 comL = cc.results.comoving_radial_distance(z)*cc.h
 thetaS = R500/c500/comL
 arcmin = 0.1
-arcmax = 30.
+arcmax = 50.
 thetas = npspace(arcmin*np.pi/180./60.,arcmax*np.pi/180./60.,100,'log')
-gs = np.array([halos.projected_rho(theta,comL,rhofunc) for theta in thetas])
+gs = halos.projected_rho(thetas,comL,rhofunc)
 
 
 gsalt = halos.proj_rho_nfw(thetas,comL,M500,c500,R500)
@@ -65,7 +66,7 @@ comS = cc.results.comoving_radial_distance(zstar)*cc.h
 winAtLens = (comS-comL)/comS
 
 kappas = halos.kappa_nfw(thetas,z,comL,M500,c500,R500,winAtLens)
-kappas2 = np.array([halos.kappa_generic(theta,z,comL,rhofunc,winAtLens) for theta in thetas])
+kappas2 = halos.kappa_generic(thetas,z,comL,rhofunc,winAtLens)
 
 kappas3,r500Ret = halos.NFWkappa(cc,M500,c500,z,thetas*180.*60./np.pi,zstar,overdensity=delta,critical=True,atClusterZ=True)
 
@@ -81,3 +82,17 @@ pl.add(thetas*180.*60./np.pi,(kappas-kappas2)*100./kappas,label="numerical integ
 pl.add(thetas*180.*60./np.pi,(kappas-kappas3)*100./kappas,label="analytical")
 pl.legendOn()
 pl.done("output/kappadiff.png")
+
+lc = LimberCosmology(cosmoDict,constDict,lmax=3000,pickling=True,numz=100,kmax=42.47,nonlinear=True,skipPower=True)
+
+lc.addDeltaNz("z1",1.)
+
+
+kappasCMB = halos.kappa_nfw(thetas,z,comL,M500,c500,R500,lc.kernels["cmb"]["window_z"](z))
+kappasGal = halos.kappa_nfw(thetas,z,comL,M500,c500,R500,lc.kernels["z1"]["window_z"](z))
+
+pl = Plotter(scaleY='log',scaleX='log',labelX="$\\theta$ (arcmin)",labelY="$\\kappa$")
+pl.add(thetas*180.*60./np.pi,kappasCMB,label="CMB")
+pl.add(thetas*180.*60./np.pi,kappasGal,label="z=1")
+pl.legendOn()
+pl.done("output/kappaGal.png")
