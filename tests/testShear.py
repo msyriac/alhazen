@@ -56,9 +56,9 @@ ellrange = np.arange(100,6000,40)
 
 M500 = 5.e14
 c500 = 1.18
-zlens = 0.5
+# zlens = 0.5
 delta = 500
-R500 = cc.rdel_c(M500,zlens,delta)
+#R500 = cc.rdel_c(M500,zlens,delta)
 
 lc.addNz("gal",z_edges,nz,bias=None,magbias=None,numzIntegral=300) # hack
 lc.generateCls(ellrange,autoOnly=True,zmin=0.)
@@ -74,6 +74,7 @@ snsCMB = []
 
 for i,z in enumerate(zrange):
 
+    zlens = z
     new_nz = nz.copy()
     new_nz[zrange<z] = 0.
     norm = np.trapz(new_nz,zrange)
