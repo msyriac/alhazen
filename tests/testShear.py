@@ -64,7 +64,7 @@ lc.generateCls(ellrange,autoOnly=True,zmin=0.)
 Clss = lc.getCl("gal","gal")
 
 Clkk = lc.getCl("cmb","cmb")
-ls,Nlkk = np.loadtxt("../SZ_filter/data/LA_all_Nl.txt",unpack=True)
+ls,Nlkk = np.loadtxt("../SZ_filter/data/LA_all_Nl.txt",unpack=True,delimiter=",")
 LF.loadKK(ellrange,Clkk,ls,Nlkk)
 
 sns = []
