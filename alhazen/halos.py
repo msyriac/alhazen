@@ -56,8 +56,8 @@ def predictSN(polComb,noiseTY,noisePY,N,MM):
 
 
 
-#@timeit
-def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05,saveId=None,verbose=False,rayleighSigmaArcmin=None,returnKappa=False):
+@timeit
+def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05,saveId=None,verbose=False,rayleighSigmaArcmin=None,returnKappa=False,winAtLens=None):
     M = 10.**log10Moverh
 
     lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
@@ -68,6 +68,12 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     
         
     cc = clusterCosmology
+    
+    if winAtLens is None:
+        comS = cc.results.comoving_radial_distance(cc.cmbZ)*cc.h
+        comL = cc.results.comoving_radial_distance(z)*cc.h
+        winAtLens = (comS-comL)/comS
+
     kappaReal, r500 = NFWkappa(cc,M,c,z,modRMap*180.*60./np.pi,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
     
     dAz = cc.results.angular_diameter_distance(z)
