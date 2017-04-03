@@ -24,7 +24,7 @@ polCombList=['TT','EB','TE','ET','EE','TB']
 
 
 halo = False
-num_ells = 150 #300
+num_ells = 50 #300
 
 beamArcmin = 1.0
 noiseT = 1.0
