@@ -73,6 +73,7 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
         comS = cc.results.comoving_radial_distance(cc.cmbZ)*cc.h
         comL = cc.results.comoving_radial_distance(z)*cc.h
         winAtLens = (comS-comL)/comS
+    print winAtLens
 
     kappaReal, r500 = NFWkappa(cc,M,c,z,modRMap*180.*60./np.pi,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
     

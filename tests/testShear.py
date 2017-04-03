@@ -46,9 +46,10 @@ cosmoDict = dictFromSection(Config,cosmologyName)
 constDict = dictFromSection(Config,'constants')
 
 cc = ClusterCosmology(cosmoDict,constDict,clTTFixFile = "../SZ_filter/data/cltt_lensed_Feb18.txt")
-lc = LimberCosmology(cosmoDict,constDict,lmax=8000,pickling=False,numz=100,kmax=42.47,nonlinear=True)
+#lc = LimberCosmology(cosmoDict,constDict,lmax=6000,pickling=True,numz=100,kmax=42.47,nonlinear=True)
+lc = LimberCosmology(cosmoDict,constDict,lmax=6000,pickling=True,numz=100,kmax=10.0,nonlinear=True)
 
-ellrange = np.arange(100,8000,40)
+ellrange = np.arange(100,6000,40)
 
 
 
@@ -64,7 +65,8 @@ lc.generateCls(ellrange,autoOnly=True,zmin=0.)
 Clss = lc.getCl("gal","gal")
 
 Clkk = lc.getCl("cmb","cmb")
-ls,Nlkk = np.loadtxt("../SZ_filter/data/LA_all_Nl.txt",unpack=True,delimiter=",")
+ls,Nlkk = np.loadtxt("../SZ_filter/data/LA_pol_Nl.txt",unpack=True,delimiter=",")
+LF = LensForecast()
 LF.loadKK(ellrange,Clkk,ls,Nlkk)
 
 sns = []
@@ -80,16 +82,15 @@ for i,z in enumerate(zrange):
 
     win = lc.kernels["gal"+str(i)]["window_z"](zlens)
 
-    LF = LensForecast()
     LF.loadSS(ellrange,Clss,ngal=ngalArcminSquare*fracgals[i],shapeNoise=0.3)
     totCl = Clss+LF.Nls['ss'](ellrange)
 
     
-    sn = halos.NFWMatchedFilterSN(cc,np.log10(M500),c500,zlens,ellrange,totCl,8000,overdensity=500.,critical=True,atClusterZ=True,winAtLens=win)
+    sn = halos.NFWMatchedFilterSN(cc,np.log10(M500),c500,zlens,ellrange,totCl,6000,overdensity=500.,critical=True,atClusterZ=True,winAtLens=win)
 
     sns.append(sn)
 
-    sn = halos.NFWMatchedFilterSN(cc,np.log10(M500),c500,zlens,ellrange,Clkk+LF.Nls['kk'](ellrange),8000,overdensity=500.,critical=True,atClusterZ=True,winAtLens=None)
+    sn = halos.NFWMatchedFilterSN(cc,np.log10(M500),c500,zlens,ellrange,Clkk+LF.Nls['kk'](ellrange),6000,overdensity=500.,critical=True,atClusterZ=True,winAtLens=None)
     snsCMB.append(sn)
 
     
@@ -101,5 +102,5 @@ np.savetxt("data/cmbsns.txt",np.vstack((zrange,snsCMB)).transpose())
 pl = io.Plotter()
 pl.add(zrange,snsCMB)
 pl.add(zrange,sns,ls="--")
-outDir = os.environ['WWW']+"plots/"
+outDir = "output/"#os.environ['WWW']+"plots/"
 pl.done(outDir + "sns.png")
