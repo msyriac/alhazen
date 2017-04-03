@@ -116,3 +116,6 @@ def crossIntegrand(alphaXY,betaXY,theory,Nlfuncdict,Falpha,FBeta,FBetaS,l1,l2):
 
     return Falpha*(FBeta*C_x1x2*C_y1y2+FBetaS*C_x1y2*C_y1x2)
 
+
+def updateNoise(beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],extraNoiseFuncX=None,extraNoiseFuncY=None):
+
