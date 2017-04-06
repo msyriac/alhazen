@@ -32,7 +32,8 @@ def F(XY,f,fS,theory,NlfuncdictX,NlfuncdictY,ll1,ll2,l1,l2,cos2phi=None,sin2phi=
         WXYl1 = WXY(XY,theory,NlfuncdictX,l1)
         if gradCut is not None:
             WXYl1[l1>gradCut]=0.
-        WYl2 = WY(YY,theory,NlfuncdictY,l2) 
+        WYl2 = WY(YY,theory,NlfuncdictY,l2)
+        
         return ll1*WXYl1*WYl2*cfact
 
     
@@ -42,8 +43,8 @@ def F(XY,f,fS,theory,NlfuncdictX,NlfuncdictY,ll1,ll2,l1,l2,cos2phi=None,sin2phi=
         return f*np.nan_to_num(1./(theory.lCl(X+X,l1)+NlfuncdictX[X+X](l1)))*np.nan_to_num(1./(theory.lCl(Y+Y,l2)+NlfuncdictY[Y+Y](l2)))
     elif XY=='TE':
 
-        C_EE = lambda ell: theory.lCl('EE',ell)+NlfuncdictY['EE'](ell)
-        C_TT = lambda ell: theory.lCl('TT',ell)+NlfuncdictX['TT'](ell)
+        C_EE = lambda ell: np.nan_to_num(theory.lCl('EE',ell)+NlfuncdictY['EE'](ell))
+        C_TT = lambda ell: np.nan_to_num(theory.lCl('TT',ell)+NlfuncdictX['TT'](ell))
         C_TE = lambda ell: theory.lCl('TE',ell)
         
         C_EE_l1 = C_EE(l1)
@@ -54,14 +55,15 @@ def F(XY,f,fS,theory,NlfuncdictX,NlfuncdictY,ll1,ll2,l1,l2,cos2phi=None,sin2phi=
         prod1 = C_TE_l1*C_TE_l2
         prod2 = C_EE_l1*C_TT_l2
 
-        return (prod2*f - prod1*fS) / ( (C_TT(l1)*C_EE(l2)*prod2) - (prod1*prod1))
+        retval = np.nan_to_num(prod2*f - prod1*fS) *np.nan_to_num(1./ ( (C_TT(l1)*C_EE(l2)*prod2) - (prod1*prod1)))
+        return retval
     elif XY=='ET':
         ftemp = fS.copy()
         fS = f.copy()
         f = ftemp.copy()
 
-        C_EE = lambda ell: theory.lCl('EE',ell)+NlfuncdictX['EE'](ell)
-        C_TT = lambda ell: theory.lCl('TT',ell)+NlfuncdictY['TT'](ell)
+        C_EE = lambda ell: np.nan_to_num(theory.lCl('EE',ell)+NlfuncdictX['EE'](ell))
+        C_TT = lambda ell: np.nan_to_num(theory.lCl('TT',ell)+NlfuncdictY['TT'](ell))
         C_TE = lambda ell: theory.lCl('TE',ell)
         
         C_EE_l2 = C_EE(l2)
@@ -72,7 +74,7 @@ def F(XY,f,fS,theory,NlfuncdictX,NlfuncdictY,ll1,ll2,l1,l2,cos2phi=None,sin2phi=
         prod1 = C_TE_l2*C_TE_l1
         prod2 = C_EE_l2*C_TT_l1
 
-        return (prod2*f - prod1*fS) / ( (C_TT(l2)*C_EE(l1)*prod2) - (prod1*prod1))
+        return np.nan_to_num(prod2*f - prod1*fS) *np.nan_to_num(1./ ( (C_TT(l2)*C_EE(l1)*prod2) - (prod1*prod1)))
 
     
 def WXY(XY,theory,Nlfuncdict,l1):
@@ -114,6 +116,6 @@ def crossIntegrand(alphaXY,betaXY,theory,NlfuncdictX,NlfuncdictY,Falpha,FBeta,FB
  
                 
 
-    return Falpha*(FBeta*C_x1x2*C_y1y2+FBetaS*C_x1y2*C_y1x2)
+    return np.nan_to_num(Falpha*(FBeta*C_x1x2*C_y1y2+FBetaS*C_x1y2*C_y1x2))
 
 

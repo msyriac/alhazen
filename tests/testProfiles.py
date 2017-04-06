@@ -5,12 +5,7 @@ from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 import alhazen.halos as halos
 from scipy.interpolate import interp1d
 from orphics.theory.cosmology import LimberCosmology
-
-def npspace(minim,maxim,num,scale="lin"):
-    if scale=="lin" or scale=="linear":
-        return np.linspace(minim,maxim,num)
-    elif scale=="log":
-        return np.logspace(np.log10(minim),np.log10(maxim),num)
+from orphics.tools.stats import npspace
 
 iniFile = "../SZ_filter/input/pipeline.ini"
 Config = SafeConfigParser()

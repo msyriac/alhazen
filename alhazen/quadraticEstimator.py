@@ -1027,7 +1027,7 @@ class Estimator(object):
 
 
 
-def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noiseFuncEX,noiseFuncBX,noiseFuncTY,noiseFuncEY,noiseFuncBY,kellmin,kellmax,num_ells,independentExperiments=False,degx = 5.,degy = 5.,px = 1.5,TCMB = 2.7255e6,halo=False,gradCut=10000):
+def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noiseFuncEX,noiseFuncBX,noiseFuncTY,noiseFuncEY,noiseFuncBY,kellmin,kellmax,num_ells,spacing="linear",independentExperiments=False,degx = 5.,degy = 5.,px = 1.5,TCMB = 2.7255e6,halo=False,gradCut=10000):
     import flipper.liteMap as lm
     import itertools
     hugeTemplate = lm.makeEmptyCEATemplate(degx,degy,pixScaleXarcmin=px,pixScaleYarcmin=px)
@@ -1055,8 +1055,10 @@ def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noise
 
     Lmin = kellmin
     Lmax = kellmax
-    Ls = np.linspace(Lmin,Lmax,num_ells)
-
+    # Ls = np.linspace(Lmin,Lmax,num_ells)
+    from orphics.tools.stats import npspace
+    Ls = npspace(Lmin,Lmax,num_ells,spacing)
+    
     lx1 = lyMap
     ly1 = lxMap
     lx1sq = lx1**2.
@@ -1116,10 +1118,7 @@ def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noise
                     fS = None
 
                 Falpha = qfuncs.F(XY,f,fS,theory,NlfuncdictX,NlfuncdictY,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta,halo=halo,gradCut=gradCut)
-                # Falpha[l1<cmbellmin]=0.
-                # Falpha[l1>cmbellmax]=0.
-                # Falpha[l2<cmbellmin]=0.
-                # Falpha[l2>cmbellmax]=0.
+
 
             integral = (Falpha*f).sum()*dlx*dly
             Alinv = integral/((2.*np.pi)**2.)/L**2.
@@ -1170,25 +1169,15 @@ def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noise
             fbetaS = qfuncs.fXY(beta,theory,Ll2,Ll1,l2,l1,cos2phi=cosDelta,sin2phi=-sinDelta)
 
             Falpha = qfuncs.F(alpha,falpha,falphaS,theory,NlfuncdictX,NlfuncdictY,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta,halo=halo,gradCut=gradCut)
-            # Falpha[l1<cmbellmin]=0.
-            # Falpha[l1>cmbellmax]=0.
-            # Falpha[l2<cmbellmin]=0.
-            # Falpha[l2>cmbellmax]=0.
             Fbeta = qfuncs.F(beta,fbeta,fbetaS,theory,NlfuncdictX,NlfuncdictY,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta,halo=halo,gradCut=gradCut)
-            # Fbeta[l1<cmbellmin]=0.
-            # Fbeta[l1>cmbellmax]=0.
-            # Fbeta[l2<cmbellmin]=0.
-            # Fbeta[l2>cmbellmax]=0.
             FbetaS = qfuncs.F(beta,fbetaS,fbeta,theory,NlfuncdictX,NlfuncdictY,Ll2,Ll1,l2,l1,cos2phi=cosDelta,sin2phi=-sinDelta,halo=halo,gradCut=gradCut)
-            # FbetaS[l1<cmbellmin]=0.
-            # FbetaS[l1>cmbellmax]=0.
-            # FbetaS[l2<cmbellmin]=0.
-            # FbetaS[l2>cmbellmax]=0.
-
-
             integral = qfuncs.crossIntegrand(alpha,beta,theory,NlfuncdictX,NlfuncdictY,Falpha,Fbeta,FbetaS,l1,l2,independentExperiments=independentExperiments).sum()*dlx*dly
             N = integral/((2.*np.pi)**2.)
             crosses[alpha+beta].append(N)
         crosses[alpha+beta] = Als[alpha]*Als[beta]*np.array(crosses[alpha+beta])/4.
 
-    return Ls,crosses
+    Nls = {}
+    for polComb in polCombList:
+        Nls[polComb] = Als[polComb]*Ls**2./4.
+        
+    return Ls,Nls,crosses

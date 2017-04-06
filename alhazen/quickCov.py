@@ -14,42 +14,42 @@ import orphics.tools.cmb as cmb
 from scipy.interpolate import interp1d
 from numpy.fft import fftshift
 
-from alhazen.quadFunctions import fXY,F,crossIntegrand,WXY,WY
+from alhazen.quadFunctions_old import fXY,F,crossIntegrand,WXY,WY
 
 #polCombList=['TT','EB','EE','TB']
-polCombList=['TT','EB','TE','ET','EE','TB']
+#polCombList=['TT','EB','TE','ET','EE','TB']
 #polCombList=['TT','EB','TE','EE','TB']
-#polCombList=['TE']
+polCombList=['TE','ET']
 #polCombList=['TT']
 
 
-halo = False
+halo = True
 num_ells = 50 #300
 
-beamArcmin = 1.0
-noiseT = 1.0
-#noiseT = 5.0
-noiseP = np.sqrt(2.)*noiseT
-cmbellmin = 50
-cmbellmax = 8000
-kellmin = 2
-kellmax = 8000
-gradCut = None
-
-# hu reproduce
-# beamArcmin = 7.0
-# noiseT = 27.0
-# noiseP = 56.6
+# beamArcmin = 1.0
+# noiseT = 1.0
+# #noiseT = 5.0
+# noiseP = np.sqrt(2.)*noiseT
 # cmbellmin = 50
-# cmbellmax = 3000
+# cmbellmax = 8000
 # kellmin = 2
-# kellmax = 2000
+# kellmax = 8000
 # gradCut = None
+
+#hu reproduce
+beamArcmin = 7.0
+noiseT = 27.0
+noiseP = 56.6
+cmbellmin = 50
+cmbellmax = 3000
+kellmin = 2
+kellmax = 2000
+gradCut = None
 
 
 degx = 5.
 degy = 5.
-px = 1.5
+px = 2.0
 
 
 
@@ -241,9 +241,9 @@ for polComb in polCombList:
         huell,hunl = np.loadtxt(huFile,unpack=True,delimiter=',')
 
 
-    #base_line, = pl.add(Ls,4.*crosses[polComb+polComb]/2./np.pi,ls="--",label=polComb)
+    base_line, = pl.add(Ls,4.*crosses[polComb+polComb]/2./np.pi,ls="--",label=polComb)
     base_line, = pl.add(huell,hunl,ls='-.',label=polComb)
-    pl.add(Ls,4.*Als[polComb]*Ls**2./2./np.pi/4.,color=base_line.get_color())
+    #pl.add(Ls,4.*Als[polComb]*Ls**2./2./np.pi/4.,color=base_line.get_color())
     #pl.add(huell,hunl,ls='-.',color=col,label=polComb)
 
 pl.legendOn(loc='lower left',labsize=10)

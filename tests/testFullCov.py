@@ -14,26 +14,33 @@ ellkk = np.arange(2,9000,1)
 Clkk = theory.gCl("kk",ellkk)    
 
 
-polCombList = ['TT','TE','EE','TB','EB']
+polCombList = ['TT','TE','EE','TB','EB','ET']
+#polCombList = ['TE','ET']
 colorList = [None]*len(polCombList)
 
 kellmin = 2
 kellmax = 3000
-num_ells = 50
+num_ells = 100
 px = 2.0
 
+halo = True
+gradCut = 10000
 beam = 7.0
 noiseT = 27.0
 noiseP = 56.5
 tellmin = 2.
 tellmax = 3000.
 
+# beam = 1.0
+# noiseT = 3.0
+# noiseP = 3.5
+
 noiseFuncTX = cmb.get_noise_func(beam,noiseT,ellmin=tellmin,ellmax=tellmax,TCMB=TCMB)
 noiseFuncEX = cmb.get_noise_func(beam,noiseP,ellmin=tellmin,ellmax=tellmax,TCMB=TCMB)
 noiseFuncTY = noiseFuncTX
 noiseFuncEY = noiseFuncBY = noiseFuncBX = noiseFuncEX
 
-Ls,crosses = isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noiseFuncEX,noiseFuncBX,noiseFuncTY,noiseFuncEY,noiseFuncBY,kellmin,kellmax,num_ells,independentExperiments=False,degx = 5.,degy = 5.,px = px,TCMB = TCMB)
+Ls,Nls,crosses = isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noiseFuncEX,noiseFuncBX,noiseFuncTY,noiseFuncEY,noiseFuncBY,kellmin,kellmax,num_ells,spacing="log",independentExperiments=False,degx = 5.,degy = 5.,px = px,TCMB = TCMB,halo=halo,gradCut=gradCut)
 
 pl = Plotter(scaleY='log',scaleX='log')
 pl.add(ellkk,4.*Clkk/2./np.pi)
@@ -49,6 +56,7 @@ for polComb,col in zip(polCombList,colorList):
         huell,hunl = np.loadtxt(huFile,unpack=True,delimiter=',')
 
     pl.add(Ls,4.*crosses[polComb+polComb]/2./np.pi,color=col)
+    pl.add(Ls,4.*Nls[polComb]/2./np.pi,color=col,alpha=0.2)
     pl.add(huell,hunl,ls='--',color=col)
 
 
