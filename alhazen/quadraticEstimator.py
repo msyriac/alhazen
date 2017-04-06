@@ -1026,7 +1026,7 @@ class Estimator(object):
 
 
 
-
+@timeit
 def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noiseFuncEX,noiseFuncBX,noiseFuncTY,noiseFuncEY,noiseFuncBY,kellmin,kellmax,num_ells,spacing="linear",independentExperiments=False,degx = 5.,degy = 5.,px = 1.5,TCMB = 2.7255e6,halo=False,gradCut=10000):
     import flipper.liteMap as lm
     import itertools
@@ -1069,8 +1069,6 @@ def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noise
     ly2sq = ly2**2.
     phi_l1 = np.arctan2(lx1,ly1)    
 
-    
-    #=['TT']#,'EB','TE','ET','EE','TB']
 
     crosses = {}
     polCrosses = itertools.combinations_with_replacement(polCombList,2)
@@ -1111,13 +1109,12 @@ def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noise
             f = qfuncs.fXY(XY,theory,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta)
 
 
-            if True:
-                if (XY in ['TE','ET']):
-                    fS = qfuncs.fXY(XY,theory,Ll2,Ll1,l2,l1,cos2phi=cosDelta,sin2phi=-sinDelta)
-                else:
-                    fS = None
+            if (XY in ['TE','ET']):
+                fS = qfuncs.fXY(XY,theory,Ll2,Ll1,l2,l1,cos2phi=cosDelta,sin2phi=-sinDelta)
+            else:
+                fS = None
 
-                Falpha = qfuncs.F(XY,f,fS,theory,NlfuncdictX,NlfuncdictY,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta,halo=halo,gradCut=gradCut)
+            Falpha = qfuncs.F(XY,f,fS,theory,NlfuncdictX,NlfuncdictY,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta,halo=halo,gradCut=gradCut)
 
 
             integral = (Falpha*f).sum()*dlx*dly
@@ -1179,5 +1176,27 @@ def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noise
     Nls = {}
     for polComb in polCombList:
         Nls[polComb] = Als[polComb]*Ls**2./4.
-        
-    return Ls,Nls,crosses
+
+    print "Calculating mv..."
+    Nmv = []
+    for k,L in enumerate(Ls):
+        Nmat = np.zeros((len(polCombList),len(polCombList)))
+        polCrosses = itertools.combinations_with_replacement(polCombList,2)
+        for alpha,beta in polCrosses:
+            #print alpha,beta
+            Xalpha,Yalpha = alpha
+            Xbeta,Ybeta = beta
+
+            combs1 = [Xalpha+Xbeta,Yalpha+Ybeta]
+            combs2 = [Xalpha+Ybeta,Yalpha+Xbeta]
+            if not( all([combs in Cllist for combs in combs1])) and not(all([combs in Cllist for combs in combs2]) ):
+                #print "skipping"
+                continue
+            i = polCombList.index(alpha)
+            j = polCombList.index(beta)
+            Nmat[i,j] = crosses[alpha+beta][k]
+            Nmat[j,i] = crosses[alpha+beta][k]
+        Ninv = np.linalg.inv(Nmat)
+        Nmv.append(1./Ninv.sum())
+    Nmv = np.array(Nmv)
+    return Ls,Nls,crosses,Nmv
