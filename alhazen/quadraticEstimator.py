@@ -1,16 +1,13 @@
 from __future__ import division
 import numpy as np
+np.seterr(divide='ignore', invalid='ignore')
 import orphics.analysis.flatMaps as fmaps 
 
-#from scipy.fftpack import fft2,ifft2,fftshift,ifftshift,fftfreq
-#from numpy.fft import fft2,ifft2,fftshift,ifftshift,fftfreq
 from scipy.fftpack import fftshift,ifftshift,fftfreq
-#from pyfftw.interfaces.scipy_fftpack import fft2
-#from pyfftw.interfaces.scipy_fftpack import ifft2
-
 from enlib.fft import fft,ifft
 
 from orphics.tools.stats import timeit, bin2D
+import alhazen.quadFunctions as qfuncs
 
 import time
 import cPickle as pickle
@@ -654,7 +651,7 @@ class NlGenerator(object):
         self.binner = bin2D(self.N.modLMap, bin_edges)
         self.bin_edges = bin_edges
 
-    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],lxcutTX=0,lxcutTY=0,lycutTX=0,lycutTY=0,lxcutPX=0,lxcutPY=0,lycutPX=0,lycutPY=0,fgFileX=None,beamFileX=None,fgFileY=None,beamFileY=None,noiseFileTX=None,noiseFileTY=None,noiseFilePX=None,noiseFilePY=None):
+    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],lxcutTX=0,lxcutTY=0,lycutTX=0,lycutTY=0,lxcutPX=0,lxcutPY=0,lycutPX=0,lycutPY=0,fgFileX=None,beamFileX=None,fgFileY=None,beamFileY=None,noiseFuncTX=None,noiseFuncTY=None,noiseFuncPX=None,noiseFuncPY=None):
 
         def setDefault(A,B):
             if A is None:
@@ -673,12 +670,16 @@ class NlGenerator(object):
         self.N.lmax_T = max(tellmaxX,tellmaxY)
         self.N.lmax_P = max(pellmaxX,pellmaxY)
 
+        
         nTX,nPX = fmaps.whiteNoise2D([noiseTX,noisePX],beamX,self.N.modLMap, \
                                      TCMB=self.TCMB,lknees=lkneesX,alphas=alphasX,beamFile=beamFileX, \
-                                     noiseFiles = [noiseFileTX,noiseFilePX])
+                                     noiseFuncs = [noiseFuncTX,noiseFuncPX])
         nTY,nPY = fmaps.whiteNoise2D([noiseTY,noisePY],beamY,self.N.modLMap, \
                                      TCMB=self.TCMB,lknees=lkneesY,alphas=alphasY,beamFile=beamFileY, \
-                                     noiseFiles=[noiseFileTY,noiseFilePY])
+                                     noiseFuncs=[noiseFuncTY,noiseFuncPY])
+
+
+        
         fMaskTX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminX,lmax=tellmaxX,lxcut=lxcutTX,lycut=lycutTX)
         fMaskTY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminY,lmax=tellmaxY,lxcut=lxcutTY,lycut=lycutTY)
         fMaskPX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminX,lmax=pellmaxX,lxcut=lxcutPX,lycut=lycutPX)
@@ -792,7 +793,7 @@ class Estimator(object):
         All the 2d fourier objects below are pre-fftshifting. They must be of the same dimension.
 
         templateLiteMap: any object that contains the attributes Nx, Ny, pixScaleX, pixScaleY specifying map dimensions
-        theorySpectraForFilters: a orphics.theory.gaussianCov.TheorySpectra object with CMB Cls loaded
+        theorySpectraForFilters: an orphics.tools.cmb.TheorySpectra object with CMB Cls loaded
         theorySpectraForNorm=None: same as above but if you want to use a different cosmology in the expected value of the 2-pt
         noiseX2dTEB=[None,None,None]: a list of 2d arrays that corresponds to the noise power in T, E, B (same units as Cls above)
         noiseY2dTEB=[None,None,None]: the same as above but if you want to use a different experiment for the Y maps
@@ -1026,3 +1027,168 @@ class Estimator(object):
 
 
 
+def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noiseFuncEX,noiseFuncBX,noiseFuncTY,noiseFuncEY,noiseFuncBY,kellmin,kellmax,num_ells,independentExperiments=False,degx = 5.,degy = 5.,px = 1.5,TCMB = 2.7255e6,halo=False,gradCut=10000):
+    import flipper.liteMap as lm
+    import itertools
+    hugeTemplate = lm.makeEmptyCEATemplate(degx,degy,pixScaleXarcmin=px,pixScaleYarcmin=px)
+    lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(hugeTemplate)
+
+    # cmbellmin = 100
+    # cmbellmax = 3000
+    
+    NlfuncdictX = {}
+    NlfuncdictY = {}
+    NlfuncdictX['TT'] = noiseFuncTX
+    NlfuncdictX['EE'] = noiseFuncEX
+    NlfuncdictX['BB'] = noiseFuncBX
+    NlfuncdictY['TT'] = noiseFuncTY
+    NlfuncdictY['EE'] = noiseFuncEY
+    NlfuncdictY['BB'] = noiseFuncBY
+
+    nfreq = modLMap.max()
+    # assert nfreq>cmbellmax, "You need to make px smaller if you want to use a cmbellmax as high as "+str(cmbellmax)
+    assert nfreq>kellmax, "You need to make px smaller if you want to use a kellmax as high as "+str(kellmax)
+
+    dlx = np.diff(lxMap,axis=1)[0,0]
+    dly = np.diff(lyMap,axis=0)[0,0]
+
+
+    Lmin = kellmin
+    Lmax = kellmax
+    Ls = np.linspace(Lmin,Lmax,num_ells)
+
+    lx1 = lyMap
+    ly1 = lxMap
+    lx1sq = lx1**2.
+    ly1sq = ly1**2.
+    l1sq = lx1sq+ly1sq
+    l1 = np.sqrt(l1sq)
+    ly2 = -ly1.copy()
+    ly2sq = ly2**2.
+    phi_l1 = np.arctan2(lx1,ly1)    
+
+    
+    #=['TT']#,'EB','TE','ET','EE','TB']
+
+    crosses = {}
+    polCrosses = itertools.combinations_with_replacement(polCombList,2)
+
+
+    Cllist = ['TT','TE','EE','BB','ET']
+
+
+    Als = {}
+    for polComb in polCombList:
+        Als[polComb] = []
+    
+    for polComb in polCombList:
+        XY = polComb
+        X,Y = XY
+        YY = Y+Y
+
+
+        for L in Ls:
+
+            lx2 = L - lx1
+            lx2sq = lx2**2.
+            l2sq = lx2sq+ly2sq
+            l2 = np.sqrt(l2sq)
+            Ll1 = L*lx1
+            Ll2 = L*lx2
+
+            phi_l2 = np.arctan2(lx2,ly2)    
+
+
+            if polComb!='TT':
+                cosDelta = np.cos(2.*(phi_l1-phi_l2))
+                sinDelta = np.sin(2.*(phi_l1-phi_l2))
+            else:
+                cosDelta = None
+                sinDelta = None
+
+            f = qfuncs.fXY(XY,theory,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta)
+
+
+            if True:
+                if (XY in ['TE','ET']):
+                    fS = qfuncs.fXY(XY,theory,Ll2,Ll1,l2,l1,cos2phi=cosDelta,sin2phi=-sinDelta)
+                else:
+                    fS = None
+
+                Falpha = qfuncs.F(XY,f,fS,theory,NlfuncdictX,NlfuncdictY,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta,halo=halo,gradCut=gradCut)
+                # Falpha[l1<cmbellmin]=0.
+                # Falpha[l1>cmbellmax]=0.
+                # Falpha[l2<cmbellmin]=0.
+                # Falpha[l2>cmbellmax]=0.
+
+            integral = (Falpha*f).sum()*dlx*dly
+            Alinv = integral/((2.*np.pi)**2.)/L**2.
+            Als[polComb].append(1./(Alinv))
+
+
+
+    for polComb in polCombList:
+        Als[polComb] = np.array(Als[polComb])
+        
+
+    for alpha,beta in polCrosses:
+        print alpha,beta
+        Xalpha,Yalpha = alpha
+        Xbeta,Ybeta = beta
+
+        combs1 = [Xalpha+Xbeta,Yalpha+Ybeta]
+        combs2 = [Xalpha+Ybeta,Yalpha+Xbeta]
+        if not( all([combs in Cllist for combs in combs1])) and not(all([combs in Cllist for combs in combs2]) ):
+            print "skipping"
+            continue
+
+
+
+        crosses[alpha+beta] = []
+        for L in Ls:
+
+            lx2 = L - lx1
+            lx2sq = lx2**2.
+            l2sq = lx2sq+ly2sq
+            l2 = np.sqrt(l2sq)
+            Ll1 = L*lx1
+            Ll2 = L*lx2
+
+
+            phi_l2 = np.arctan2(lx2,ly2)    
+
+
+            cosDelta = np.cos(2.*(phi_l1-phi_l2))
+            sinDelta = np.sin(2.*(phi_l1-phi_l2))
+
+
+            falpha = qfuncs.fXY(alpha,theory,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta)
+            fbeta = qfuncs.fXY(beta,theory,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta)
+
+
+            falphaS = qfuncs.fXY(alpha,theory,Ll2,Ll1,l2,l1,cos2phi=cosDelta,sin2phi=-sinDelta)
+            fbetaS = qfuncs.fXY(beta,theory,Ll2,Ll1,l2,l1,cos2phi=cosDelta,sin2phi=-sinDelta)
+
+            Falpha = qfuncs.F(alpha,falpha,falphaS,theory,NlfuncdictX,NlfuncdictY,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta,halo=halo,gradCut=gradCut)
+            # Falpha[l1<cmbellmin]=0.
+            # Falpha[l1>cmbellmax]=0.
+            # Falpha[l2<cmbellmin]=0.
+            # Falpha[l2>cmbellmax]=0.
+            Fbeta = qfuncs.F(beta,fbeta,fbetaS,theory,NlfuncdictX,NlfuncdictY,Ll1,Ll2,l1,l2,cos2phi=cosDelta,sin2phi=sinDelta,halo=halo,gradCut=gradCut)
+            # Fbeta[l1<cmbellmin]=0.
+            # Fbeta[l1>cmbellmax]=0.
+            # Fbeta[l2<cmbellmin]=0.
+            # Fbeta[l2>cmbellmax]=0.
+            FbetaS = qfuncs.F(beta,fbetaS,fbeta,theory,NlfuncdictX,NlfuncdictY,Ll2,Ll1,l2,l1,cos2phi=cosDelta,sin2phi=-sinDelta,halo=halo,gradCut=gradCut)
+            # FbetaS[l1<cmbellmin]=0.
+            # FbetaS[l1>cmbellmax]=0.
+            # FbetaS[l2<cmbellmin]=0.
+            # FbetaS[l2>cmbellmax]=0.
+
+
+            integral = qfuncs.crossIntegrand(alpha,beta,theory,NlfuncdictX,NlfuncdictY,Falpha,Fbeta,FbetaS,l1,l2,independentExperiments=independentExperiments).sum()*dlx*dly
+            N = integral/((2.*np.pi)**2.)
+            crosses[alpha+beta].append(N)
+        crosses[alpha+beta] = Als[alpha]*Als[beta]*np.array(crosses[alpha+beta])/4.
+
+    return Ls,crosses

@@ -10,43 +10,55 @@ from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 from szlib.szcounts import ClusterCosmology
 from orphics.tools.stats import bin2D
 from szlib.sims import BattagliaSims
-import sys
+import sys,os
 print "Done importing modules..."
 
 
-numClusters = int(sys.argv[1])
-snap = int(sys.argv[2])
-saveName = sys.argv[3]
+iniFile = "input/submission.ini"
+Config = SafeConfigParser()
+Config.optionxform=str
+Config.read(iniFile)
 
-kappaStack = 0.
-inputKappaStack = 0.
-szStack = 0.
+numClusters = Config.getint('jobs','numClusters')
+snapRange = [int(x) for x in Config.get('jobs','snapRange').split(',')]
+saveName = Config.get('jobs','saveName')
 
-N = numClusters
+outDir = os.environ['WWW']+"plots/"
+# numClusters = int(sys.argv[1])
+# snap = int(sys.argv[2])
+# saveName = sys.argv[3]
 
-for i in range(N):
-    print i
+for snap in range(*snapRange):
 
-    kappa = enmap.read_map(saveName+"_kappa_"+str(i)+"_"+str(snap)+".hdf")
-    inputKappaMap = enmap.read_map(saveName+"_inpkappa_"+str(i)+"_"+str(snap)+".hdf")
-    szMap = enmap.read_map(saveName+"_sz_"+str(i)+"_"+str(snap)+".hdf")
+    kappaStack = 0.
+    inputKappaStack = 0.
+    szStack = 0.
 
-    kappaStack += kappa
-    inputKappaStack += inputKappaMap
-    szStack += szMap
+    N = numClusters
+
+    for i in range(N):
+        print i
+
+        kappa = enmap.read_map(saveName+"_kappa_"+str(i)+"_"+str(snap)+".hdf")
+        inputKappaMap = enmap.read_map(saveName+"_inpkappa_"+str(i)+"_"+str(snap)+".hdf")
+        szMap = enmap.read_map(saveName+"_sz_"+str(i)+"_"+str(snap)+".hdf")
+
+        kappaStack += kappa
+        inputKappaStack += inputKappaMap
+        szStack += szMap
 
 
 
-pl = Plotter()
-pl.plot2d(kappaStack/N)
-pl.done("output/recon.png")
+    pl = Plotter()
+    pl.plot2d(kappaStack/N)
+    pl.done(outDir+"recon_"+str(snap)+".png")
 
-pl = Plotter()
-pl.plot2d(inputKappaStack/N)
-pl.done("output/truestack.png")
+    pl = Plotter()
+    pl.plot2d(inputKappaStack/N)
+    pl.done(outDir+"truestack_"+str(snap)+".png")
 
-pl = Plotter()
-pl.plot2d(szStack/N)
-pl.done("output/szstack.png")
+    pl = Plotter()
+    pl.plot2d(szStack/N)
+    pl.done(outDir+"szstack_"+str(snap)+".png")
 
 

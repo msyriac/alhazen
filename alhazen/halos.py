@@ -56,7 +56,7 @@ def predictSN(polComb,noiseTY,noisePY,N,MM):
 
 
 
-@timeit
+#@timeit
 def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05,saveId=None,verbose=False,rayleighSigmaArcmin=None,returnKappa=False,winAtLens=None):
     M = 10.**log10Moverh
 
@@ -68,17 +68,19 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     
         
     cc = clusterCosmology
-    
+
+    cmb = False
     if winAtLens is None:
+        cmb = True
         comS = cc.results.comoving_radial_distance(cc.cmbZ)*cc.h
         comL = cc.results.comoving_radial_distance(z)*cc.h
         winAtLens = (comS-comL)/comS
-    print winAtLens
 
     kappaReal, r500 = NFWkappa(cc,M,c,z,modRMap*180.*60./np.pi,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
     
-    dAz = cc.results.angular_diameter_distance(z)
+    dAz = cc.results.angular_diameter_distance(z) * cc.h
     th500 = r500/dAz
+    #fiveth500 = 10.*np.pi/180./60. #5.*th500
     fiveth500 = 5.*th500
     # print "5theta500 " , fiveth500*180.*60./np.pi , " arcminutes"
     # print "maximum theta " , modRMap.max()*180.*60./np.pi, " arcminutes"
@@ -91,6 +93,8 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     k500 = simps(simps(kInt, yy), xx)
     
     if verbose: print "integral of kappa inside disc ",k500
+    kappaReal[modRMap>fiveth500] = 0. #### !!!!!!!!! Might not be necessary!
+    if cmb: print z,fiveth500*180.*60./np.pi
     Ukappa = kappaReal/k500
 
 
@@ -135,25 +139,29 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     Upower = Upower *area / (lmap.Nx*lmap.Ny)**2
         
     filter = np.nan_to_num(Upower/Nl2d)
+    #filter = np.nan_to_num(1./Nl2d)
     filter[modLMap>ellmax] = 0.
     filter[modLMap<ellmin] = 0.
     # pl = Plotter()
     # pl.plot2d(fftshift(filter))
     # pl.done("output/filter.png")
-
-    # bin_edges = np.arange(ellmin,ellmax,10)
-    # binner = bin2D(modLMap, bin_edges)
-    # centers, nl2dells = binner.bin(Nl2d)
-    # centers, upowerells = binner.bin(Upower)
-    # centers, filterells = binner.bin(filter)
-    # pl = Plotter()
-    # pl.add(centers,upowerells,label="upower")
-    # pl.add(centers,nl2dells,label="noise")
-    # pl.add(centers,filterells,label="filter")
-    # pl.add(ells,Nls,ls="--")
-    # pl.legendOn(loc='upper right')
-    # pl.done("output/filterells.png")
-
+    if (cmb): print Upower.sum()
+    # if not(cmb) and z>2.5:
+    #     bin_edges = np.arange(500,ellmax,100)
+    #     binner = bin2D(modLMap, bin_edges)
+    #     centers, nl2dells = binner.bin(Nl2d)
+    #     centers, upowerells = binner.bin(np.nan_to_num(Upower))
+    #     centers, filterells = binner.bin(filter)
+    #     from orphics.tools.io import Plotter
+    #     pl = Plotter(scaleY='log')
+    #     pl.add(centers,upowerells,label="upower")
+    #     pl.add(centers,nl2dells,label="noise")
+    #     pl.add(centers,filterells,label="filter")
+    #     pl.add(ells,Nls,ls="--")
+    #     pl.legendOn(loc='upper right')
+    #     #pl._ax.set_ylim(0,1e-8)
+    #     pl.done("output/filterells.png")
+    #     sys.exit()
     
     varinv = filter.sum()
     std = np.sqrt(1./varinv)
@@ -165,7 +173,7 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
 
     if returnKappa:
         return sn,ifft2(Uft).real*k500
-    return sn
+    return sn, k500, std
 
 
 

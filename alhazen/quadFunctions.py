@@ -16,7 +16,7 @@ def fXY(XY,theory,ll1,ll2,l1,l2,cos2phi=None,sin2phi=None):
     elif XY=='TB':
         return ll1*C('TE',l1)*sin2phi
 
-def F(XY,f,fS,theory,Nlfuncdict,ll1,ll2,l1,l2,cos2phi=None,sin2phi=None,halo=False,gradCut=None):
+def F(XY,f,fS,theory,NlfuncdictX,NlfuncdictY,ll1,ll2,l1,l2,cos2phi=None,sin2phi=None,halo=False,gradCut=None):
     X,Y = XY
 
     if halo:
@@ -29,21 +29,21 @@ def F(XY,f,fS,theory,Nlfuncdict,ll1,ll2,l1,l2,cos2phi=None,sin2phi=None,halo=Fal
         else:
             raise ValueError
         YY = Y+Y
-        WXYl1 = WXY(XY,theory,Nlfuncdict,l1)
+        WXYl1 = WXY(XY,theory,NlfuncdictX,l1)
         if gradCut is not None:
             WXYl1[l1>gradCut]=0.
-        WYl2 = WY(YY,theory,Nlfuncdict,l2) 
+        WYl2 = WY(YY,theory,NlfuncdictY,l2) 
         return ll1*WXYl1*WYl2*cfact
 
     
     if XY in ['TT','EE']:
-        return 0.5*f*np.nan_to_num(1./(theory.lCl(X+X,l1)+Nlfuncdict[X+X](l1)))*np.nan_to_num(1./(theory.lCl(Y+Y,l2)+Nlfuncdict[Y+Y](l2)))
+        return 0.5*f*np.nan_to_num(1./(theory.lCl(X+X,l1)+NlfuncdictX[X+X](l1)))*np.nan_to_num(1./(theory.lCl(Y+Y,l2)+NlfuncdictY[Y+Y](l2)))
     elif XY in ['EB','TB']:
-        return f*np.nan_to_num(1./(theory.lCl(X+X,l1)+Nlfuncdict[X+X](l1)))*np.nan_to_num(1./(theory.lCl(Y+Y,l2)+Nlfuncdict[Y+Y](l2)))
+        return f*np.nan_to_num(1./(theory.lCl(X+X,l1)+NlfuncdictX[X+X](l1)))*np.nan_to_num(1./(theory.lCl(Y+Y,l2)+NlfuncdictY[Y+Y](l2)))
     elif XY=='TE':
 
-        C_EE = lambda ell: theory.lCl('EE',ell)+Nlfuncdict['EE'](ell)
-        C_TT = lambda ell: theory.lCl('TT',ell)+Nlfuncdict['TT'](ell)
+        C_EE = lambda ell: theory.lCl('EE',ell)+NlfuncdictY['EE'](ell)
+        C_TT = lambda ell: theory.lCl('TT',ell)+NlfuncdictX['TT'](ell)
         C_TE = lambda ell: theory.lCl('TE',ell)
         
         C_EE_l1 = C_EE(l1)
@@ -60,8 +60,8 @@ def F(XY,f,fS,theory,Nlfuncdict,ll1,ll2,l1,l2,cos2phi=None,sin2phi=None,halo=Fal
         fS = f.copy()
         f = ftemp.copy()
 
-        C_EE = lambda ell: theory.lCl('EE',ell)+Nlfuncdict['EE'](ell)
-        C_TT = lambda ell: theory.lCl('TT',ell)+Nlfuncdict['TT'](ell)
+        C_EE = lambda ell: theory.lCl('EE',ell)+NlfuncdictX['EE'](ell)
+        C_TT = lambda ell: theory.lCl('TT',ell)+NlfuncdictY['TT'](ell)
         C_TE = lambda ell: theory.lCl('TE',ell)
         
         C_EE_l2 = C_EE(l2)
@@ -91,31 +91,29 @@ def WY(YY,theory,Nlfuncdict,l2):
     return W
 
 
-def crossIntegrand(alphaXY,betaXY,theory,Nlfuncdict,Falpha,FBeta,FBetaS,l1,l2):
+def crossIntegrand(alphaXY,betaXY,theory,NlfuncdictX,NlfuncdictY,Falpha,FBeta,FBetaS,l1,l2,independentExperiments=False):
     Xalpha, Yalpha = alphaXY
     Xbeta, Ybeta = betaXY
-
-    def totC(XY):
+    
+    def totC(XY,Nlfuncdict,indCheck):
         X,Y = XY
         YY = Y+Y
         if XY=='EB' or XY=='BE' or XY=='TB' or XY=='BT': return lambda ell: 0.
-        if X==Y:
+        if X==Y and not(indCheck):
             noise = Nlfuncdict[YY]
         else:
             noise = lambda ell: 0.
             
-        return lambda ell: theory.lCl(XY,ell)+noise(ell)
+        return lambda ell: np.nan_to_num(theory.lCl(XY,ell)+noise(ell))
     
-    C_x1x2 = totC(Xalpha+Xbeta)(l1)
-    C_y1y2 = totC(Yalpha+Ybeta)(l2)
-    C_x1y2 = totC(Xalpha+Ybeta)(l1)
-    C_y1x2 = totC(Yalpha+Xbeta)(l2)
+    C_x1x2 = totC(Xalpha+Xbeta,NlfuncdictX,indCheck=False)(l1)
+    C_y1y2 = totC(Yalpha+Ybeta,NlfuncdictY,indCheck=False)(l2)
+    C_x1y2 = totC(Xalpha+Ybeta,NlfuncdictX,indCheck=independentExperiments)(l1) # if they are the same experiment, it shouldn't
+    C_y1x2 = totC(Yalpha+Xbeta,NlfuncdictY,indCheck=independentExperiments)(l2) # matter if I pass X or Y noise
     
  
                 
 
     return Falpha*(FBeta*C_x1x2*C_y1y2+FBetaS*C_x1y2*C_y1x2)
 
-
-def updateNoise(beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],extraNoiseFuncX=None,extraNoiseFuncY=None):
 

@@ -9,7 +9,7 @@ import numpy as np
 import flipper.liteMap as lm
 from orphics.tools.io import Plotter
 from orphics.tools.stats import binInAnnuli
-import sys
+import sys,os
 
 from scipy.interpolate import interp1d
 from scipy.fftpack import fft2,ifft2,fftshift,ifftshift,fftfreq
@@ -34,6 +34,7 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 numcores = comm.Get_size()    
 
+outDir = os.environ['WWW']
 
 loadFile = None #"/astro/astronfs01/workarea/msyriac/act/normDec14_0_trimmed.pkl" #None
 saveFile = None #"/astro/astronfs01/workarea/msyriac/act/normDec14_0_trimmed_ellmin500.pkl"
@@ -55,7 +56,7 @@ if cutout:
     cutoutStr = "_cutout"
 
 #polCombList = ['TT','EE','EB','TB','TE','ET']
-polCombList = ['TT','EB']
+polCombList = ['TT','EB','TB','ET','EE','TE']
 #polCombList = ['EB']
 colorList = ['red','blue','green','orange','purple','brown']
 tonly = False
@@ -67,6 +68,15 @@ lensedTPath = lambda x: simRoot + "lensedCMBMaps_" + str(x).zfill(5) + "/order5_
 lensedQPath = lambda x: simRoot + "lensedCMBMaps_" + str(x).zfill(5) + "/order5_"+periodic+"lensedCMB_Q"+cutoutStr+"_1"+suffix+".fits"
 lensedUPath = lambda x: simRoot + "lensedCMBMaps_" + str(x).zfill(5) + "/order5_"+periodic+"lensedCMB_U"+cutoutStr+"_1"+suffix+".fits"
 kappaPath = lambda x: simRoot + "phiMaps_" + str(x).zfill(5) + "/kappaMap_sample.fits"
+
+# maskPath = simRoot+"fvsmapMaskSmoothed_00000.fits"
+# maskMap = lm.liteMapFromFits(maskPath)
+# pl = Plotter()
+# pl.plot2d(maskMap.data)
+# pl.done(outDir+"mask.png")
+# print maskMap.data
+# print maskMap.data.shape
+# sys.exit()
 
 simRoot1 = "/astro/astronfs01/workarea/msyriac/cmbSims/"
 beamPath = simRoot1 + "beam_0.txt"
@@ -117,6 +127,9 @@ whiteNoiseT = (np.pi / (180. * 60))**2.  * noiseT**2. / TCMB**2.
 whiteNoiseP = (np.pi / (180. * 60))**2.  * noiseP**2. / TCMB**2.  
 
 
+# w2 = np.mean(maskMap.data**2.)
+# w4 = np.mean(maskMap.data**4.)
+
 for k,i in enumerate(myIs):
     print i
 
@@ -141,6 +154,9 @@ for k,i in enumerate(myIs):
         gGenP1 = fmaps.GRFGen(lensedTLm.copy(),ellNoise,Npp,bufferFactor=1)
         gGenP2 = fmaps.GRFGen(lensedTLm.copy(),ellNoise,Npp,bufferFactor=1)
 
+    lensedULm.data = -lensedULm.data
+    lensedQLm.data = -lensedQLm.data
+        
     lensedTLm.data = fmaps.convolveBeam(lensedTLm.data,modLMap,beamTemplate)/TCMB
     lensedQLm.data = fmaps.convolveBeam(lensedQLm.data,modLMap,beamTemplate)/TCMB
     lensedULm.data = fmaps.convolveBeam(lensedULm.data,modLMap,beamTemplate)/TCMB
@@ -149,7 +165,13 @@ for k,i in enumerate(myIs):
     if noiseP>1.e-3: lensedQLm.data = lensedQLm.data + gGenP1.getMap(stepFilterEll=None)
     if noiseP>1.e-3: lensedULm.data = lensedULm.data + gGenP2.getMap(stepFilterEll=None)
 
-        
+
+    # lensedTLm.data = lensedTLm.data*maskMap.data
+    # lensedQLm.data = lensedQLm.data*maskMap.data
+    # lensedULm.data = lensedULm.data*maskMap.data
+
+    
+    
     fot,foe,fob = fmaps.TQUtoFourierTEB(lensedTLm.data.copy().astype(float),lensedQLm.data.copy().astype(float),lensedULm.data.copy().astype(float),modLMap,thetaMap)
 
     # rT = ifft2(fot).real + gGenT.getMap(stepFilterEll=None)
@@ -218,15 +240,17 @@ for k,i in enumerate(myIs):
 
 
         p2d = ft.powerFromLiteMap(kappaLm,reconLm,applySlepianTaper=False)
+        # p2d.powerMap = p2d.powerMap/w2
         centers, means = stats.binInAnnuli(p2d.powerMap, p2d.modLMap, bin_edges)
         listCrossPower[polComb].append( means )
 
 
 
         p2d = ft.powerFromLiteMap(reconLm,applySlepianTaper=False)
+        # p2d.powerMap = p2d.powerMap/w4
         centers, means = stats.binInAnnuli(p2d.powerMap, p2d.modLMap, bin_edges)
         listReconPower[polComb].append( means )
-        reconLm.writeFits(simRoot+"matRecon_"+ str(i).zfill(5)+"_"+polComb+".fits",overWrite=True)
+        # reconLm.writeFits(simRoot+"matRecon_"+ str(i).zfill(5)+"_"+polComb+".fits",overWrite=True)
 
     p2d = ft.powerFromLiteMap(kappaLm,applySlepianTaper=False)
     centers, means = stats.binInAnnuli(p2d.powerMap, p2d.modLMap, bin_edges)
@@ -234,8 +258,8 @@ for k,i in enumerate(myIs):
     if k==0: totInputPower = (means.copy()*0.).astype(dtype=np.float64)
 
     totInputPower = totInputPower + means
-    for j, polComb in enumerate(polCombList):
-        np.savetxt(simRoot+"matRecon_autopower_"+ str(i).zfill(5)+"_"+polComb+".txt",np.vstack((centers,listReconPower[polComb])).T)
+    # for j, polComb in enumerate(polCombList):
+    #     np.savetxt(simRoot+"matRecon_autopower_"+ str(i).zfill(5)+"_"+polComb+".txt",np.vstack((centers,listReconPower[polComb])).T)
 
 
 
@@ -301,9 +325,9 @@ else:
         ncents, npow = stats.binInAnnuli(Nlkk2d, p2d.modLMap, bin_edges)
         pl.add(ncents,npow,color=col,lw=2,ls="--")
 
-        dell,dwcls = np.loadtxt("data/dwpoints"+polComb+".csv",delimiter=',',unpack=True)
-        dwclkk = ((dell*(dell+1.))**2.)*dwcls*2.*np.pi/((dell+0.5)**4.)/4.
-        pl.add(dell,dwclkk,ls="none",marker="x",label="quicklens "+polComb,color=col)
+        #dell,dwcls = np.loadtxt("data/dwpoints"+polComb+".csv",delimiter=',',unpack=True)
+        #dwclkk = ((dell*(dell+1.))**2.)*dwcls*2.*np.pi/((dell+0.5)**4.)/4.
+        #pl.add(dell,dwclkk,ls="none",marker="x",label="quicklens "+polComb,color=col)
         
 
 
@@ -312,7 +336,7 @@ else:
 
     pl.legendOn(labsize=10,loc='lower left')
     pl._ax.set_xlim(kellmin,kellmax)
-    pl.done("tests/output/power.png")
+    pl.done(outDir+"power.png")
 
 
     # cross compare to power of input (percent)
@@ -329,7 +353,7 @@ else:
     pl._ax.set_xlim(kellmin,kellmax)
     pl._ax.axhline(y=0.,ls="--",color='black',alpha=0.5)
     pl._ax.set_ylim(-10.,10.)
-    pl.done("tests/output/percent.png")
+    pl.done(outDir+"percent.png")
 
     # cross compare to power of input (bias)
     pl = Plotter()
@@ -344,7 +368,7 @@ else:
     pl.legendOn(labsize=10,loc='upper right')
     pl._ax.set_xlim(kellmin,kellmax)
     pl._ax.axhline(y=0.,ls="--",color='black',alpha=0.5)
-    pl.done("tests/output/bias.png")
+    pl.done(outDir+"bias.png")
 
 
     # cross compared to theory (percent)
@@ -361,7 +385,7 @@ else:
     pl._ax.set_xlim(kellmin,kellmax)
     pl._ax.axhline(y=0.,ls="--",color='black',alpha=0.5)
     pl._ax.set_ylim(-10.,5.)
-    pl.done("tests/output/percentTheory.png")
+    pl.done(outDir+"percentTheory.png")
 
 
 
@@ -377,7 +401,7 @@ else:
     pl._ax.set_xlim(kellmin,kellmax)
     pl._ax.axhline(y=0.,ls="--",color='black',alpha=0.5)
     pl._ax.set_ylim(-30.,30.)
-    pl.done("tests/output/percentTheoryInput.png")
+    pl.done(outDir+"percentTheoryInput.png")
 
 
 
