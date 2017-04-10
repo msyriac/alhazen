@@ -47,7 +47,7 @@ colorList = ['red','blue','green','cyan','orange','purple']
 
 TCMB = 2.7255e6
 
-cambRoot = "/astro/u/msyriac/repos/cmb-lensing-projections/data/TheorySpectra/ell28k_highacc"
+#cambRoot = "/astro/u/msyriac/repos/cmb-lensing-projections/data/TheorySpectra/ell28k_highacc"
 dataFile = "/astro/astronfs01/workarea/msyriac/act/FinalScinetPaper/preparedMap_T_6.fits"
 
 print "Loading map..."
@@ -63,8 +63,12 @@ print templateMap.data.shape
 
 print "Interpolating Cls..."
 
-from orphics.tools.cmb import loadTheorySpectraFromCAMB
-theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,TCMB = TCMB,lpad=9000)
+#from orphics.tools.cmb import loadTheorySpectraFromCAMB
+#theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,TCMB = TCMB,lpad=9000)
+from orphics.theory.cosmology import Cosmology
+cc = Cosmology(lmax=8000,pickling=True)
+theory = cc.theory
+
 
 ellkk = np.arange(2,9000,1)
 Clkk = theory.gCl("kk",ellkk)    
@@ -125,7 +129,7 @@ pl.done("tests/output/testbin.png")
 
 
 
-cambRoot = "data/ell28k_highacc"
+#cambRoot = "data/ell28k_highacc"
 gradCut = None
 halo = True
 beam = 7.0
@@ -144,7 +148,7 @@ arc = deg*60.
 
 bin_edges = np.arange(10,3000,10)
 
-theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
+#theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
 lmap = lm.makeEmptyCEATemplate(raSizeDeg=arc/60., decSizeDeg=arc/60.,pixScaleXarcmin=px,pixScaleYarcmin=px)
 print lmap.data.shape
 myNls = NlGenerator(lmap,theory,bin_edges,gradCut=gradCut)
@@ -187,7 +191,7 @@ sys.exit()
 
 
 
-cambRoot = "data/ell28k_highacc"
+#cambRoot = "data/ell28k_highacc"
 gradCut = None
 halo = True
 beamY = 1.5
@@ -206,7 +210,7 @@ arc = deg*60.
 
 bin_edges = np.arange(10,3000,10)
 
-theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
+#theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
 lmap = lm.makeEmptyCEATemplate(raSizeDeg=arc/60., decSizeDeg=arc/60.,pixScaleXarcmin=px,pixScaleYarcmin=px)
 print lmap.data.shape
 myNls = NlGenerator(lmap,theory,bin_edges,gradCut=gradCut)

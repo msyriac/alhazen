@@ -94,7 +94,7 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     
     if verbose: print "integral of kappa inside disc ",k500
     kappaReal[modRMap>fiveth500] = 0. #### !!!!!!!!! Might not be necessary!
-    if cmb: print z,fiveth500*180.*60./np.pi
+    # if cmb: print z,fiveth500*180.*60./np.pi
     Ukappa = kappaReal/k500
 
 
@@ -145,7 +145,7 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     # pl = Plotter()
     # pl.plot2d(fftshift(filter))
     # pl.done("output/filter.png")
-    if (cmb): print Upower.sum()
+    # if (cmb): print Upower.sum()
     # if not(cmb) and z>2.5:
     #     bin_edges = np.arange(500,ellmax,100)
     #     binner = bin2D(modLMap, bin_edges)
@@ -186,14 +186,9 @@ def rayleigh(theta,sigma):
         
 
 
-#def NFWkappa(cc,massOverh,concentration,zL,thetaArc,sourceZ,overdensity=500.,critical=True,atClusterZ=True):
 def NFWkappa(cc,massOverh,concentration,zL,thetaArc,winAtLens,overdensity=500.,critical=True,atClusterZ=True):
 
-    # cmbZ = sourceZ
     comL  = (cc.results.comoving_radial_distance(zL) )*cc.h
-    # comS  = (cc.results.comoving_radial_distance(cmbZ) )*cc.h
-    # comLS = comS-comL
-    
 
     
 

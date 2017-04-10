@@ -651,7 +651,7 @@ class NlGenerator(object):
         self.binner = bin2D(self.N.modLMap, bin_edges)
         self.bin_edges = bin_edges
 
-    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],lxcutTX=0,lxcutTY=0,lycutTX=0,lycutTY=0,lxcutPX=0,lxcutPY=0,lycutPX=0,lycutPY=0,fgFileX=None,beamFileX=None,fgFileY=None,beamFileY=None,noiseFuncTX=None,noiseFuncTY=None,noiseFuncPX=None,noiseFuncPY=None):
+    def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],lxcutTX=0,lxcutTY=0,lycutTX=0,lycutTY=0,lxcutPX=0,lxcutPY=0,lycutPX=0,lycutPY=0,fgFuncX=None,beamFileX=None,fgFuncY=None,beamFileY=None,noiseFuncTX=None,noiseFuncTY=None,noiseFuncPX=None,noiseFuncPY=None):
 
         def setDefault(A,B):
             if A is None:
@@ -685,17 +685,17 @@ class NlGenerator(object):
         fMaskPX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminX,lmax=pellmaxX,lxcut=lxcutPX,lycut=lycutPX)
         fMaskPY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminY,lmax=pellmaxY,lxcut=lxcutPY,lycut=lycutPY)
 
-        if fgFileX is not None:
-            from scipy.interpolate import interp1d
-            fells,fg = np.loadtxt(fgFileX,unpack=True)
-            fgfunc = interp1d(fells,fg,bounds_error=False,fill_value=0.)
-            fg2d = fgfunc(self.N.modLMap) / self.TCMB**2.
+        if fgFuncX is not None:
+            #from scipy.interpolate import interp1d
+            #fells,fg = np.loadtxt(fgFileX,unpack=True)
+            #fgfunc = interp1d(fells,fg,bounds_error=False,fill_value=0.)
+            fg2d = fgFuncX(self.N.modLMap) #/ self.TCMB**2.
             nTX += fg2d
-        if fgFileY is not None:
-            from scipy.interpolate import interp1d
-            fells,fg = np.loadtxt(fgFileY,unpack=True)
-            fgfunc = interp1d(fells,fg,bounds_error=False,fill_value=0.)
-            fg2d = fgfunc(self.N.modLMap) / self.TCMB**2.
+        if fgFuncY is not None:
+            #from scipy.interpolate import interp1d
+            #fells,fg = np.loadtxt(fgFileY,unpack=True)
+            #fgfunc = interp1d(fells,fg,bounds_error=False,fill_value=0.)
+            fg2d = fgFuncY(self.N.modLMap) #/ self.TCMB**2.
             nTY += fg2d
 
             
@@ -1025,25 +1025,38 @@ class Estimator(object):
 
 
 
+def lensing_noise_including_fg(polCombList,theory,beamX,noiseTX,noisePX,lkneeTX,lkneePX,alphaTX,alphaPX,beamY,noiseTY,noisePY,lkneeTY,lkneePY,alphaTY,alphaPY,kellmin,kellmax,num_ells,independentExperiments=False,halo=True,gradCut=10000,fgFreqX=None,fgFreqY=None,constDict=None,ksz_battaglia_test_csv=None,tsz_battaglia_template_csv=None,degx = 5.,degy = 5.,px = 1.5,TCMB = 2.7255e6):
 
+    if (fgFreqX is not None) or (fgFreqY is not None):
+        from szlib.szcounts import fgNoises
+        fgs = fgNoises(constDict,ksz_battaglia_test_csv,tsz_battaglia_template_csv)
+        
+    
+    Ls,Nls,crosses,Nmv = isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noiseFuncEX,noiseFuncBX,noiseFuncTY,noiseFuncEY,noiseFuncBY,kellmin,kellmax,num_ells,spacing="linear",independentExperiments=independentExperiments,degx = degx,degy = degy,px = px,TCMB = TCMB,halo=halo,gradCut=gradCut)
+
+    
 @timeit
-def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noiseFuncEX,noiseFuncBX,noiseFuncTY,noiseFuncEY,noiseFuncBY,kellmin,kellmax,num_ells,spacing="linear",independentExperiments=False,degx = 5.,degy = 5.,px = 1.5,TCMB = 2.7255e6,halo=False,gradCut=10000):
+def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noiseFuncEX,noiseFuncBX,noiseFuncTY,noiseFuncEY,noiseFuncBY,kellmin,kellmax,num_ells,spacing="linear",independentExperiments=False,degx = 5.,degy = 5.,px = 1.5,TCMB = 2.7255e6,halo=False,gradCut=10000,fgFuncTX=lambda x: 0.,fgFuncEX=lambda x: 0.,fgFuncBX=lambda x: 0.,fgFuncTY=lambda x: 0.,fgFuncEY=lambda x: 0.,fgFuncBY=lambda x: 0.):
+    '''Quadratic estimator lensing minimum variance noise curves including full covariance.
+
+    noiseFuncs are functions of ell for total beam-deconvolved noise including foregrounds. Set to inf beyond the ellranges of interest.
+
+    
+    '''
+    
     import flipper.liteMap as lm
     import itertools
     hugeTemplate = lm.makeEmptyCEATemplate(degx,degy,pixScaleXarcmin=px,pixScaleYarcmin=px)
     lxMap,lyMap,modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(hugeTemplate)
 
-    # cmbellmin = 100
-    # cmbellmax = 3000
-    
     NlfuncdictX = {}
     NlfuncdictY = {}
-    NlfuncdictX['TT'] = noiseFuncTX
-    NlfuncdictX['EE'] = noiseFuncEX
-    NlfuncdictX['BB'] = noiseFuncBX
-    NlfuncdictY['TT'] = noiseFuncTY
-    NlfuncdictY['EE'] = noiseFuncEY
-    NlfuncdictY['BB'] = noiseFuncBY
+    NlfuncdictX['TT'] = lambda x: noiseFuncTX(x)+fgFuncTX(x)
+    NlfuncdictX['EE'] = lambda x: noiseFuncEX(x)+fgFuncEX(x)
+    NlfuncdictX['BB'] = lambda x: noiseFuncBX(x)+fgFuncBX(x)
+    NlfuncdictY['TT'] = lambda x: noiseFuncTY(x)+fgFuncTY(x)
+    NlfuncdictY['EE'] = lambda x: noiseFuncEY(x)+fgFuncEY(x)
+    NlfuncdictY['BB'] = lambda x: noiseFuncBY(x)+fgFuncBY(x)
 
     nfreq = modLMap.max()
     # assert nfreq>cmbellmax, "You need to make px smaller if you want to use a cmbellmax as high as "+str(cmbellmax)
@@ -1055,7 +1068,6 @@ def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noise
 
     Lmin = kellmin
     Lmax = kellmax
-    # Ls = np.linspace(Lmin,Lmax,num_ells)
     from orphics.tools.stats import npspace
     Ls = npspace(Lmin,Lmax,num_ells,spacing)
     
@@ -1128,14 +1140,14 @@ def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noise
         
 
     for alpha,beta in polCrosses:
-        print alpha,beta
+        #print alpha,beta
         Xalpha,Yalpha = alpha
         Xbeta,Ybeta = beta
 
         combs1 = [Xalpha+Xbeta,Yalpha+Ybeta]
         combs2 = [Xalpha+Ybeta,Yalpha+Xbeta]
         if not( all([combs in Cllist for combs in combs1])) and not(all([combs in Cllist for combs in combs2]) ):
-            print "skipping"
+            #print "skipping"
             continue
 
 
@@ -1200,3 +1212,25 @@ def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noise
         Nmv.append(1./Ninv.sum())
     Nmv = np.array(Nmv)
     return Ls,Nls,crosses,Nmv
+
+
+def residualBB(Ls,Clkk,Nlkk,theory,noiseFuncEX,fgFuncEX):
+
+    lx1 = lyMap
+    ly1 = lxMap
+    lx1sq = lx1**2.
+    ly1sq = ly1**2.
+    l1sq = lx1sq+ly1sq
+    l1 = np.sqrt(l1sq)
+    ly2 = -ly1.copy()
+    ly2sq = ly2**2.
+    phi_l1 = np.arctan2(lx1,ly1)    
+
+
+
+class FullCov(object):
+
+    def __init__(degx = 5.,degy = 5.,px = 1.5,TCMB = 2.7255e6):
+        import flipper.liteMap as lm
+        hugeTemplate = lm.makeEmptyCEATemplate(degx,degy,pixScaleXarcmin=px,pixScaleYarcmin=px)
+        self.lxMap,self.lyMap,self.modLMap,self.thetaMap,self.lx,self.ly = fmaps.getFTAttributesFromLiteMap(hugeTemplate)

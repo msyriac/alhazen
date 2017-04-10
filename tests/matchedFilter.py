@@ -10,8 +10,8 @@ from alhazen.quadraticEstimator import NlGenerator,getMax
 
 #Mexp = 14.4 #np.log10(2.e14)
 Mexp = np.log10(2.e14)
-z = 0.5
-c = 3.0 #1.18
+z = 0.7
+c = 3.2 #1.18
 
 clusterParams = 'LACluster' # from ini file
 cosmologyName = 'LACosmology' # from ini file
@@ -35,20 +35,20 @@ theory = cc.theory
 
 
 # Make a CMB Noise Curve
-cambRoot = "data/ell28k_highacc"
+#cambRoot = "data/ell28k_highacc"
 gradCut = 2000
 halo = True
-beamX = 7.0
-beamY = 1.5
-noiseTX = 40.0
+beamX = 1.0
+beamY = 1.0
+noiseTX = 10.0
 noisePX = 14.14
-noiseTY = 11.0
+noiseTY = 10.0
 noisePY = 14.14
 tellmin = 2
 tellmax = 8000
 pellmin = 2
 pellmax = 8000
-polComb = 'EB'
+polComb = 'TT'
 kmin = 100
 kmax = getMax(polComb,tellmax,pellmax)
 
@@ -56,7 +56,7 @@ deg = 10.
 px = 0.5
 dell = 10
 bin_edges = np.arange(kmin,kmax,dell)+dell
-theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
+#theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
 lmap = lm.makeEmptyCEATemplate(raSizeDeg=deg, decSizeDeg=deg,pixScaleXarcmin=px,pixScaleYarcmin=px)
 myNls = NlGenerator(lmap,theory,bin_edges,gradCut=gradCut)
 myNls.updateNoise(beamX,noiseTX,noisePX,tellmin,tellmax,pellmin,pellmax,beamY=beamY,noiseTY=noiseTY,noisePY=noisePY)
@@ -77,7 +77,7 @@ pl.done("output/nl.png")
 
 overdensity=200.
 critical=False
-atClusterZ=True
+atClusterZ=False
 
 
 
@@ -86,7 +86,7 @@ atClusterZ=True
 # atClusterZ=False
 kellmax = 8000
 
-sn = NFWMatchedFilterSN(cc,Mexp,c,z,ells=ls,Nls=Nls,kellmax=kellmax,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+sn,k,std = NFWMatchedFilterSN(cc,Mexp,c,z,ells=ls,Nls=Nls,kellmax=kellmax,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 
-print sn
+print sn*np.sqrt(1000.)
 

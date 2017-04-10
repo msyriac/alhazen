@@ -11,7 +11,11 @@ from szlib.szcounts import ClusterCosmology
 from orphics.tools.stats import bin2D
 from szlib.sims import BattagliaSims
 from enlib.fft import fft,ifft
+import os
 print "Done importing modules..."
+
+
+outDir = os.environ['WWW']+"plots/kappatest/"
 
 def getKappaSZ(bSims,snap,massIndex,px,thetaMapshape):
     b = bSims
@@ -45,10 +49,10 @@ def getKappaSZ(bSims,snap,massIndex,px,thetaMapshape):
     print z, projectedM500
     # pl = Plotter()
     # pl.plot2d(kappaMap)
-    # pl.done("output/kappasim.png")
+    # pl.done(outDir+"kappasim.png")
     # pl = Plotter()
     # pl.plot2d(szMap)
-    # pl.done("output/szsim.png")
+    # pl.done(outDir+"szsim.png")
     # sys.exit()
 
     print "kappaint ", kappaMap[thetaMap*60.*180./np.pi<10.].mean()
@@ -99,8 +103,12 @@ comS = cc.results.comoving_radial_distance(zstar)*cc.h
 winAtLens = (comS-comL)/comS
 
 kappaMap,r500 = NFWkappa(cc,massOverh,concentration,zL,thetaMap*180.*60./np.pi,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+arcmax = 20.
+dt = 0.05
+thetaRange = np.arange(dt,arcmax,dt)
+kappa1d,r5001d = NFWkappa(cc,massOverh,concentration,zL,thetaRange,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 snap = 43
-#b = BattagliaSims(constDict)
+b = BattagliaSims(constDict)
 
 # === CMB POWER SPECTRUM ===      
 ps = powspec.read_spectrum("data/cl_lensinput.dat")
@@ -129,8 +137,9 @@ if pol:
 else:
     polCombList = ["TT"]
 
+
 theory = cc.theory
-nT,nP,nP = fmaps.whiteNoise2D([0.01,0.0,3.0],0.01,modLMap,TCMB = TCMB)
+nT,nP,nP = fmaps.whiteNoise2D([3.0,3.0,3.0],0.01,modLMap,TCMB = TCMB)
 gradCut = 2000
 cmbellmin = 200
 cmbellmax = 8000
@@ -162,7 +171,7 @@ qest = Estimator(templateLM,
 # pl = Plotter(scaleY='log')
 # pl.add(bin_edges,theory.gCl("kk",bin_edges))
 # pl.add(ls,Nls)
-# pl.done("output/nl.png")
+# pl.done(outDir+"nl.png")
 
 szX = False
 szY = False
@@ -183,17 +192,17 @@ trueKappaStack = thetaMap*0.
 szStack = thetaMap*0.
 lX = thetaMap*0.
 lY = thetaMap*0.
-N = 2000
+N = 100
 massIndices = range(300)
 for i in range(N):
     print i
     map = enmap.rand_map(shape, wcs, ps)/TCMB
 
 
-    #massIndex = massIndices[i]
-    #inputKappaMap, szMap = getKappaSZ(b,snap,massIndex,px,thetaMap.shape)
-    inputKappaMap = kappaMap
-    szMap = 0.
+    massIndex = massIndices[i]
+    inputKappaMap, szMap = getKappaSZ(b,snap,massIndex,px,thetaMap.shape)
+    #inputKappaMap = kappaMap
+    #szMap = 0.
 
     trueKappaStack += inputKappaMap
     szStack += szMap
@@ -223,14 +232,13 @@ for i in range(N):
     # if i==0:
     #     pl = Plotter()
     #     pl.plot2d(enmap.project(lensedMapX,shapeTen,wcsTen))
-    #     pl.done("output/lensedX.png")
+    #     pl.done(outDir+"lensedX.png")
     #     pl = Plotter()
     #     pl.plot2d(enmap.project(lensedMapY,shapeTen,wcsTen))
-    #     pl.done("output/lensedY.png")
+    #     pl.done(outDir+"lensedY.png")
     #     pl = Plotter()
     #     pl.plot2d(enmap.project(lensedMapY,shapeTen,wcsTen)-enmap.project(map,shapeTen,wcsTen))
-    #     pl.done("output/diff.png")
-
+    #     pl.done(outDir+"diff.png")
 
     
     fotX = fft(lensedMapX,axes=[-2,-1])
@@ -239,6 +247,8 @@ for i in range(N):
     print "Reconstructing" , i , " ..."
     qest.updateTEB_X(fotX,alreadyFTed=True)
     qest.updateTEB_Y(fotY,alreadyFTed=True)
+    # qest.updateTEB_X(fotX[0],fotX[1],fotX[2],alreadyFTed=True)
+    # qest.updateTEB_Y(fotY[0],fotY[1],fotY[2],alreadyFTed=True)
     kappa = qest.getKappa(polCombList[0]).real
         
     kappaStack += kappa
@@ -249,15 +259,36 @@ for i in range(N):
 
 pl = Plotter()
 pl.plot2d(kappaStack/N)
-pl.done("output/recon.png")
+pl.done(outDir+"recon.png")
 
 pl = Plotter()
 pl.plot2d(trueKappaStack/N)
-pl.done("output/truestack.png")
+pl.done(outDir+"truestack.png")
 
 pl = Plotter()
 pl.plot2d(szStack/N)
-pl.done("output/szstack.png")
+pl.done(outDir+"szstack.png")
+
+filtInput = fmaps.stepFunctionFilterLiteMap(trueKappaStack/N,modLMap,kellmax)
+
+pl = Plotter()
+pl.plot2d(filtInput)
+pl.done(outDir+"filtinput.png")
+
+
+dt = 0.2
+thetaRange = np.arange(dt,arcmax,dt)
+breal = bin2D(thetaMap*180.*60./np.pi,thetaRange)
+cents,inps = breal.bin(trueKappaStack/N)
+cents,inpsFilt = breal.bin(filtInput)
+cents,recons = breal.bin(kappaStack/N)
+
+pl = Plotter()
+#pl.add(thetaRange,kappa1d)
+pl.add(cents,inps,ls="--")
+pl.add(cents,inpsFilt)
+pl.add(cents,recons)
+pl.done(outDir+"profiles.png")
 
 
 
@@ -272,4 +303,4 @@ pl.done("output/szstack.png")
 # cleanKappa = kappaStack - kappa
 # pl = Plotter()
 # pl.plot2d(cleanKappa/N)
-# pl.done("output/cleanrecon.png")
+# pl.done(outDir+"cleanrecon.png")
