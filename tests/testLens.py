@@ -9,7 +9,7 @@ from ConfigParser import SafeConfigParser
 from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 from szlib.szcounts import ClusterCosmology
 from orphics.tools.stats import bin2D
-from szlib.sims import BattagliaSims
+from szlib.sims import BattagliaSims, getKappaSZ
 from enlib.fft import fft,ifft
 import os
 print "Done importing modules..."
@@ -17,46 +17,6 @@ print "Done importing modules..."
 
 outDir = os.environ['WWW']+"plots/kappatest/"
 
-def getKappaSZ(bSims,snap,massIndex,px,thetaMapshape):
-    b = bSims
-    #snap = 44
-    #massIndex = 40
-    PIX = 2048
-    maps, z, kappaSimDat, szMapuKDat, projectedM500, trueM500, trueR500, pxInRad, pxInRad = b.getMaps(snap,massIndex,freqGHz=150.)
-    pxIn = pxInRad * 180.*60./np.pi
-    hwidth = PIX*pxIn/2.
-    
-    # input pixelization
-    shapeSim, wcsSim = enmap.geometry(pos=[[-hwidth*arcmin,-hwidth*arcmin],[hwidth*arcmin,hwidth*arcmin]], res=pxIn*arcmin, proj="car")
-    kappaSim = enmap.enmap(kappaSimDat,wcsSim)
-    szMapuK = enmap.enmap(szMapuKDat,wcsSim)
-    
-    # downgrade to native
-    shapeOut, wcsOut = enmap.geometry(pos=[[-hwidth*arcmin,-hwidth*arcmin],[hwidth*arcmin,hwidth*arcmin]], res=px*arcmin, proj="car")
-    kappaMap = enmap.project(kappaSim,shapeOut,wcsOut)
-    szMap = enmap.project(szMapuK,shapeOut,wcsOut)
-
-    print thetaMapshape
-    print szMap.shape
-    diffPad = ((np.array(thetaMapshape) - np.array(szMap.shape))/2.+0.5).astype(int)
-    
-    apodWidth = 25
-    kappaMap = enmap.pad(enmap.apod(kappaMap,apodWidth),diffPad)[:-1,:-1]
-    szMap = enmap.pad(enmap.apod(szMap,apodWidth),diffPad)[:-1,:-1]
-    print szMap.shape
-    assert szMap.shape==thetaMap.shape
-
-    print z, projectedM500
-    # pl = Plotter()
-    # pl.plot2d(kappaMap)
-    # pl.done(outDir+"kappasim.png")
-    # pl = Plotter()
-    # pl.plot2d(szMap)
-    # pl.done(outDir+"szsim.png")
-    # sys.exit()
-
-    print "kappaint ", kappaMap[thetaMap*60.*180./np.pi<10.].mean()
-    return kappaMap,szMap
 
 
 # === COSMOLOGY ===
@@ -75,38 +35,38 @@ TCMB = 2.7255e6
 massOverh = 2.e14
 concentration = 3.2
 zL = 0.7
-# massOverh = 2.e15
-# concentration = 3.2
-# zL = 1.0
 sourceZ = 1100.
-overdensity = 180.
-critical = False
-atClusterZ = False
+
+# overdensity = 180.
+# critical = False
+# atClusterZ = False
+
+overdensity = 500.
+critical = True
+atClusterZ = True
 
 # === TEMPLATE MAP ===
 px = 0.2
 arc = 100
 hwidth = arc/2.
-hwidthTen = 5.
+pxDown = 0.2
 deg = utils.degree
 arcmin =  utils.arcmin
 shape, wcs = enmap.geometry(pos=[[-hwidth*arcmin,-hwidth*arcmin],[hwidth*arcmin,hwidth*arcmin]], res=px*arcmin, proj="car")
-shapeTen, wcsTen = enmap.geometry(pos=[[-hwidthTen*arcmin,-hwidthTen*arcmin],[hwidthTen*arcmin,hwidthTen*arcmin]], res=px*arcmin, proj="car")
+shapeDown, wcsDown = enmap.geometry(pos=[[-hwidth*arcmin,-hwidth*arcmin],[hwidth*arcmin,hwidth*arcmin]], res=pxDown*arcmin, proj="car")
 thetaMap = enmap.posmap(shape, wcs)
 thetaMap = np.sum(thetaMap**2,0)**0.5
+thetaMapDown = enmap.posmap(shapeDown, wcsDown)
+thetaMapDown = np.sum(thetaMapDown**2,0)**0.5
 
 
 # === KAPPA MAP ===
 comL = cc.results.comoving_radial_distance(zL)*cc.h
-zstar = 1100.
-comS = cc.results.comoving_radial_distance(zstar)*cc.h
+comS = cc.results.comoving_radial_distance(sourceZ)*cc.h
 winAtLens = (comS-comL)/comS
 
 kappaMap,r500 = NFWkappa(cc,massOverh,concentration,zL,thetaMap*180.*60./np.pi,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
-arcmax = 20.
-dt = 0.05
-thetaRange = np.arange(dt,arcmax,dt)
-kappa1d,r5001d = NFWkappa(cc,massOverh,concentration,zL,thetaRange,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+arcmax = 10.
 snap = 43
 b = BattagliaSims(constDict)
 
@@ -119,10 +79,18 @@ ps = powspec.read_spectrum("data/cl_lensinput.dat")
 
 class template:
     pass
-
+    # def __init__(self):
+    #     self.data = np.asarray(0.).reshape(-1)
+    # def copy(self):
+    #     tempCopy = template()
+    #     tempCopy.Ny,tempCopy.Nx = self.Ny,self.Nx
+    #     tempCopy.pixScaleY,tempCopy.pixScaleX = self.pixScaleY,self.pixScaleX
+    #     return tempCopy
+    
 templateLM = template()
-templateLM.Ny, templateLM.Nx = thetaMap.shape
-templateLM.pixScaleY, templateLM.pixScaleX = thetaMap.pixshape()
+templateLM.Ny, templateLM.Nx = thetaMapDown.shape
+Ny, Nx = thetaMapDown.shape
+templateLM.pixScaleY, templateLM.pixScaleX = thetaMapDown.pixshape()
 
 from orphics.analysis import flatMaps as fmaps
 from alhazen.quadraticEstimator import Estimator
@@ -138,12 +106,41 @@ else:
     polCombList = ["TT"]
 
 
+# simRoot1 = "/astro/astronfs01/workarea/msyriac/cmbSims/"
+# beamPath = simRoot1 + "beam_0.txt"
+# l,beamells = np.loadtxt(beamPath,unpack=True,usecols=[0,1])
+fwhm = 1.0
+tht_fwhm= np.deg2rad(fwhm / 60.)
+l = np.arange(0.,10000.)
+beamells = np.exp(-(tht_fwhm**2.)*(l**2.) / (8.*np.log(2.)))
+beamTemplate = fmaps.makeTemplate(l,beamells,modLMap)
+
+noiseT = 0.1
+noiseP = np.sqrt(2.)*noiseT
+whiteNoiseT = (np.pi / (180. * 60))**2.  * noiseT**2. / TCMB**2.  
+whiteNoiseP = (np.pi / (180. * 60))**2.  * noiseP**2. / TCMB**2.  
+
+
+ellNoise = np.arange(0,modLMap.max())
+Ntt = ellNoise*0.+np.nan_to_num(whiteNoiseT)
+Npp = ellNoise*0.+np.nan_to_num(whiteNoiseP)
+Ntt[0] = 0.
+Npp[0] = 0.
+gGenT = fmaps.GRFGen(templateLM,ellNoise,Ntt,bufferFactor=1)
+gGenP1 = fmaps.GRFGen(templateLM,ellNoise,Npp,bufferFactor=1)
+gGenP2 = fmaps.GRFGen(templateLM,ellNoise,Npp,bufferFactor=1)
+
 theory = cc.theory
-nT,nP,nP = fmaps.whiteNoise2D([3.0,3.0,3.0],0.01,modLMap,TCMB = TCMB)
+fot = np.zeros((templateLM.Ny,templateLM.Nx))+0.j
+filt_noiseT = fot.copy()*0.+np.nan_to_num(gGenT.power/ beamTemplate[:,:]**2.)
+filt_noiseE = fot.copy()*0.+np.nan_to_num(gGenP1.power/ beamTemplate[:,:]**2.)
+filt_noiseB = fot.copy()*0.+np.nan_to_num(gGenP2.power/ beamTemplate[:,:]**2.)
+
+
 gradCut = 2000
-cmbellmin = 200
+cmbellmin = 20
 cmbellmax = 8000
-kellmin = 100
+kellmin = 20
 kellmax = 8000
 
 fMaskCMB = fmaps.fourierMask(lx,ly,modLMap,lmin=cmbellmin,lmax=cmbellmax)
@@ -151,27 +148,18 @@ fMask = fmaps.fourierMask(lx,ly,modLMap,lmin=kellmin,lmax=kellmax)
 qest = Estimator(templateLM,
                  theory,
                  theorySpectraForNorm=None,
-                 noiseX2dTEB=[nT,nP,nP],
-                 noiseY2dTEB=[nT,nP,nP],
+                 noiseX2dTEB=[filt_noiseT,filt_noiseE,filt_noiseB],
+                 noiseY2dTEB=[filt_noiseT,filt_noiseE,filt_noiseB],
                  fmaskX2dTEB=[fMaskCMB]*3,
                  fmaskY2dTEB=[fMaskCMB]*3,
                  fmaskKappa=fMask,
                  doCurl=False,
                  TOnly=not(pol),
                  halo=True,
-                 gradCut=gradCut,verbose=True,
+                 gradCut=gradCut,verbose=False,
                  loadPickledNormAndFilters=None,
                  savePickledNormAndFilters=None)
 
-
-# bin_edges = np.arange(kellmin,kellmax,20)
-# b = bin2D(modLMap,bin_edges)
-# ls,Nls = b.bin(qest.N.Nlkk['EB'])
-
-# pl = Plotter(scaleY='log')
-# pl.add(bin_edges,theory.gCl("kk",bin_edges))
-# pl.add(ls,Nls)
-# pl.done(outDir+"nl.png")
 
 szX = False
 szY = False
@@ -185,33 +173,57 @@ szY = False
 # szX = False
 # szY = True
 
+#win = fmaps.initializeCosineWindowData(Ny,Nx,lenApod=100,pad=10)
+win = 1.
+w2 = np.mean(win**2.)
+
 
 # === RUN N SIMS ===      
-kappaStack = thetaMap*0.
-trueKappaStack = thetaMap*0.
-szStack = thetaMap*0.
-lX = thetaMap*0.
-lY = thetaMap*0.
-N = 100
+kappaStack = 0.
+kappaFix = 0.
+trueKappaStack = 0.
+szStack = 0.
+N = 1000
 massIndices = range(300)
+avgM500 = 0.
+avgz = 0.
+
+# remove to test norm dependence
+ells = np.array(range(ps[0,0,:].size))
+ps[0,0,:] = theory.uCl('TT',ells)*TCMB**2.
+
+# pl = Plotter(scaleY='log',scaleX='log')
+# pl.add(ells,ps[0,0,:]*ells**2.)
+# pl.add(ells,theory.uCl('TT',ells)*ells**2.*TCMB**2.)
+# pl.done(outDir+"cls.png")
+# sys.exit()
+
+
 for i in range(N):
-    print i
     map = enmap.rand_map(shape, wcs, ps)/TCMB
 
 
-    massIndex = massIndices[i]
-    inputKappaMap, szMap = getKappaSZ(b,snap,massIndex,px,thetaMap.shape)
-    #inputKappaMap = kappaMap
-    #szMap = 0.
+    # massIndex = massIndices[i]
+    # inputKappaMap, szMap,M500,z = getKappaSZ(b,snap,massIndex,px,thetaMap.shape)
+    # avgM500 += M500
+    # avgz += z
+    inputKappaMap = kappaMap
+    szMap = kappaMap.copy()*0.
 
-    trueKappaStack += inputKappaMap
-    szStack += szMap
+    if int(pxDown/px)>1:
+        inpDown = enmap.downgrade(inputKappaMap,pxDown/px)
+        szDown = enmap.downgrade(szMap,pxDown/px)
+    else:
+        inpDown = inputKappaMap
+        szDown = szMap
+    trueKappaStack += inpDown
+    szStack += szDown
 
     # === DEFLECTION MAP ===
     a = alphaMaker(thetaMap)
     alpha = a.kappaToAlpha(inputKappaMap,test=False)
     alphamod = 180.*60.*np.sum(alpha**2,0)**0.5/np.pi
-    print "alphaint ", alphamod[thetaMap*60.*180./np.pi<10.].mean()
+    # print "alphaint ", alphamod[thetaMap*60.*180./np.pi<10.].mean()
     pos = thetaMap.posmap() + alpha
     pix = thetaMap.sky2pix(pos, safe=False)
 
@@ -219,76 +231,134 @@ for i in range(N):
 
 
 
-    lensedTQU = lensing.displace_map(map, pix,order=5)
-    #lensedMapX = ifft(enmap.map2harm(lensedTQU),axes=[-2,-1],normalize=True).real 
-    lensedMapX = enmap.ifft(enmap.map2harm(lensedTQU),normalize=True).real 
+    lensedTQU = lensing.displace_map(map, pix,order=5)+0.j
+    lensedMapX = lensedTQU
     lensedMapY = lensedMapX.copy()
 
     if szX:
-        lensedMapX += (szMap/TCMB)
+        lensedMapX += (szMap/TCMB)*10.
     if szY:
-        lensedMapY += (szMap/TCMB)
+        lensedMapY += (szMap/TCMB)*10.
+
+    if int(pxDown/px)>1:
+        lensedMapX = enmap.downgrade(lensedMapX,pxDown/px)
+        lensedMapY = enmap.downgrade(lensedMapY,pxDown/px)
+        
+    lensedMapX = fmaps.convolveBeam(lensedMapX,modLMap,beamTemplate)
+    lensedMapY = fmaps.convolveBeam(lensedMapY,modLMap,beamTemplate)
+
+
+
+    if noiseT>1.e-3: lensedMapX = lensedMapX + gGenT.getMap(stepFilterEll=None)
+    if noiseT>1.e-3: lensedMapY = lensedMapY + gGenT.getMap(stepFilterEll=None)
+
+    # lensedMapYRot = np.rot90(lensedMapY.copy(),2)
     
-    # if i==0:
-    #     pl = Plotter()
-    #     pl.plot2d(enmap.project(lensedMapX,shapeTen,wcsTen))
-    #     pl.done(outDir+"lensedX.png")
-    #     pl = Plotter()
-    #     pl.plot2d(enmap.project(lensedMapY,shapeTen,wcsTen))
-    #     pl.done(outDir+"lensedY.png")
-    #     pl = Plotter()
-    #     pl.plot2d(enmap.project(lensedMapY,shapeTen,wcsTen)-enmap.project(map,shapeTen,wcsTen))
-    #     pl.done(outDir+"diff.png")
+    lensedMapX = lensedMapX*win
+    lensedMapY = lensedMapY*win
+    # lensedMapYRot = lensedMapYRot*win
+
+    if i==0:
+        pl = Plotter()
+        pl.plot2d(lensedMapX)
+        pl.done(outDir+"lensed.png")
 
     
-    fotX = fft(lensedMapX,axes=[-2,-1])
-    fotY = fft(lensedMapY,axes=[-2,-1])
+    
+    fotX = np.nan_to_num(fft(lensedMapX,axes=[-2,-1])/ beamTemplate[:,:])
+    fotY = np.nan_to_num(fft(lensedMapY,axes=[-2,-1])/ beamTemplate[:,:])
+    # fotYRot = np.nan_to_num(fft(lensedMapYRot,axes=[-2,-1])/ beamTemplate[:,:])
 
-    print "Reconstructing" , i , " ..."
+
+    if i%1==0: print "Reconstructing" , i , " ..."
     qest.updateTEB_X(fotX,alreadyFTed=True)
     qest.updateTEB_Y(fotY,alreadyFTed=True)
-    # qest.updateTEB_X(fotX[0],fotX[1],fotX[2],alreadyFTed=True)
-    # qest.updateTEB_Y(fotY[0],fotY[1],fotY[2],alreadyFTed=True)
-    kappa = qest.getKappa(polCombList[0]).real
-        
-    kappaStack += kappa
-    # lX += lensedMapX
-    # lY += lensedMapY
+    kappa = qest.getKappa(polCombList[0]).real/w2
 
+    # qest.updateTEB_Y(-fotYRot,alreadyFTed=True)
+    # kappaRot = qest.getKappa(polCombList[0]).real/w2
+
+    
+    kappaStack += kappa
+    # kappaFix += kappaRot #(kappa+kappaRot)/2.
+
+# avgM500 /= N
+# avgz /= N
+# overdensity = 500.
+# c500 = cc.Mdel_to_cdel(avgM500,avgz,overdensity)
+# print avgM500/1.e14,avgz,c500
+# critical = True
+# atClusterZ = True
+# simKappa,r500 = NFWkappa(cc,avgM500,c500,avgz,thetaMap*180.*60./np.pi,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+
+
+kappaStack /= N
+# kappaFix /= N
+trueKappaStack /= N
+szStack /= N
+
+
+stepmin = kellmin
+
+kappaStack = fmaps.stepFunctionFilterLiteMap(kappaStack,modLMap,kellmax,ellMin=stepmin)
+
+# pl = Plotter()
+# pl.plot2d(kappaFix)
+# pl.done(outDir+"reconfix.png")
 
 
 pl = Plotter()
-pl.plot2d(kappaStack/N)
+pl.plot2d(kappaStack)
 pl.done(outDir+"recon.png")
 
+
+
 pl = Plotter()
-pl.plot2d(trueKappaStack/N)
+pl.plot2d(trueKappaStack)
 pl.done(outDir+"truestack.png")
 
 pl = Plotter()
-pl.plot2d(szStack/N)
+pl.plot2d(szStack)
 pl.done(outDir+"szstack.png")
 
-filtInput = fmaps.stepFunctionFilterLiteMap(trueKappaStack/N,modLMap,kellmax)
+filtInput = fmaps.stepFunctionFilterLiteMap(trueKappaStack,modLMap,kellmax,ellMin=stepmin)
+# filtSim = fmaps.stepFunctionFilterLiteMap(simKappa,modLMap,kellmax)
 
 pl = Plotter()
 pl.plot2d(filtInput)
 pl.done(outDir+"filtinput.png")
 
+# pl = Plotter()
+# pl.plot2d(filtInput)
+# pl.done(outDir+"filtsim.png")
+
 
 dt = 0.2
-thetaRange = np.arange(dt,arcmax,dt)
-breal = bin2D(thetaMap*180.*60./np.pi,thetaRange)
-cents,inps = breal.bin(trueKappaStack/N)
+thetaRange = np.arange(0.,arcmax,dt)
+breal = bin2D(thetaMapDown*180.*60./np.pi,thetaRange)
+#cents,inps = breal.bin(trueKappaStack)
 cents,inpsFilt = breal.bin(filtInput)
-cents,recons = breal.bin(kappaStack/N)
+cents,recons = breal.bin(kappaStack)
+# cents,reconsfix = breal.bin(kappaFix)
+# cents,simFilt = breal.bin(filtSim)
 
 pl = Plotter()
-#pl.add(thetaRange,kappa1d)
-pl.add(cents,inps,ls="--")
+#pl.add(cents,inps,ls="--")
 pl.add(cents,inpsFilt)
+# pl.add(cents,simFilt,ls="-.")
 pl.add(cents,recons)
+# pl.add(cents,reconsfix,ls="-.")
+pl._ax.axhline(y=0.,ls="--",alpha=0.5)
 pl.done(outDir+"profiles.png")
+
+pl = Plotter()
+#pl.add(cents,inps,ls="--")
+#pl.add(cents,inpsFilt)
+# pl.add(cents,simFilt,ls="-.")
+pl.add(cents,(recons-inpsFilt)*100./inpsFilt.max())
+#pl.add(cents,reconsfix,ls="-.")
+pl._ax.axhline(y=0.,ls="--",alpha=0.5)
+pl.done(outDir+"percent.png")
 
 
 

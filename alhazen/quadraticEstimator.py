@@ -4,6 +4,7 @@ np.seterr(divide='ignore', invalid='ignore')
 import orphics.analysis.flatMaps as fmaps 
 
 from scipy.fftpack import fftshift,ifftshift,fftfreq
+from scipy.interpolate import interp1d
 from enlib.fft import fft,ifft
 
 from orphics.tools.stats import timeit, bin2D
@@ -563,7 +564,7 @@ class QuadNorm(object):
         cltotPPArr[np.isnan(cltotPPArr)] = np.inf
         
         clunlenEEArr = self.uClFid2d['EE'].copy()
-        clunlentotEEArr = (self.uClFid2d['EE'].copy()+self.noiseYY2d['EE'])
+        clunlentotEEArr = (self.lClFid2d['EE'].copy()+self.noiseYY2d['EE'])
         clunlentotEEArr[self.fMaskYY['EE']==0] = np.inf
         clunlenEEArr[self.fMaskYY['EE']==0] = 0.
         clPPArr[self.fMaskYY['EE']==0] = 0.
@@ -619,6 +620,24 @@ class QuadNorm(object):
 
                 
     
+def Nlmv(Nleach,pols,centers,nlkk,bin_edges):
+    # Nleach: dict of (ls,Nls) for each polComb
+    # pols: list of polCombs to include
+    # centers,nlkk: additonal Nl to add
+    
+    Nlmvinv = 0.
+    for polComb in pols:
+        ls,Nls = Nleach[polComb]
+        nlfunc = interp1d(ls,Nls,bounds_error=False,fill_value=np.inf)
+        Nleval = nlfunc(bin_edges)
+        Nlmvinv += np.nan_to_num(1./Nleval)
+        
+    if nlkk is not None:
+        nlfunc = interp1d(centers,nlkk,bounds_error=False,fill_value=np.inf)
+        Nleval = nlfunc(bin_edges)
+        Nlmvinv += np.nan_to_num(1./Nleval)
+        
+    return np.nan_to_num(1./Nlmvinv)
 
 
 class NlGenerator(object):
@@ -686,15 +705,9 @@ class NlGenerator(object):
         fMaskPY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminY,lmax=pellmaxY,lxcut=lxcutPY,lycut=lycutPY)
 
         if fgFuncX is not None:
-            #from scipy.interpolate import interp1d
-            #fells,fg = np.loadtxt(fgFileX,unpack=True)
-            #fgfunc = interp1d(fells,fg,bounds_error=False,fill_value=0.)
             fg2d = fgFuncX(self.N.modLMap) #/ self.TCMB**2.
             nTX += fg2d
         if fgFuncY is not None:
-            #from scipy.interpolate import interp1d
-            #fells,fg = np.loadtxt(fgFileY,unpack=True)
-            #fgfunc = interp1d(fells,fg,bounds_error=False,fill_value=0.)
             fg2d = fgFuncY(self.N.modLMap) #/ self.TCMB**2.
             nTY += fg2d
 
@@ -721,6 +734,80 @@ class NlGenerator(object):
         Nlbinned = sanitizePower(Nlbinned)
         
         return centers, Nlbinned
+
+    def getNlIterative(self,polCombs,kmin,kmax,tellmax,pellmin,pellmax,dell=20,halo=True,dTolPercentage=1.,verbose=True,plot=False):
+        
+        Nleach = {}
+        bin_edges = np.arange(kmin-dell/2.,kmax+dell/2.,dell)#+dell
+        for polComb in polCombs:
+            self.updateBins(bin_edges)
+            AL = self.N.getNlkk2d(polComb,halo=halo)
+            data2d = self.N.Nlkk[polComb]
+            ls, Nls = self.binner.bin(data2d)
+            Nls = sanitizePower(Nls)
+            Nleach[polComb] = (ls,Nls)
+
+        
+        if ('EB' not in polCombs) and ('TB' not in polCombs):
+            Nlret = Nlmv(Nleach,polCombs,None,None,bin_edges)
+            return bin_edges,sanitizePower(Nlret),None,None,None
+
+        origBB = self.N.lClFid2d['BB'].copy()
+        delensBinner =  bin2D(self.N.modLMap, bin_edges)
+        ellsOrig, oclbb = delensBinner.bin(origBB)
+        oclbb = sanitizePower(oclbb)
+        origclbb = oclbb.copy()
+
+        if plot:
+            from orphics.tools.io import Plotter
+            pl = Plotter(scaleY='log',scaleX='log')
+            pl.add(ellsOrig,oclbb*ellsOrig**2.,color='black',lw=2)
+            
+        ctol = np.inf
+        inum = 0
+        while ctol>dTolPercentage:
+            bNlsinv = 0.
+            polPass = list(polCombs)
+            if verbose: print "Performing iteration ", inum+1
+            for pol in ['EB','TB']:
+                if not(pol in polCombs): continue
+                Al2d = self.N.getNlkk2d(pol,halo)
+                centers, nlkkeach = delensBinner.bin(self.N.Nlkk[pol])
+                nlkkeach = sanitizePower(nlkkeach)
+                bNlsinv += 1./nlkkeach
+                polPass.remove(pol)
+            nlkk = 1./bNlsinv
+            
+            Nldelens = Nlmv(Nleach,polPass,centers,nlkk,bin_edges)
+            Nldelens2d = interp1d(bin_edges,Nldelens,fill_value=0.,bounds_error=False)(self.N.modLMap)
+
+            bbNoise2D = self.N.delensClBB(Nldelens2d,halo)
+            ells, dclbb = delensBinner.bin(bbNoise2D)
+            dclbb = sanitizePower(dclbb)
+            dclbb[ells<pellmin] = oclbb[ellsOrig<pellmin].copy()
+            if inum>0:
+                newLens = np.nanmean(nlkk)
+                oldLens = np.nanmean(oldNl)
+                new = np.nanmean(dclbb)
+                old = np.nanmean(oclbb)
+                ctol = np.abs(old-new)*100./new
+                ctolLens = np.abs(oldLens-newLens)*100./newLens
+                if verbose: print "Percentage difference between iterations is ",ctol, " compared to requested tolerance of ", dTolPercentage,". Diff of Nlkks is ",ctolLens
+            oldNl = nlkk.copy()
+            oclbb = dclbb.copy()
+            inum += 1
+            if plot:
+                pl.add(ells,dclbb*ells**2.,ls="--",alpha=0.5,color="black")
+
+        if plot:
+            import os
+            pl.done(os.environ['WWW']+'delens.png')
+        self.N.lClFid2d['BB'] = origBB.copy()
+        efficiency = ((origclbb-dclbb)*100./origclbb).max()
+
+
+        return bin_edges,sanitizePower(Nldelens),ells,dclbb,efficiency
+
 
     def iterativeDelens(self,xy,dTolPercentage=1.0,halo=True,verbose=True):
         assert xy=='EB' or xy=='TB'
