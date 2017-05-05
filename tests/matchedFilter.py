@@ -1,4 +1,4 @@
-from orphics.tools.output import Plotter
+from orphics.tools.io import Plotter
 import flipper.liteMap as lm
 from szlib.szcounts import ClusterCosmology
 from orphics.tools.io import dictFromSection,listFromConfig

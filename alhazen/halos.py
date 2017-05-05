@@ -5,11 +5,12 @@ from scipy.optimize import curve_fit as cfit
 from scipy.stats import norm
 from scipy.interpolate import splrep,splev,interp1d
 from scipy.fftpack import fftshift,ifftshift,fftfreq
-from pyfftw.interfaces.scipy_fftpack import fft2
-from pyfftw.interfaces.scipy_fftpack import ifft2
 from scipy.integrate import simps
 import orphics.tools.io as io
 import flipper.liteMap as lm
+
+#from enlib.fft import fft,ifft
+import enlib.fft as fftfast
 
 # g(x) = g(theta/thetaS) HuDeDeoVale 2007
 gnfw = lambda x: np.piecewise(x, [x>1., x<1., x==1.], \
@@ -58,6 +59,7 @@ def predictSN(polComb,noiseTY,noisePY,N,MM):
 
 #@timeit
 def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05,saveId=None,verbose=False,rayleighSigmaArcmin=None,returnKappa=False,winAtLens=None):
+    if rayleighSigmaArcmin is not None: assert rayleighSigmaArcmin>=pxStamp
     M = 10.**log10Moverh
 
     lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
@@ -108,13 +110,13 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
 
     
     
-    Uft = fft2(Ukappa)
+    Uft = fftfast.fft(Ukappa,axes=[-2,-1])
 
     if rayleighSigmaArcmin is not None:
         Prayleigh = rayleigh(modRMap*180.*60./np.pi,rayleighSigmaArcmin)
         outDir = "/gpfs01/astro/www/msyriac/plots/"
         # io.quickPlot2d(Prayleigh,outDir+"rayleigh.png")
-        rayK = fft2(ifftshift(Prayleigh))
+        rayK = fftfast.fft(ifftshift(Prayleigh),axes=[-2,-1])
         rayK /= rayK[modLMap<1.e-3]
         Uft = Uft.copy()*rayK
     
@@ -172,7 +174,7 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
         np.savetxt("data/"+saveId+"_m"+str(log10Moverh)+"_z"+str(z)+".txt",np.array([log10Moverh,z,1./sn]))
 
     if returnKappa:
-        return sn,ifft2(Uft).real*k500
+        return sn,fftfast.ifft(Uft,axes=[-2,-1],normalize=True).real*k500
     return sn, k500, std
 
 

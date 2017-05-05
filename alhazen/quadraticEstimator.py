@@ -670,6 +670,62 @@ class NlGenerator(object):
         self.binner = bin2D(self.N.modLMap, bin_edges)
         self.bin_edges = bin_edges
 
+    def updateNoiseAdvanced(self,beamTX,noiseTX,beamPX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamTY,noiseTY,beamPY,noisePY,tellminY,tellmaxY,pellminY,pellmaxY,lkneesX,alphasX,lkneesY,alphasY,lxcutTX,lxcutTY,lycutTX,lycutTY,lxcutPX,lxcutPY,lycutPX,lycutPY,fgFuncX,fgFuncY,beamFileTX,beamFilePX,beamFileTY,beamFilePY,noiseFuncTX,noiseFuncTY,noiseFuncPX,noiseFuncPY):
+
+        self.N.lmax_T = max(tellmaxX,tellmaxY)
+        self.N.lmax_P = max(pellmaxX,pellmaxY)
+
+        lkneeTX, lkneePX = lkneesX
+        lkneeTY, lkneePY = lkneesY
+        alphaTX, alphaPX = alphasX
+        alphaTY, alphaPY = alphasY
+        
+
+        nTX = fmaps.whiteNoise2D([noiseTX],beamTX,self.N.modLMap, \
+                                 TCMB=self.TCMB,lknees=[lkneeTX],alphas=[alphaTX],\
+                                 beamFile=beamFileTX, \
+                                 noiseFuncs = [noiseFuncTX])[0]
+        nTY = fmaps.whiteNoise2D([noiseTY],beamTY,self.N.modLMap, \
+                                 TCMB=self.TCMB,lknees=[lkneeTY],alphas=[alphaTY], \
+                                 beamFile=beamFileTY, \
+                                 noiseFuncs=[noiseFuncTY])[0]
+        nPX = fmaps.whiteNoise2D([noisePX],beamPX,self.N.modLMap, \
+                                 TCMB=self.TCMB,lknees=[lkneePX],alphas=[alphaPX],\
+                                 beamFile=beamFilePX, \
+                                 noiseFuncs = [noiseFuncPX])[0]
+        nPY = fmaps.whiteNoise2D([noisePY],beamPY,self.N.modLMap, \
+                                 TCMB=self.TCMB,lknees=[lkneePY],alphas=[alphaPY], \
+                                 beamFile=beamFilePY, \
+                                 noiseFuncs=[noiseFuncPY])[0]
+
+
+        
+        fMaskTX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminX,lmax=tellmaxX,lxcut=lxcutTX,lycut=lycutTX)
+        fMaskTY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=tellminY,lmax=tellmaxY,lxcut=lxcutTY,lycut=lycutTY)
+        fMaskPX = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminX,lmax=pellmaxX,lxcut=lxcutPX,lycut=lycutPX)
+        fMaskPY = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=pellminY,lmax=pellmaxY,lxcut=lxcutPY,lycut=lycutPY)
+
+        if fgFuncX is not None:
+            fg2d = fgFuncX(self.N.modLMap) #/ self.TCMB**2.
+            nTX += fg2d
+        if fgFuncY is not None:
+            fg2d = fgFuncY(self.N.modLMap) #/ self.TCMB**2.
+            nTY += fg2d
+
+            
+        nList = ['TT','EE','BB']
+
+        nListX = [nTX,nPX,nPX]
+        nListY = [nTY,nPY,nPY]
+        fListX = [fMaskTX,fMaskPX,fMaskPX]
+        fListY = [fMaskTY,fMaskPY,fMaskPY]
+        for i,noise in enumerate(nList):
+            self.N.addNoise2DPowerXX(noise,nListX[i],fListX[i])
+            self.N.addNoise2DPowerYY(noise,nListY[i],fListY[i])
+
+        return nTX,nPX,nTY,nPY
+
+        
     def updateNoise(self,beamX,noiseTX,noisePX,tellminX,tellmaxX,pellminX,pellmaxX,beamY=None,noiseTY=None,noisePY=None,tellminY=None,tellmaxY=None,pellminY=None,pellmaxY=None,lkneesX=[0.,0.],alphasX=[1.,1.],lkneesY=[0.,0.],alphasY=[1.,1.],lxcutTX=0,lxcutTY=0,lycutTX=0,lycutTY=0,lxcutPX=0,lxcutPY=0,lycutPX=0,lycutPY=0,fgFuncX=None,beamFileX=None,fgFuncY=None,beamFileY=None,noiseFuncTX=None,noiseFuncTY=None,noiseFuncPX=None,noiseFuncPY=None):
 
         def setDefault(A,B):
