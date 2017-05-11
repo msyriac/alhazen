@@ -13,6 +13,19 @@ import alhazen.quadFunctions as qfuncs
 import time
 import cPickle as pickle
 
+def fillLowEll(ells,cls,ellmin):
+    # Fill low ells with the same value
+    low_index = np.where(ells>ellmin)[0][0]
+    lowest_ell = ells[low_index]
+    lowest_val = cls[low_index]
+    fill_ells = np.arange(2,lowest_ell,1)
+    new_ells = np.append(fill_ells,ells[low_index:])
+    fill_cls = np.array([lowest_val]*len(fill_ells))
+    new_cls = np.append(fill_cls,cls[low_index:])
+
+    return new_ells,new_cls
+
+
 def sanitizePower(Nlbinned):
     Nlbinned[Nlbinned<0.] = np.nan
 
@@ -34,6 +47,43 @@ def getMax(polComb,tellmax,pellmax):
         return max(tellmax,pellmax)
 
 
+# class MLEstimator(Estimator):
+
+#     def __init__(self,templateLiteMap,
+#                  theorySpectraForFilters,
+#                  theorySpectraForNorm=None,
+#                  noiseX2dTEB=[None,None,None],
+#                  noiseY2dTEB=[None,None,None],
+#                  fmaskX2dTEB=[None,None,None],
+#                  fmaskY2dTEB=[None,None,None],
+#                  fmaskKappa=None,
+#                  doCurl=False,
+#                  TOnly=False,
+#                  halo=False,
+#                  gradCut=None,
+#                  verbose=False,
+#                  loadPickledNormAndFilters=None,
+#                  savePickledNormAndFilters=None,
+#                  numIterations=20):
+    
+#         self.Estimator(templateLiteMap,
+#                  theorySpectraForFilters,
+#                  theorySpectraForNorm,
+#                  noiseX2dTEB,
+#                  noiseY2dTEB,
+#                  fmaskX2dTEB,
+#                  fmaskY2dTEB,
+#                  fmaskKappa,
+#                  doCurl,
+#                  TOnly,
+#                  halo,
+#                  gradCut,
+#                  verbose,
+#                  loadPickledNormAndFilters,
+#                  savePickledNormAndFilters)
+
+        
+        
 class QuadNorm(object):
 
     
@@ -862,7 +912,10 @@ class NlGenerator(object):
         efficiency = ((origclbb-dclbb)*100./origclbb).max()
 
 
-        return bin_edges,sanitizePower(Nldelens),ells,dclbb,efficiency
+        new_ells,new_bb = fillLowEll(ells,dclbb,pellmin)
+        new_k_ells,new_nlkk = fillLowEll(bin_edges,sanitizePower(Nldelens),kmin)
+        
+        return new_k_ells,new_nlkk,new_ells,new_bb,efficiency
 
 
     def iterativeDelens(self,xy,dTolPercentage=1.0,halo=True,verbose=True):
