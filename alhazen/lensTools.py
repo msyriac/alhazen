@@ -5,9 +5,7 @@ import sys
 from enlib import enmap
 import numpy as np
 
-from pyfftw.interfaces.scipy_fftpack import fft2
-from pyfftw.interfaces.scipy_fftpack import ifft2
-from enlib.fft import fft,ifft
+from flipper.fft import fft,ifft
 
 class alphaMaker(object):
 

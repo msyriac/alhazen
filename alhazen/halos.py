@@ -9,8 +9,7 @@ from scipy.integrate import simps
 import orphics.tools.io as io
 import flipper.liteMap as lm
 
-#from enlib.fft import fft,ifft
-import enlib.fft as fftfast
+import flipper.fft as fftfast
 
 # g(x) = g(theta/thetaS) HuDeDeoVale 2007
 gnfw = lambda x: np.piecewise(x, [x>1., x<1., x==1.], \
