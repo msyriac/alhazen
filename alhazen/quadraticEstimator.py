@@ -87,7 +87,7 @@ def getMax(polComb,tellmax,pellmax):
 class QuadNorm(object):
 
     
-    def __init__(self,templateMap,gradCut=None,verbose=False):
+    def __init__(self,templateMap,gradCut=None,verbose=False,bigell=9000):
         '''
 
         templateFT is a template liteMap FFT object
@@ -111,11 +111,11 @@ class QuadNorm(object):
         self.fMaskXX = {}
         self.fMaskYY = {}
 
-        self.lmax_T=9000.
-        self.lmax_P=9000.
+        self.lmax_T=bigell #9000.
+        self.lmax_P=bigell #9000.
         self.defaultMaskT = fmaps.fourierMask(self.lx,self.ly,self.modLMap,lmin=2,lmax=self.lmax_T)
         self.defaultMaskP = fmaps.fourierMask(self.lx,self.ly,self.modLMap,lmin=2,lmax=self.lmax_P)
-        self.bigell=9000.
+        self.bigell=bigell #9000.
         if gradCut is not None: 
             self.gradCut = gradCut
         else:
@@ -691,9 +691,9 @@ def Nlmv(Nleach,pols,centers,nlkk,bin_edges):
 
 
 class NlGenerator(object):
-    def __init__(self,templateMap,theorySpectra,bin_edges=None,gradCut=None,TCMB=2.725e6):
+    def __init__(self,templateMap,theorySpectra,bin_edges=None,gradCut=None,TCMB=2.725e6,bigell=9000):
 
-        self.N = QuadNorm(templateMap,gradCut=gradCut)
+        self.N = QuadNorm(templateMap,gradCut=gradCut,bigell=bigell)
         self.TCMB = TCMB
 
         cmbList = ['TT','TE','EE','BB']
