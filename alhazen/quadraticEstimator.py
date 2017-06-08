@@ -979,11 +979,12 @@ class Estimator(object):
                  fmaskKappa=None,
                  doCurl=False,
                  TOnly=False,
-                 halo=False,
+                 halo=True,
                  gradCut=None,
                  verbose=False,
                  loadPickledNormAndFilters=None,
-                 savePickledNormAndFilters=None):
+                 savePickledNormAndFilters=None,
+                 uEqualsL=True):
 
         '''
         All the 2d fourier objects below are pre-fftshifting. They must be of the same dimension.
@@ -1049,10 +1050,16 @@ class Estimator(object):
         
         if self.verbose: print "Initializing filters and normalization for quadratic estimators..."
         for cmb in cmbList:
-            uClFilt = theorySpectraForFilters.uCl(cmb,self.N.modLMap)
+            if uEqualsL:
+                uClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
+            else:
+                uClFilt = theorySpectraForFilters.uCl(cmb,self.N.modLMap)
 
             if theorySpectraForNorm is not None:
-                uClNorm = theorySpectraForNorm.uCl(cmb,self.N.modLMap)
+                if uEqualsL:
+                    uClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
+                else:
+                    uClNorm = theorySpectraForNorm.uCl(cmb,self.N.modLMap)
             else:
                 uClNorm = uClFilt
             lClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
