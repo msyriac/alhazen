@@ -40,7 +40,7 @@ saveFile = None #"/astro/astronfs01/workarea/msyriac/act/normDec14_0_trimmed_ell
 trimmed = False
 cutout = False
 
-noiseT = 30.
+noiseT = 1.
 noiseP = np.sqrt(2.)*noiseT
 
 
@@ -54,7 +54,7 @@ if cutout:
     cutoutStr = "_cutout"
 
 #polCombList = ['TT','EE','EB','TB','TE','ET']
-polCombList = ['TT']
+polCombList = ['TT','EB']
 colorList = ['red','blue','green','orange','purple','brown']
 tonly = False
 if polCombList==['TT']: tonly=True

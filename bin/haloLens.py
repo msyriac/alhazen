@@ -12,6 +12,7 @@ from szar.counts import ClusterCosmology
 from orphics.tools.stats import bin2D
 from szar.sims import BattagliaSims, getKappaSZ
 from enlib.fft import fft,ifft
+from alhazen.quadraticEstimator import Estimator
 import os
 print "Done importing modules..."
 
