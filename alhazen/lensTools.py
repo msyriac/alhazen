@@ -5,7 +5,35 @@ import sys
 from enlib import enmap
 import numpy as np
 
-from flipper.fft import fft,ifft
+from flipper.fft import fft as fft_gen,ifft as ifft_gen
+
+
+def fft(m):
+    return fft_gen(m,axes=[-2,-1])
+def ifft(m):
+    return ifft_gen(m,axes=[-2,-1],normalize=True)
+
+
+
+
+def kappa_to_phi(kappa,modlmap,return_fphi=False):
+    fphi = kappa_to_fphi(kappa,modlmap)
+    phi =  enmap.samewcs(ifft(fphi).real, kappa) 
+    if return_fphi:
+        return phi, fphi
+    else:
+        return phi
+
+def kappa_to_fphi(kappa,modlmap):
+    return fkappa_to_fphi(fft(kappa),modlmap)
+
+def fkappa_to_fphi(fkappa,modlmap):
+    kmap = np.nan_to_num(2.*fkappa/modlmap/(modlmap+1.))
+    kmap[modlmap<2.] = 0.
+    return kmap
+
+
+
 
 class alphaMaker(object):
 
@@ -18,7 +46,7 @@ class alphaMaker(object):
 
         kernels = thetaMap/thetaModSqMap/np.pi
 
-        self.ftkernels = fft(kernels,axes=[-2,-1])
+        self.ftkernels = fft_gen(kernels,axes=[-2,-1])
 
 
 
@@ -26,13 +54,13 @@ class alphaMaker(object):
     def kappaToAlpha(self,kappaMap,test=False):
         
 
-        fKappa = fft(kappaMap,axes=[-2,-1])
+        fKappa = fft_gen(kappaMap,axes=[-2,-1])
         fAlpha = self.ftkernels * fKappa
         pixScaleY, pixScaleX = kappaMap.pixshape()
         Ny,Nx = kappaMap.shape
 
-        #retAlpha = (np.fft.ifftshift(enmap.ifft(fAlpha,normalize=False).real)+kappaMap*0.)*pixScaleY*pixScaleX/Nx/Ny
-        retAlpha = -(np.fft.ifftshift(ifft(fAlpha,axes=[-2,-1],normalize=False).real[::-1])+kappaMap*0.)*pixScaleY*pixScaleX/Nx/Ny
+        #retAlpha = (np.fft_gen.ifft_genshift(enmap.ifft_gen(fAlpha,normalize=False).real)+kappaMap*0.)*pixScaleY*pixScaleX/Nx/Ny
+        retAlpha = -(np.fft_gen.ifft_genshift(ifft_gen(fAlpha,axes=[-2,-1],normalize=False).real[::-1])+kappaMap*0.)*pixScaleY*pixScaleX/Nx/Ny
         
         if test:
             newKap = -np.nan_to_num(0.5*enmap.div(retAlpha)) 
