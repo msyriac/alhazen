@@ -17,7 +17,7 @@ def ifft(m):
 
 
 def kappa_to_phi(kappa,modlmap,return_fphi=False):
-    fphi = kappa_to_fphi(kappa,modlmap)
+    fphi = enmap.samewcs(kappa_to_fphi(kappa,modlmap),kappa)
     phi =  enmap.samewcs(ifft(fphi).real, kappa) 
     if return_fphi:
         return phi, fphi
