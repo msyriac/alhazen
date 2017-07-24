@@ -13,9 +13,9 @@ import numpy as np
 # === PARAMS ===
 
 Nsims = 100
-sim_pixel_scale = 4.0 #0.1
-analysis_pixel_scale = 4.0 #0.5
-patch_width_arcmin = 25.*60. #100.
+sim_pixel_scale = 1.0 #0.1
+analysis_pixel_scale = 1.0 #0.5
+patch_width_arcmin = 55.*60. #100.
 periodic = True
 beam_arcmin = 1.0
 noise_T_uK_arcmin = 0.1
