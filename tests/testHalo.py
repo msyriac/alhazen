@@ -21,7 +21,7 @@ Nsims = 200
 
 sim_pixel_scale = 0.1
 analysis_pixel_scale = 0.2
-patch_width_arcmin = 30.
+patch_width_arcmin = 70.
 cluster = True
 
 lens_order = 3
@@ -38,10 +38,10 @@ tellmin = 200
 pellmin = 200
 kellmax = 8500
 kellmin = 200
-gradCut = 2000
+gradCut = 10000
 #pol_list = ['TT','EB','EE','ET','TE']
 pol_list = ['TT']
-debug = False
+debug = True
 
 out_dir = os.environ['WWW']+"plots/halotest/smallpatch_"
 
@@ -76,9 +76,9 @@ assert np.all(np.isclose(modlmap_sim,modl_map_alt))
 if cluster:
     massOverh = 2.e14
     zL = 0.7
-    overdensity = 180.
-    critical = False
-    atClusterZ = False
+    overdensity = 500.
+    critical = True
+    atClusterZ = True
     concentration = 3.2
     comS = cc.results.comoving_radial_distance(cc.cmbZ)*cc.h
     comL = cc.results.comoving_radial_distance(zL)*cc.h
@@ -87,7 +87,7 @@ if cluster:
                               overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
     #cents, nkprofile = binner.bin(kappa_map)
 
-    model_massOverh = 2.1e14
+    model_massOverh = 2.e14
 else:
     clkk = theory.gCl("kk",fine_ells)
     clkk.resize((1,1,clkk.size))
@@ -147,7 +147,7 @@ for i in range(Nsims):
     klteb = enmap.map2harm(lensed)
     klteb_beam = klteb*kbeam
     lteb_beam = enmap.ifft(klteb_beam).real
-    noise = enmap.rand_map(shape_sim,wcs_sim,ps_noise)
+    noise = enmap.rand_map(shape_sim,wcs_sim,ps_noise,scalar=True)
     observed = lteb_beam + noise
     measured = enmap.downgrade(observed,analysis_pixel_scale/sim_pixel_scale)
     if i==0:
@@ -216,6 +216,13 @@ for i in range(Nsims):
         t = teb[0,:,:]
         e = teb[1,:,:]
         b = teb[2,:,:]
+        nt = noise[0,:,:]
+        ne = noise[1,:,:]
+        nb = noise[2,:,:]
+        ntt2d = fmaps.get_simple_power_enmap(nt)
+        nee2d = fmaps.get_simple_power_enmap(ne)
+        nbb2d = fmaps.get_simple_power_enmap(nb)
+        
         utt2d = fmaps.get_simple_power_enmap(t)
         uee2d = fmaps.get_simple_power_enmap(e)
         ute2d = fmaps.get_simple_power_enmap(enmap1=t,enmap2=e)
@@ -225,6 +232,9 @@ for i in range(Nsims):
         cents, utt = dbinner.bin(utt2d)
         cents, uee = dbinner.bin(uee2d)
         cents, ute = dbinner.bin(ute2d)
+        cents, ntt = dbinner.bin(ntt2d)
+        cents, nee = dbinner.bin(nee2d)
+        cents, nbb = dbinner.bin(nbb2d)
         #cents, ubb = dbinner.bin(ubb2d)
 
 
@@ -263,6 +273,9 @@ for i in range(Nsims):
         pl.add(cents,ltt*cents**2.,color="C0",ls="-")
         pl.add(cents,lee*cents**2.,color="C1",ls="-")
         pl.add(cents,lbb*cents**2.,color="C2",ls="-")
+        pl.add(cents,ntt*cents**2.,color="C0",ls="-.",alpha=0.4)
+        pl.add(cents,nee*cents**2.,color="C1",ls="-.",alpha=0.4)
+        pl.add(cents,nbb*cents**2.,color="C2",ls="-.",alpha=0.4)
         pl.add(fine_ells,lcltt*fine_ells**2.,color="C0",ls="--")
         pl.add(fine_ells,lclee*fine_ells**2.,color="C1",ls="--")
         pl.add(fine_ells,lclbb*fine_ells**2.,color="C2",ls="--")
@@ -325,10 +338,6 @@ for i in range(Nsims):
             grad_phi = enmap.grad(phi_model)
             maps = lensing.delens_map(maps, grad_phi, nstep=7, order=lens_order, mode="spline", border="cyclic")
             
-            # phi, fphi = lt.kappa_to_phi(kappa_model,modlmap_dat,return_fphi=True)
-            # alpha_pix = enmap.grad_pixf(fphi)
-            # maps = lensing.lens_map_flat_pix(maps, -alpha_pix,order=lens_order)
-            
             fkmaps = enmap.fft(maps,normalize=True)
             qest.updateTEB_X(fkmaps,alreadyFTed=True)
             qest.updateTEB_Y()
@@ -336,7 +345,9 @@ for i in range(Nsims):
             io.quickPlot2d(kappa_recon,out_dir+"kappa_recon_"+str(k).zfill(3)+".png")
             kappa_model = kappa_model + kappa_recon
             k += 1
-            io.quickPlot2d(maps,out_dir+"map_iter_"+str(k).zfill(3)+".png")
+            maps_filt = fmaps.filter_map(maps,wfilter*0.+1.,
+                                         modlmap_dat,lowPass=tellmax,highPass=tellmin)
+            io.quickPlot2d(maps_filt,out_dir+"map_iter_"+str(k).zfill(3)+".png")
             io.quickPlot2d(kappa_model,out_dir+"kappa_iter_"+str(k).zfill(3)+".png")
         sys.exit()
     else:
