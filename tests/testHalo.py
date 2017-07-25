@@ -14,13 +14,15 @@ import numpy as np
 
 Nsims = 20
 
-# sim_pixel_scale = 1.0
-# analysis_pixel_scale = 1.0
-# patch_width_arcmin = 25.*60.
+sim_pixel_scale = 1.0
+analysis_pixel_scale = 1.0
+patch_width_arcmin = 25.*60.
+cluster = False
 
-sim_pixel_scale = 0.1
-analysis_pixel_scale = 0.5
-patch_width_arcmin = 100.
+# sim_pixel_scale = 0.1
+# analysis_pixel_scale = 0.5
+# patch_width_arcmin = 100.
+# cluster = True
 
 lens_order = 4
 
@@ -38,7 +40,6 @@ kellmin = 200
 gradCut = 2000
 pol_list = ['TT','EB','EE','ET','TE']
 debug = False
-cluster = True
 
 out_dir = os.environ['WWW']+"plots/halotest/"
 
