@@ -1070,7 +1070,11 @@ class Estimator(object):
             self.N.addNoise2DPowerXX(noise,noiseX2dTEB[i],fmaskX2dTEB[i])
             self.N.addNoise2DPowerYY(noise,noiseY2dTEB[i],fmaskY2dTEB[i])
 
-
+        try:
+            self.N.addClkk2DPower(theorySpectraForFilters.gCl("kk",self.N.modLMap))
+        except:
+            print "Couldn't add Clkk2d power"
+            
         self.OmAL = None
         for est in estList:
             self.AL[est] = self.N.getNlkk2d(est,halo=halo)

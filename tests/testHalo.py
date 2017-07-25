@@ -12,22 +12,23 @@ import numpy as np
 
 # === PARAMS ===
 
-Nsims = 20
+Nsims = 200
 
-sim_pixel_scale = 1.0
-analysis_pixel_scale = 1.0
-patch_width_arcmin = 25.*60.
-cluster = False
+# sim_pixel_scale = 1.0
+# analysis_pixel_scale = 1.0
+# patch_width_arcmin = 25.*60.
+# cluster = False
 
-# sim_pixel_scale = 0.1
-# analysis_pixel_scale = 0.5
-# patch_width_arcmin = 100.
-# cluster = True
+sim_pixel_scale = 0.1
+analysis_pixel_scale = 0.2
+patch_width_arcmin = 30.
+cluster = True
 
-lens_order = 4
+lens_order = 3
+maxlike = True
 
 periodic = True
-beam_arcmin = 1.0
+beam_arcmin = 0.1 #1.0
 noise_T_uK_arcmin = 0.01
 noise_P_uK_arcmin = 0.01
 lmax = 8000
@@ -38,10 +39,11 @@ pellmin = 200
 kellmax = 8500
 kellmin = 200
 gradCut = 2000
-pol_list = ['TT','EB','EE','ET','TE']
+#pol_list = ['TT','EB','EE','ET','TE']
+pol_list = ['TT']
 debug = False
 
-out_dir = os.environ['WWW']+"plots/halotest/"
+out_dir = os.environ['WWW']+"plots/halotest/smallpatch_"
 
 
 
@@ -53,17 +55,13 @@ theory = cc.theory
 
 # === TEMPLATE MAPS ===
 
-pol = False
-if pol_list != ['TT']: pol = True
+pol = False if pol_list==['TT'] else True
 
 fine_ells = np.arange(0,lmax,1)
-bin_edges = np.arange(0.,10.0,0.2)
+bin_edges = np.arange(0.,15.0,0.4)
 
 shape_sim, wcs_sim = enmap.get_enmap_patch(patch_width_arcmin,sim_pixel_scale,proj="car",pol=pol)
 modr_sim = enmap.modrmap(shape_sim,wcs_sim) * 180.*60./np.pi
-binner_sim = stats.bin2D(modr_sim,bin_edges)
-
-
 
 
 
@@ -88,6 +86,8 @@ if cluster:
     kappa_map,r500 = NFWkappa(cc,massOverh,concentration,zL,modr_sim,winAtLens,
                               overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
     #cents, nkprofile = binner.bin(kappa_map)
+
+    model_massOverh = 2.1e14
 else:
     clkk = theory.gCl("kk",fine_ells)
     clkk.resize((1,1,clkk.size))
@@ -116,10 +116,6 @@ alpha_pix = enmap.grad_pixf(fphi)
 ntfunc = cmb.get_noise_func(beam_arcmin,noise_T_uK_arcmin,ellmin=tellmin,ellmax=tellmax,TCMB=2.7255e6)
 npfunc = cmb.get_noise_func(beam_arcmin,noise_P_uK_arcmin,ellmin=pellmin,ellmax=pellmax,TCMB=2.7255e6)
 
-#nT_sim = ntfunc(modlmap_sim)
-#nP_sim = npfunc(modlmap_sim)
-
-
 kbeam = cmb.gauss_beam(modlmap_sim,beam_arcmin)
 ps_noise = np.zeros((3,3,pix_ells.size))
 ps_noise[0,0] = pix_ells*0.+(noise_T_uK_arcmin*np.pi/180./60./TCMB)**2.
@@ -133,20 +129,8 @@ ps_noise[2,2] = pix_ells*0.+(noise_P_uK_arcmin*np.pi/180./60./TCMB)**2.
 
 # === ENMAP POWER ===
 
-cltt = theory.uCl('TT',fine_ells)
-clee = theory.uCl('EE',fine_ells)
-clte = theory.uCl('TE',fine_ells)
-clbb = theory.uCl('BB',fine_ells)
-lcltt = theory.lCl('TT',fine_ells)
-lclee = theory.lCl('EE',fine_ells)
-lclte = theory.lCl('TE',fine_ells)
-lclbb = theory.lCl('BB',fine_ells)
-ps = np.zeros((3,3,fine_ells.size))
-ps[0,0] = cltt
-ps[1,1] = clee
-ps[0,1] = clte
-ps[1,0] = clte
-ps[2,2] = clbb
+
+ps = cmb.enmap_power_from_orphics_theory(theory,lmax,lensed=False)
 
 # === SIM AND RECON LOOP ===
 
@@ -170,9 +154,13 @@ for i in range(Nsims):
 
 
         shape_dat, wcs_dat = measured.shape, measured.wcs
-        #enmap.get_enmap_patch(patch_width_arcmin,analysis_pixel_scale,proj="car",pol=pol)
         modr_dat = enmap.modrmap(shape_dat,wcs_dat) * 180.*60./np.pi
         binner_dat = stats.bin2D(modr_dat,bin_edges)
+
+        if maxlike:
+            init_kappa_model,r500_init = NFWkappa(cc,model_massOverh,concentration,zL,modr_dat,winAtLens,
+                                                  overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+
 
         # === ESTIMATOR ===
 
@@ -252,6 +240,10 @@ for i in range(Nsims):
         cents, lte = dbinner.bin(lte2d)
         cents, lbb = dbinner.bin(lbb2d)
 
+
+        lcltt, lclee, lclte, lclbb = cmb.unpack_cmb_theory(theory,fine_ells,lensed=True)
+        cltt, clee, clte, clbb = cmb.unpack_cmb_theory(theory,fine_ells,lensed=False)
+
         
         pl = io.Plotter(scaleY='log',scaleX='log')
         pl.add(cents,utt*cents**2.,color="C0",ls="-")
@@ -284,21 +276,119 @@ for i in range(Nsims):
         
     fkmaps = enmap.fft(measured,normalize=False)
     fkmaps = np.nan_to_num(fkmaps/kbeam_dat)
-    if pol:
-        qest.updateTEB_X(fkmaps[0],fkmaps[1],fkmaps[2],alreadyFTed=True)
-    else:
-        qest.updateTEB_X(fkmaps[0],alreadyFTed=True)
 
-    qest.updateTEB_Y()
+
+    if maxlike:
+        polcomb = "TT"
+        maps = enmap.ifft(fkmaps*fMaskCMB_T,normalize=True).real
+        kappa_model = init_kappa_model
+        k = 0
+        io.quickPlot2d(kappa_model,out_dir+"kappa_iter_"+str(k).zfill(3)+".png")
+        #io.quickPlot2d(maps,out_dir+"map_iter_"+str(k).zfill(3)+".png")
+
+
+        import flipper.fft as fftfast
+        from scipy.integrate import simps
+        Ny,Nx = shape_dat[-2:]
+        pixScaleY, pixScaleX = enmap.pixshape(shape_dat,wcs_dat)
+        Ukappa = init_kappa_model
+        Uft = fftfast.fft(Ukappa,axes=[-2,-1])
+        Upower = np.real(Uft*Uft.conjugate())
+        Nl2d = qest.N.Nlkk[polcomb]
+        area = Nx*Ny*pixScaleX*pixScaleY
+        Upower = Upower *area / (Nx*Ny)**2
+        wfilter = np.nan_to_num(Upower/Nl2d)
         
+
+        # wfilter = np.nan_to_num(1./(qest.N.Nlkk[polcomb]))
+        wfilter[wfilter>1.e90] = 0.
+        # print wfilter.max()
+        wfilter = wfilter/wfilter.max()
+
+        debug_edges = np.arange(kellmin,kellmax,80)
+        dbinner = stats.bin2D(modlmap_dat,debug_edges)
+        cents, bwf = dbinner.bin(wfilter)
+        pl = io.Plotter()
+        pl.add(cents,bwf)
+        pl.done(out_dir+"bwf.png")
+        #wfilter = np.nan_to_num(qest.N.clkk2d/(qest.N.clkk2d+qest.N.Nlkk[polcomb]))
         
-    for polcomb in pol_list:
-        print "Reconstructing",polcomb ," for ", i , " ..."
-        kappa_recon = enmap.samewcs(qest.getKappa(polcomb).real,measured)
-        kappa_stack[polcomb] += kappa_recon
+        while k<50:
+
+
+
+            
+            kappa_model = enmap.samewcs(fmaps.filter_map(kappa_model,wfilter*0.+1.,
+                                                         modlmap_dat,lowPass=kellmax,highPass=kellmin),init_kappa_model)
+            
+            phi_model = lt.kappa_to_phi(kappa_model,modlmap_dat)
+            grad_phi = enmap.grad(phi_model)
+            maps = lensing.delens_map(maps, grad_phi, nstep=7, order=lens_order, mode="spline", border="cyclic")
+            
+            # phi, fphi = lt.kappa_to_phi(kappa_model,modlmap_dat,return_fphi=True)
+            # alpha_pix = enmap.grad_pixf(fphi)
+            # maps = lensing.lens_map_flat_pix(maps, -alpha_pix,order=lens_order)
+            
+            fkmaps = enmap.fft(maps,normalize=True)
+            qest.updateTEB_X(fkmaps,alreadyFTed=True)
+            qest.updateTEB_Y()
+            kappa_recon = enmap.samewcs(qest.getKappa(polcomb).real,measured)
+            io.quickPlot2d(kappa_recon,out_dir+"kappa_recon_"+str(k).zfill(3)+".png")
+            kappa_model = kappa_model + kappa_recon
+            k += 1
+            io.quickPlot2d(maps,out_dir+"map_iter_"+str(k).zfill(3)+".png")
+            io.quickPlot2d(kappa_model,out_dir+"kappa_iter_"+str(k).zfill(3)+".png")
+        sys.exit()
+    else:
+        if pol:
+            qest.updateTEB_X(fkmaps[0],fkmaps[1],fkmaps[2],alreadyFTed=True)
+        else:
+            qest.updateTEB_X(fkmaps,alreadyFTed=True)
+
+        qest.updateTEB_Y()
+
+
+        for polcomb in pol_list:
+            print "Reconstructing",polcomb ," for ", i , " ..."
+            kappa_recon = enmap.samewcs(qest.getKappa(polcomb).real,measured)
+            if i==0: io.quickPlot2d(kappa_recon,out_dir+"kappa_recon_single.png")
+
+            kappa_stack[polcomb] += kappa_recon
     
 
 
-for polcomb in pol_list:
-    kappa_stack[polcomb] /= Nsims
-    io.quickPlot2d(kappa_stack[polcomb],out_dir+"kappa_recon_"+polcomb+".png")
+
+if cluster:        
+    recon_profiles = {}
+    binner_dat = stats.bin2D(modr_dat,bin_edges)
+
+    for polcomb in pol_list:
+        kappa_stack[polcomb] /= Nsims
+        io.quickPlot2d(kappa_stack[polcomb],out_dir+"kappa_recon_"+polcomb+".png")
+        cents, recon_profiles[polcomb] = binner_dat.bin(kappa_stack[polcomb])
+
+
+    down_input = enmap.downgrade(kappa_map,analysis_pixel_scale/sim_pixel_scale)
+    io.quickPlot2d(down_input,out_dir+"down_inp.png")
+    inp_kappa = fmaps.filter_map(down_input,down_input.copy()*0.+1.,modlmap_dat,lowPass=kellmax,highPass=kellmin)
+    io.quickPlot2d(inp_kappa,out_dir+"filt_inp.png")
+    cents, inp_profile = binner_dat.bin(inp_kappa)
+
+    pl = io.Plotter()
+    pl.add(cents,inp_profile,ls="--")
+    for polcomb in pol_list:
+        pl.add(cents,recon_profiles[polcomb],label=polcomb)
+    pl.legendOn()
+    pl.done(out_dir+"recon_profiles.png")
+
+
+    pl = io.Plotter()
+    for polcomb in pol_list:
+        pl.add(cents,(recon_profiles[polcomb]-inp_profile)*100./inp_profile,label=polcomb)
+    pl.legendOn()
+    pl._ax.set_ylim(-20.,20.)
+    pl.done(out_dir+"recon_profiles_per.png")
+
+
+
+
