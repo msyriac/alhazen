@@ -14,20 +14,21 @@ import numpy as np
 
 Nsims = 200
 
-# sim_pixel_scale = 1.0
-# analysis_pixel_scale = 1.0
-# patch_width_arcmin = 25.*60.
-# cluster = False
+sim_pixel_scale = 1.0
+analysis_pixel_scale = 1.0
+patch_width_arcmin = 25.*60.
+cluster = False
 
-sim_pixel_scale = 0.1
-analysis_pixel_scale = 0.2
-patch_width_arcmin = 70.
-cluster = True
+# sim_pixel_scale = 0.1
+# analysis_pixel_scale = 0.2
+# patch_width_arcmin = 70.
+# cluster = True
 
 lens_order = 3
 maxlike = True
 
 periodic = True
+
 beam_arcmin = 0.1 #1.0
 noise_T_uK_arcmin = 0.01
 noise_P_uK_arcmin = 0.01
@@ -40,7 +41,7 @@ kellmax = 8500
 kellmin = 200
 gradCut = 10000
 #pol_list = ['TT','EB','EE','ET','TE']
-pol_list = ['TT']
+pol_list = ['TT','EB']
 debug = True
 
 out_dir = os.environ['WWW']+"plots/halotest/smallpatch_"
@@ -116,7 +117,7 @@ alpha_pix = enmap.grad_pixf(fphi)
 ntfunc = cmb.get_noise_func(beam_arcmin,noise_T_uK_arcmin,ellmin=tellmin,ellmax=tellmax,TCMB=2.7255e6)
 npfunc = cmb.get_noise_func(beam_arcmin,noise_P_uK_arcmin,ellmin=pellmin,ellmax=pellmax,TCMB=2.7255e6)
 
-kbeam = cmb.gauss_beam(modlmap_sim,beam_arcmin)
+kbeam_sim = cmb.gauss_beam(modlmap_sim,beam_arcmin)
 ps_noise = np.zeros((3,3,pix_ells.size))
 ps_noise[0,0] = pix_ells*0.+(noise_T_uK_arcmin*np.pi/180./60./TCMB)**2.
 ps_noise[1,1] = pix_ells*0.+(noise_P_uK_arcmin*np.pi/180./60./TCMB)**2.
@@ -145,7 +146,7 @@ for i in range(Nsims):
     unlensed = enmap.rand_map(shape_sim,wcs_sim,ps)
     lensed = lensing.lens_map_flat_pix(unlensed, alpha_pix,order=lens_order)
     klteb = enmap.map2harm(lensed)
-    klteb_beam = klteb*kbeam
+    klteb_beam = klteb*kbeam_sim
     lteb_beam = enmap.ifft(klteb_beam).real
     noise = enmap.rand_map(shape_sim,wcs_sim,ps_noise,scalar=True)
     observed = lteb_beam + noise
@@ -157,7 +158,7 @@ for i in range(Nsims):
         modr_dat = enmap.modrmap(shape_dat,wcs_dat) * 180.*60./np.pi
         binner_dat = stats.bin2D(modr_dat,bin_edges)
 
-        if maxlike:
+        if maxlike and cluster:
             init_kappa_model,r500_init = NFWkappa(cc,model_massOverh,concentration,zL,modr_dat,winAtLens,
                                                   overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 
@@ -219,9 +220,9 @@ for i in range(Nsims):
         nt = noise[0,:,:]
         ne = noise[1,:,:]
         nb = noise[2,:,:]
-        ntt2d = fmaps.get_simple_power_enmap(nt)
-        nee2d = fmaps.get_simple_power_enmap(ne)
-        nbb2d = fmaps.get_simple_power_enmap(nb)
+        ntt2d = np.nan_to_num(fmaps.get_simple_power_enmap(nt)/kbeam_sim**2.)
+        nee2d = np.nan_to_num(fmaps.get_simple_power_enmap(ne)/kbeam_sim**2.)
+        nbb2d = np.nan_to_num(fmaps.get_simple_power_enmap(nb)/kbeam_sim**2.)
         
         utt2d = fmaps.get_simple_power_enmap(t)
         uee2d = fmaps.get_simple_power_enmap(e)
@@ -256,8 +257,8 @@ for i in range(Nsims):
 
         
         pl = io.Plotter(scaleY='log',scaleX='log')
-        pl.add(cents,utt*cents**2.,color="C0",ls="-")
-        pl.add(cents,uee*cents**2.,color="C1",ls="-")
+        pl.add(cents,utt*cents**2.,color="C0",marker="o",ls="none")
+        pl.add(cents,uee*cents**2.,color="C1",marker="o",ls="none")
         #pl.add(cents,ubb*cents**2.,color="C2",ls="-")
         pl.add(fine_ells,cltt*fine_ells**2.,color="C0",ls="--")
         pl.add(fine_ells,clee*fine_ells**2.,color="C1",ls="--")
@@ -265,14 +266,14 @@ for i in range(Nsims):
         pl.done(out_dir+"ccomp.png")
 
         pl = io.Plotter(scaleX='log')
-        pl.add(cents,ute*cents**2.,color="C0",ls="-")
+        pl.add(cents,ute*cents**2.,color="C0",marker="o",ls="none")
         pl.add(fine_ells,clte*fine_ells**2.,color="C0",ls="--")
         pl.done(out_dir+"ccompte.png")
 
         pl = io.Plotter(scaleY='log',scaleX='log')
-        pl.add(cents,ltt*cents**2.,color="C0",ls="-")
-        pl.add(cents,lee*cents**2.,color="C1",ls="-")
-        pl.add(cents,lbb*cents**2.,color="C2",ls="-")
+        pl.add(cents,ltt*cents**2.,color="C0",marker="o",ls="none")
+        pl.add(cents,lee*cents**2.,color="C1",marker="o",ls="none")
+        pl.add(cents,lbb*cents**2.,color="C2",marker="o",ls="none")
         pl.add(cents,ntt*cents**2.,color="C0",ls="-.",alpha=0.4)
         pl.add(cents,nee*cents**2.,color="C1",ls="-.",alpha=0.4)
         pl.add(cents,nbb*cents**2.,color="C2",ls="-.",alpha=0.4)
@@ -291,7 +292,7 @@ for i in range(Nsims):
     fkmaps = np.nan_to_num(fkmaps/kbeam_dat)
 
 
-    if maxlike:
+    if maxlike and cluster:
         polcomb = "TT"
         maps = enmap.ifft(fkmaps*fMaskCMB_T,normalize=True).real
         kappa_model = init_kappa_model
