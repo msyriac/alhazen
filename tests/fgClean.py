@@ -28,7 +28,7 @@ noisePY = np.sqrt(2.)*noiseTY
 
 tellminX = 100
 tellmaxX = 3000
-pellminX = 100
+pellminX = 2000
 pellmaxX = 5000
 
 #lkneeTX,alphaTX = (350, -4.7)
@@ -42,7 +42,7 @@ lkneePY,alphaPY = (0, 1)
 
 tellminY = 300
 tellmaxY = 3000
-pellminY = 200
+pellminY = 2000
 pellmaxY = 5000
 
 
@@ -116,7 +116,7 @@ for polComb in ['EB']:
                 
                 
                 
-
+            noiseFileY = noiseFile
                 
 
             nTX,nPX,nTY,nPY = myNls.updateNoise(beamX,noiseTX,noisePX,tellminX,tellmaxX, \
@@ -124,7 +124,7 @@ for polComb in ['EB']:
                               noisePY=noisePY,tellminY=tellminY,tellmaxY=tellmaxY, \
                               pellminY=pellminY,pellmaxY=pellmaxY,lkneesX=(lkneeTX,lkneePX), \
                               alphasX=(alphaTX,alphaPX), \
-                             lkneesY=(lkneeTY,lkneePY),alphasY=(alphaTY,alphaPY), noiseFilePX = noiseFile,noiseFilePY=noiseFile)
+                            lkneesY=(lkneeTY,lkneePY),alphasY=(alphaTY,alphaPY), noiseFilePX = noiseFile,noiseFilePY=noiseFileY)
                                                 
             if polComb=='EB' and delens:
                 ls, Nls,efficiency = myNls.iterativeDelens(polComb,delensTolerance,halo,verbose=False)
@@ -139,7 +139,7 @@ for polComb in ['EB']:
             #     lcents,Nlbinned = binner.bin(nPX)
             #     pl.add(lcents,Nlbinned,label=labname,ls="--")
 
-            # pl.add(ls,Nls,label=labname,ls=lines,alpha=alpha)
+            pl.add(ls,Nls,label=labname,ls=lines,alpha=alpha)
                 
 
             
@@ -147,6 +147,7 @@ for polComb in ['EB']:
             LF = LensForecast()
             LF.loadKK(frange,Clkk,ls,Nls)
             sn,errs = LF.sn(snrange,fsky,"kk")
+            #print errs
             sns.append(sn)
             print noiseFile, " S/N " , sn
 
@@ -160,8 +161,8 @@ for polComb in ['EB']:
 # pl.done("beamVary_"+polComb+".pdf")
 
             
-# pl.add(frange,Clkk,color="black")
-# pl.legendOn(loc='lower right',labsize = 8)
-# pl._ax.set_xlim(0,3000)
-# pl._ax.set_ylim(1.e-9,1.e-6)
-# pl.done("beamVary_"+polComb+".pdf")
+pl.add(frange,Clkk,color="black")
+pl.legendOn(loc='lower right',labsize = 8)
+pl._ax.set_xlim(0,3000)
+pl._ax.set_ylim(1.e-9,1.e-6)
+pl.done("beamVary_"+polComb+".pdf")

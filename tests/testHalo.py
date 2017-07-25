@@ -12,14 +12,22 @@ import numpy as np
 
 # === PARAMS ===
 
-Nsims = 100
-sim_pixel_scale = 1.0 #0.1
-analysis_pixel_scale = 1.0 #0.5
-patch_width_arcmin = 55.*60. #100.
+Nsims = 20
+
+# sim_pixel_scale = 1.0
+# analysis_pixel_scale = 1.0
+# patch_width_arcmin = 25.*60.
+
+sim_pixel_scale = 0.1
+analysis_pixel_scale = 0.5
+patch_width_arcmin = 100.
+
+lens_order = 4
+
 periodic = True
 beam_arcmin = 1.0
-noise_T_uK_arcmin = 0.1
-noise_P_uK_arcmin = 0.1
+noise_T_uK_arcmin = 0.01
+noise_P_uK_arcmin = 0.01
 lmax = 8000
 tellmax = 8000
 pellmax = 8000
@@ -28,11 +36,12 @@ pellmin = 200
 kellmax = 8500
 kellmin = 200
 gradCut = 2000
-pol = True
-debug = True
-cluster = False
+pol_list = ['TT','EB','EE','ET','TE']
+debug = False
+cluster = True
 
 out_dir = os.environ['WWW']+"plots/halotest/"
+
 
 
 # === COSMOLOGY ===
@@ -43,6 +52,9 @@ theory = cc.theory
 
 # === TEMPLATE MAPS ===
 
+pol = False
+if pol_list != ['TT']: pol = True
+
 fine_ells = np.arange(0,lmax,1)
 bin_edges = np.arange(0.,10.0,0.2)
 
@@ -50,16 +62,14 @@ shape_sim, wcs_sim = enmap.get_enmap_patch(patch_width_arcmin,sim_pixel_scale,pr
 modr_sim = enmap.modrmap(shape_sim,wcs_sim) * 180.*60./np.pi
 binner_sim = stats.bin2D(modr_sim,bin_edges)
 
-shape_dat, wcs_dat = enmap.get_enmap_patch(patch_width_arcmin,analysis_pixel_scale,proj="car",pol=pol)
-modr_dat = enmap.modrmap(shape_dat,wcs_dat) * 180.*60./np.pi
-binner_dat = stats.bin2D(modr_dat,bin_edges)
 
 
 
 
 # === LENS ===
 
-lxmap_sim,lymap_sim,modlmap_sim,angmap_sim,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape_sim,wcs_sim)
+lxmap_sim,lymap_sim,modlmap_sim,angmap_sim,lx_sim,ly_sim = fmaps.get_ft_attributes_enmap(shape_sim,wcs_sim)
+pix_ells = np.arange(0,modlmap_sim.max(),1)
 modl_map_alt = enmap.modlmap(shape_sim,wcs_sim)
 assert np.all(np.isclose(modlmap_sim,modl_map_alt))
 
@@ -92,8 +102,8 @@ else:
         pl.add(cents,bclkk)
         pl.done(out_dir+"clkk.png")
 phi, fphi = lt.kappa_to_phi(kappa_map,modlmap_sim,return_fphi=True)
-io.highResPlot2d(kappa_map,out_dir+"kappa_map.png")
-io.highResPlot2d(phi,out_dir+"phi.png")
+io.quickPlot2d(kappa_map,out_dir+"kappa_map.png")
+io.quickPlot2d(phi,out_dir+"phi.png")
 alpha_pix = enmap.grad_pixf(fphi)
 
 
@@ -105,42 +115,16 @@ alpha_pix = enmap.grad_pixf(fphi)
 ntfunc = cmb.get_noise_func(beam_arcmin,noise_T_uK_arcmin,ellmin=tellmin,ellmax=tellmax,TCMB=2.7255e6)
 npfunc = cmb.get_noise_func(beam_arcmin,noise_P_uK_arcmin,ellmin=pellmin,ellmax=pellmax,TCMB=2.7255e6)
 
-nT_sim = ntfunc(modlmap_sim)
-nP_sim = npfunc(modlmap_sim)
+#nT_sim = ntfunc(modlmap_sim)
+#nP_sim = npfunc(modlmap_sim)
 
 
+kbeam = cmb.gauss_beam(modlmap_sim,beam_arcmin)
+ps_noise = np.zeros((3,3,pix_ells.size))
+ps_noise[0,0] = pix_ells*0.+(noise_T_uK_arcmin*np.pi/180./60./TCMB)**2.
+ps_noise[1,1] = pix_ells*0.+(noise_P_uK_arcmin*np.pi/180./60./TCMB)**2.
+ps_noise[2,2] = pix_ells*0.+(noise_P_uK_arcmin*np.pi/180./60./TCMB)**2.
 
-
-
-
-# === ESTIMATOR ===
-
-template_dat = fmaps.simple_flipper_template_from_enmap(shape_dat,wcs_dat)
-lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape_dat,wcs_dat)
-modl_map_alt = enmap.modlmap(shape_dat,wcs_dat)
-assert np.all(np.isclose(modlmap_dat,modl_map_alt))
-
-nT = ntfunc(modlmap_dat)
-nP = npfunc(modlmap_dat)
-
-
-fMaskCMB_T = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=tellmin,lmax=tellmax)
-fMaskCMB_P = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=pellmin,lmax=pellmax)
-fMask = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=kellmin,lmax=kellmax)
-qest = Estimator(template_dat,
-                 theory,
-                 theorySpectraForNorm=None,
-                 noiseX2dTEB=[nT,nP,nP],
-                 noiseY2dTEB=[nT,nP,nP],
-                 fmaskX2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
-                 fmaskY2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
-                 fmaskKappa=fMask,
-                 doCurl=False,
-                 TOnly=not(pol),
-                 halo=True,
-                 gradCut=gradCut,verbose=True,
-                 loadPickledNormAndFilters=None,
-                 savePickledNormAndFilters=None)
 
 
 
@@ -165,28 +149,79 @@ ps[2,2] = clbb
 
 # === SIM AND RECON LOOP ===
 
+kappa_stack = {}
+for polcomb in pol_list:
+    kappa_stack[polcomb] = 0.
+
+
 for i in range(Nsims):
     print i
 
     unlensed = enmap.rand_map(shape_sim,wcs_sim,ps)
-    lensed = lensing.lens_map_flat_pix(unlensed, alpha_pix,order=5)
+    lensed = lensing.lens_map_flat_pix(unlensed, alpha_pix,order=lens_order)
+    klteb = enmap.map2harm(lensed)
+    klteb_beam = klteb*kbeam
+    lteb_beam = enmap.ifft(klteb_beam).real
+    noise = enmap.rand_map(shape_sim,wcs_sim,ps_noise)
+    observed = lteb_beam + noise
+    measured = enmap.downgrade(observed,analysis_pixel_scale/sim_pixel_scale)
+    if i==0:
+
+
+        shape_dat, wcs_dat = measured.shape, measured.wcs
+        #enmap.get_enmap_patch(patch_width_arcmin,analysis_pixel_scale,proj="car",pol=pol)
+        modr_dat = enmap.modrmap(shape_dat,wcs_dat) * 180.*60./np.pi
+        binner_dat = stats.bin2D(modr_dat,bin_edges)
+
+        # === ESTIMATOR ===
+
+        template_dat = fmaps.simple_flipper_template_from_enmap(shape_dat,wcs_dat)
+        lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape_dat,wcs_dat)
+        modl_map_alt = enmap.modlmap(shape_dat,wcs_dat)
+        assert np.all(np.isclose(modlmap_dat,modl_map_alt))
+
+        nT = ntfunc(modlmap_dat)
+        nP = npfunc(modlmap_dat)
+        kbeam_dat = cmb.gauss_beam(modlmap_dat,beam_arcmin)
+
+
+        fMaskCMB_T = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=tellmin,lmax=tellmax)
+        fMaskCMB_P = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=pellmin,lmax=pellmax)
+        fMask = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=kellmin,lmax=kellmax)
+        qest = Estimator(template_dat,
+                         theory,
+                         theorySpectraForNorm=None,
+                         noiseX2dTEB=[nT,nP,nP],
+                         noiseY2dTEB=[nT,nP,nP],
+                         fmaskX2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
+                         fmaskY2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
+                         fmaskKappa=fMask,
+                         doCurl=False,
+                         TOnly=not(pol),
+                         halo=True,
+                         gradCut=gradCut,verbose=True,
+                         loadPickledNormAndFilters=None,
+                         savePickledNormAndFilters=None)
+
+
+
     if i==0 and debug:
         teb = enmap.ifft(enmap.map2harm(unlensed)).real
-        lteb = enmap.ifft(enmap.map2harm(lensed)).real
+        lteb = enmap.ifft(klteb).real
         if pol:
-            io.highResPlot2d(unlensed[0],out_dir+"tmap.png")
-            io.highResPlot2d(unlensed[1],out_dir+"qmap.png")
-            io.highResPlot2d(unlensed[2],out_dir+"umap.png")
-            io.highResPlot2d(teb[1],out_dir+"emap.png")
-            io.highResPlot2d(teb[2],out_dir+"bmap.png")
-            io.highResPlot2d(lensed[0],out_dir+"ltmap.png")
-            io.highResPlot2d(lensed[1],out_dir+"lqmap.png")
-            io.highResPlot2d(lensed[2],out_dir+"lumap.png")
-            io.highResPlot2d(lteb[1],out_dir+"lemap.png")
-            io.highResPlot2d(lteb[2],out_dir+"lbmap.png")
+            io.quickPlot2d(unlensed[0],out_dir+"tmap.png")
+            io.quickPlot2d(unlensed[1],out_dir+"qmap.png")
+            io.quickPlot2d(unlensed[2],out_dir+"umap.png")
+            io.quickPlot2d(teb[1],out_dir+"emap.png")
+            io.quickPlot2d(teb[2],out_dir+"bmap.png")
+            io.quickPlot2d(lensed[0],out_dir+"ltmap.png")
+            io.quickPlot2d(lensed[1],out_dir+"lqmap.png")
+            io.quickPlot2d(lensed[2],out_dir+"lumap.png")
+            io.quickPlot2d(lteb[1],out_dir+"lemap.png")
+            io.quickPlot2d(lteb[2],out_dir+"lbmap.png")
         else:        
-            io.highResPlot2d(unlensed,out_dir+"tmap.png")
-            io.highResPlot2d(lensed,out_dir+"ltmap.png")
+            io.quickPlot2d(unlensed,out_dir+"tmap.png")
+            io.quickPlot2d(lensed,out_dir+"ltmap.png")
 
         
         t = teb[0,:,:]
@@ -246,3 +281,23 @@ for i in range(Nsims):
         pl.done(out_dir+"lccompte.png")
 
         
+    fkmaps = enmap.fft(measured,normalize=False)
+    fkmaps = np.nan_to_num(fkmaps/kbeam_dat)
+    if pol:
+        qest.updateTEB_X(fkmaps[0],fkmaps[1],fkmaps[2],alreadyFTed=True)
+    else:
+        qest.updateTEB_X(fkmaps[0],alreadyFTed=True)
+
+    qest.updateTEB_Y()
+        
+        
+    for polcomb in pol_list:
+        print "Reconstructing",polcomb ," for ", i , " ..."
+        kappa_recon = enmap.samewcs(qest.getKappa(polcomb).real,measured)
+        kappa_stack[polcomb] += kappa_recon
+    
+
+
+for polcomb in pol_list:
+    kappa_stack[polcomb] /= Nsims
+    io.quickPlot2d(kappa_stack[polcomb],out_dir+"kappa_recon_"+polcomb+".png")
