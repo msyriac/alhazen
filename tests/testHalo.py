@@ -7,6 +7,7 @@ import alhazen.lensTools as lt
 import orphics.tools.io as io
 import orphics.tools.cmb as cmb
 import orphics.tools.stats as stats
+import enlib.fft as fftfast
 import os, sys
 import numpy as np
 
@@ -16,7 +17,9 @@ import numpy as np
 
 np.random.seed(100)
 
-Nsims = 50
+Nsims = 20
+
+nstep_delens = 9
 
 # sim_pixel_scale = 1.0
 # analysis_pixel_scale = 1.0
@@ -28,24 +31,24 @@ analysis_pixel_scale = 0.5
 patch_width_arcmin = 100.
 cluster = True
 
-lens_order = 3
-maxlike = False
+lens_order = 5
+maxlike = True
 
 periodic = True
 
-beam_arcmin = 0. #1.0
-noise_T_uK_arcmin = 0. #1.0 #0.01
-noise_P_uK_arcmin = 0. #1.0 #0.01
-lmax = 8500
-tellmax = 8000
-pellmax = 8000
+beam_arcmin = 1. #1.0
+noise_T_uK_arcmin = 0.001 #1.0 #0.01
+noise_P_uK_arcmin = 0.001 #1.0 #0.01
+lmax = 6500
+tellmax = 6000
+pellmax = 6000
 tellmin = 200
 pellmin = 200
-kellmax = 6000
+kellmax = min(tellmax,pellmax)
 kellmin = 200
 gradCut = 2000
 #pol_list = ['TT','EB','EE','ET','TE']
-pol_list = ['TT','EB']#,'EB']
+pol_list = ['TT']#,'EB']
 debug = False
 
 out_dir = os.environ['WWW']+"plots/halotest/smallpatch_"
@@ -78,7 +81,7 @@ assert np.all(np.isclose(modlmap_sim,modl_map_alt))
 
 
 if cluster:
-    massOverh = 2.e14
+    massOverh = 6.e14
     zL = 0.7
     overdensity = 500.
     critical = True
@@ -91,8 +94,8 @@ if cluster:
                               overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
     #cents, nkprofile = binner.bin(kappa_map)
 
-    model_mass = 2.e14
-    model_uniform_kappa = 0.02
+    model_mass = 6.e14
+    model_uniform_kappa = 0.02 #02
 else:
     clkk = theory.gCl("kk",fine_ells)
     clkk.resize((1,1,clkk.size))
@@ -141,9 +144,14 @@ ps = cmb.enmap_power_from_orphics_theory(theory,lmax,lensed=False)
 
 kappa_stack = {}
 profiles = {}
+kappa_stack_maxlike = {}
+profiles_maxlike = {}
 for polcomb in pol_list:
     kappa_stack[polcomb] = 0.
     profiles[polcomb] = []
+    if maxlike:
+        kappa_stack_maxlike[polcomb] = 0.
+        profiles_maxlike[polcomb] = []
     
 
     
@@ -208,6 +216,20 @@ for i in range(Nsims):
                          loadPickledNormAndFilters=None,
                          savePickledNormAndFilters=None)
 
+        qest_maxlike = Estimator(template_dat,
+                         theory,
+                         theorySpectraForNorm=None,
+                         noiseX2dTEB=[nT,nP,nP],
+                         noiseY2dTEB=[nT,nP,nP],
+                         fmaskX2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
+                         fmaskY2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
+                         fmaskKappa=fMask,
+                         doCurl=False,
+                         TOnly=not(pol),
+                         halo=True,
+                         gradCut=10000,verbose=False,
+                         loadPickledNormAndFilters=None,
+                         savePickledNormAndFilters=None)
 
 
     if i==0 and debug:
@@ -302,41 +324,41 @@ for i in range(Nsims):
         pl.add(fine_ells,lclte*fine_ells**2.,color="C0",ls="--")
         pl.done(out_dir+"lccompte.png")
 
-        
-    fkmaps = enmap.fft(measured,normalize=False)
+
+    fkmaps = fftfast.fft(measured,axes=[-2,-1])
     fkmaps = np.nan_to_num(fkmaps/kbeam_dat)
 
 
     if maxlike and cluster:
         polcomb = "TT"
-        maps = enmap.ifft(fkmaps*fMaskCMB_T,normalize=True).real
-        #init_kappa_model = modr_dat*0.+model_uniform_kappa
+        maps = enmap.samewcs(fftfast.ifft(fkmaps*fMaskCMB_T,normalize=True,axes=[-2,-1]).real,measured)
         #kappa_model = init_kappa_model
         k = 0
         io.quickPlot2d(maps,out_dir+"map_iter_"+str(k).zfill(3)+".png")
 
 
-        import flipper.fft as fftfast
         from scipy.integrate import simps
         Ny,Nx = shape_dat[-2:]
         pixScaleY, pixScaleX = enmap.pixshape(shape_dat,wcs_dat)
         Ukappa = init_kappa_model
         Uft = fftfast.fft(Ukappa,axes=[-2,-1])
         Upower = np.real(Uft*Uft.conjugate())
-        Nl2d = qest.N.Nlkk[polcomb]
+        Nl2d = qest_maxlike.N.Nlkk[polcomb]
         area = Nx*Ny*pixScaleX*pixScaleY
         Upower = Upower *area / (Nx*Ny)**2
         wfilter = np.nan_to_num(Upower/Nl2d)
         
 
-        #wfilter = np.nan_to_num(1./(qest.N.Nlkk[polcomb]))
+        #wfilter = np.nan_to_num(1./(qest_maxlike.N.Nlkk[polcomb]))
         # print wfilter.max()
-        #wfilter = np.nan_to_num(qest.N.clkk2d/(qest.N.clkk2d+qest.N.Nlkk[polcomb]))
+        #wfilter = np.nan_to_num(qest_maxlike.N.clkk2d/(qest_maxlike.N.clkk2d+qest_maxlike.N.Nlkk[polcomb]))
         wfilter[wfilter>1.e90] = 0.
         wfilter = wfilter/wfilter.max()
+        wfilter[wfilter<=0.] = 0.
+        #io.quickPlot2d(np.fft.fftshift(wfilter),out_dir+"bwf2d.png")
         #wfilter = wfilter*0.+1.
 
-        debug_edges = np.arange(kellmin,kellmax,80)
+        debug_edges = np.arange(kellmin,kellmax,120)
         dbinner = stats.bin2D(modlmap_dat,debug_edges)
         cents, bwf = dbinner.bin(wfilter)
         pl = io.Plotter()
@@ -344,65 +366,77 @@ for i in range(Nsims):
         pl.done(out_dir+"bwf.png")
 
         wfilter_cmb = np.nan_to_num(theory.lCl('TT',modlmap_dat)/(theory.lCl('TT',modlmap_dat)+nT/kbeam_dat**2.))
+        wfilter_cmb[wfilter_cmb<0.] = 0.
+        #io.quickPlot2d(np.fft.fftshift(wfilter_cmb),out_dir+"bwfcmb2d.png")
+        wfilter_cmb = wfilter*0.+1.
+        #assert np.all(wfilter>0.)
+        #assert np.all(wfilter_cmb>0.)
         cents, bwf = dbinner.bin(wfilter_cmb)
         pl = io.Plotter()
         pl.add(cents,bwf)
         pl.done(out_dir+"bwfcmb.png")
 
-
-        kappa_model = enmap.samewcs(wfilter*0.+model_uniform_kappa,measured).real
-        io.quickPlot2d(kappa_model,out_dir+"kappamodel.png")
-        #enmap.samewcs(fmaps.filter_map(kappa_model,wfilter*0.+1.,
-        #                            modlmap_dat,lowPass=kellmax,highPass=kellmin),init_kappa_model)
+        
+        kappa_start = modr_dat*0.+model_uniform_kappa
+        kappa_model = enmap.samewcs(fmaps.filter_map(kappa_start,wfilter*0.+1.,modlmap_dat,lowPass=kellmax,highPass=kellmin),measured)
 
         
         io.quickPlot2d(kappa_model,out_dir+"kappa_iter_"+str(k).zfill(3)+".png")
 
-        qest.updateTEB_X(fkmaps,alreadyFTed=True)
-        qest.updateTEB_Y()
-        kappa_recon_single = enmap.samewcs(qest.getKappa(polcomb).real,measured)
+        qest_maxlike.updateTEB_X(fkmaps,alreadyFTed=True)
+        qest_maxlike.updateTEB_Y()
+        kappa_recon_single = enmap.samewcs(qest_maxlike.getKappa(polcomb).real,measured)
         io.quickPlot2d(kappa_recon_single,out_dir+"kappa_recon_single.png")
 
         truek_filt = fmaps.filter_map(true_kappa_map_dat,wfilter*0.+1.,modlmap_dat,lowPass=kellmax,highPass=kellmin)
         true_ksum = truek_filt[modr_dat<10.].mean()
 
-        #kappa_model = enmap.samewcs(fmaps.filter_map(kappa_recon_single,wfilter,
-                                    #modlmap_dat,lowPass=kellmax,highPass=kellmin),init_kappa_model)
-
-        # kappa_model = enmap.samewcs(fmaps.filter_map(true_kappa_map_dat,wfilter,
-        #                             modlmap_dat,lowPass=kellmax,highPass=kellmin),init_kappa_model)
 
         
-        while k<50:
+        while k<20:
 
            
 
-            
-            phi_model = lt.kappa_to_phi(kappa_model,modlmap_dat)
-            grad_phi = enmap.grad(phi_model)
-            delensed = lensing.delens_map(maps.copy(), grad_phi, nstep=7, order=lens_order, mode="spline", border="cyclic")
-            if k==0: io.quickPlot2d(delensed-maps,out_dir+"firstdiff.png",verbose=True)
-            
-            fkmaps = enmap.fft(delensed,normalize=True)
-            qest.updateTEB_X(fkmaps,alreadyFTed=True)
-            qest.updateTEB_Y()
-            kappa_recon = enmap.samewcs(qest.getKappa(polcomb).real,measured)
-            kappa_recon_filtered = enmap.samewcs(fmaps.filter_map(kappa_recon,wfilter,
+            if k==0:
+                delensed = maps.copy()
+            else:
+                kappa_model_filtered = enmap.samewcs(fmaps.filter_map(kappa_model,wfilter,
                                                      modlmap_dat,lowPass=kellmax,highPass=kellmin),init_kappa_model)
+                phi_model = lt.kappa_to_phi(kappa_model_filtered,modlmap_dat)
+                grad_phi = enmap.grad(phi_model)
+                delensed = lensing.delens_map(maps.copy(), grad_phi, nstep=nstep_delens, order=lens_order, mode="spline", border="cyclic")
+            #if k==0: io.quickPlot2d(delensed-maps,out_dir+"firstdiff.png",verbose=True)
+            
+            fkmaps_update = enmap.samewcs(fftfast.fft(delensed,axes=[-2,-1]),measured)
+            qest_maxlike.updateTEB_X(fkmaps_update,alreadyFTed=True)
+            qest_maxlike.updateTEB_Y()
+            kappa_recon = enmap.samewcs(qest_maxlike.getKappa(polcomb).real,measured)
+            #kappa_recon_filtered = enmap.samewcs(fmaps.filter_map(kappa_recon,wfilter,
+                                                     #modlmap_dat,lowPass=kellmax,highPass=kellmin),init_kappa_model)
 
-            io.quickPlot2d(kappa_recon_filtered,out_dir+"kappa_recon_"+str(k).zfill(3)+".png",verbose=False)
-            kappa_model = kappa_model + kappa_recon_filtered
+            #io.quickPlot2d(kappa_recon_filtered,out_dir+"kappa_recon_"+str(k).zfill(3)+".png",verbose=False)
+            kappa_model = kappa_model + kappa_recon #_filtered
             k_filt = fmaps.filter_map(kappa_model,wfilter*0.+1.,modlmap_dat,lowPass=kellmax,highPass=kellmin)
             ksum = k_filt[modr_dat<10.].mean()
-            print k,ksum,true_ksum, k_filt.mean()
+            print k,ksum,true_ksum
             
             k += 1
             delensed = enmap.samewcs(fmaps.filter_map(delensed,wfilter_cmb,
                                                 modlmap_dat,lowPass=tellmax,highPass=tellmin),measured)
-            io.quickPlot2d(delensed,out_dir+"map_iter_"+str(k).zfill(3)+".png",verbose=False)
-            io.quickPlot2d(kappa_model,out_dir+"kappa_iter_"+str(k).zfill(3)+".png",verbose=False)
-        sys.exit()
-    else:
+            #io.quickPlot2d(delensed,out_dir+"map_iter_"+str(k).zfill(3)+".png",verbose=False)
+            #io.quickPlot2d(kappa_model,out_dir+"kappa_iter_"+str(k).zfill(3)+".png",verbose=False)
+        kappa_model = enmap.samewcs(fmaps.filter_map(kappa_model,wfilter*0.+1.,
+                                            modlmap_dat,lowPass=kellmax,highPass=kellmin),init_kappa_model)
+        #sys.exit()
+
+        for polcomb in pol_list:
+            kappa_model -= kappa_model.mean()
+            cents_prof, prof = binner_dat.bin(kappa_model)
+            profiles_maxlike[polcomb].append(prof)
+            
+            kappa_stack_maxlike[polcomb] += kappa_model
+
+    if True: #else:
         if pol:
             qest.updateTEB_X(fkmaps[0],fkmaps[1],fkmaps[2],alreadyFTed=True)
         else:
@@ -426,12 +460,18 @@ for i in range(Nsims):
 
 if cluster:        
     profstats = {}
+    profstats_maxlike = {}
 
     for polcomb in pol_list:
         kappa_stack[polcomb] /= Nsims
         k = kappa_stack[polcomb]
         io.quickPlot2d(k,out_dir+"kappa_recon_"+polcomb+".png")
         profstats[polcomb] = stats.getStats(profiles[polcomb])
+        if maxlike:
+            kappa_stack_maxlike[polcomb] /= Nsims
+            k = kappa_stack_maxlike[polcomb]
+            io.quickPlot2d(k,out_dir+"kappa_recon_"+polcomb+"_maxlike.png")
+            profstats_maxlike[polcomb] = stats.getStats(profiles_maxlike[polcomb])
 
     pl = io.Plotter(scaleX='log')
 
@@ -457,7 +497,10 @@ if cluster:
     for polcomb in pol_list:
         vals.append((profstats[polcomb]['mean']+profstats[polcomb]['errmean']).ravel())
         vals.append((profstats[polcomb]['mean']-profstats[polcomb]['errmean']).ravel())
-        pl.addErr(cents_prof,profstats[polcomb]['mean'],yerr=profstats[polcomb]['errmean'],label=polcomb,ls="none",marker="o")
+        vals.append((profstats_maxlike[polcomb]['mean']+profstats_maxlike[polcomb]['errmean']).ravel())
+        vals.append((profstats_maxlike[polcomb]['mean']-profstats_maxlike[polcomb]['errmean']).ravel())
+        pl.addErr(cents_prof+0.1,profstats[polcomb]['mean'],yerr=profstats[polcomb]['errmean'],label=polcomb,ls="none",marker="o")
+        pl.addErr(cents_prof,profstats_maxlike[polcomb]['mean'],yerr=profstats_maxlike[polcomb]['errmean'],label=polcomb+" maxlike",ls="none",marker="o")
     pl.legendOn(labsize=8)
 
     vals = np.asarray(vals).ravel().tolist()
@@ -471,6 +514,7 @@ if cluster:
     pl = io.Plotter()
     for polcomb in pol_list:
         pl.add(cents,(profstats[polcomb]['mean']-inp_profile)/profstats[polcomb]['errmean'],label=polcomb)
+        pl.add(cents,(profstats_maxlike[polcomb]['mean']-inp_profile)/profstats_maxlike[polcomb]['errmean'],label=polcomb+" maxlike")
     pl.legendOn()
     #pl._ax.set_ylim(-2.,2.)
     pl.done(out_dir+"recon_profiles_per.png")
