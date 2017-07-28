@@ -21,6 +21,8 @@ Nsims = 20
 
 nstep_delens = 9
 
+deconvolve_beam = False
+
 # sim_pixel_scale = 1.0
 # analysis_pixel_scale = 1.0
 # patch_width_arcmin = 25.*60.
@@ -32,22 +34,23 @@ patch_width_arcmin = 100.
 cluster = True
 
 lens_order = 5
-maxlike = True
+maxlike = True #False
 
 periodic = True
 
-beam_arcmin = 1. #1.0
-noise_T_uK_arcmin = 0.001 #1.0 #0.01
-noise_P_uK_arcmin = 0.001 #1.0 #0.01
-lmax = 6500
-tellmax = 6000
-pellmax = 6000
-tellmin = 200
-pellmin = 200
-kellmax = min(tellmax,pellmax)
-kellmin = 200
+beam_arcmin = 0. #1. #1.0
+noise_T_uK_arcmin = 0. #001 #1.0 #0.01
+noise_P_uK_arcmin = 0. #001 #1.0 #0.01
+lmax = 8500
+tellmax = 8000
+pellmax = 8000
+tellmin = 2
+pellmin = 2
+kellmax = np.inf #22000 #min(tellmax,pellmax)
+kellmin = 2
 gradCut = 2000
 #pol_list = ['TT','EB','EE','ET','TE']
+#pol_list = ['TT','EB']#,'EB']
 pol_list = ['TT']#,'EB']
 debug = False
 
@@ -81,7 +84,7 @@ assert np.all(np.isclose(modlmap_sim,modl_map_alt))
 
 
 if cluster:
-    massOverh = 6.e14
+    massOverh = 2.e14
     zL = 0.7
     overdensity = 500.
     critical = True
@@ -94,7 +97,7 @@ if cluster:
                               overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
     #cents, nkprofile = binner.bin(kappa_map)
 
-    model_mass = 6.e14
+    model_mass = 2.e14
     model_uniform_kappa = 0.02 #02
 else:
     clkk = theory.gCl("kk",fine_ells)
@@ -102,7 +105,7 @@ else:
     kappa_map = enmap.rand_map(shape_sim[-2:],wcs_sim,cov=clkk,scalar=True)
     if debug:
         pkk = fmaps.get_simple_power_enmap(kappa_map)
-        debug_edges = np.arange(kellmin,kellmax,80)
+        debug_edges = np.arange(kellmin,8000,80)
         dbinner = stats.bin2D(modlmap_sim,debug_edges)
         cents, bclkk = dbinner.bin(pkk)
         clkk.resize((clkk.shape[-1]))
@@ -120,9 +123,13 @@ alpha_pix = enmap.grad_pixf(fphi)
 
 # === EXPERIMENT ===
 
+if deconvolve_beam:
+    ntfunc = cmb.get_noise_func(beam_arcmin,noise_T_uK_arcmin,ellmin=tellmin,ellmax=tellmax,TCMB=TCMB)
+    npfunc = cmb.get_noise_func(beam_arcmin,noise_P_uK_arcmin,ellmin=pellmin,ellmax=pellmax,TCMB=TCMB)
+else:
+    ntfunc = lambda x: modlmap_dat*0.+(np.pi / (180. * 60))**2.  * noise_T_uK_arcmin**2. / TCMB**2.
+    npfunc = lambda x: modlmap_dat*0.+(np.pi / (180. * 60))**2.  * noise_P_uK_arcmin**2. / TCMB**2.
 
-ntfunc = cmb.get_noise_func(beam_arcmin,noise_T_uK_arcmin,ellmin=tellmin,ellmax=tellmax,TCMB=2.7255e6)
-npfunc = cmb.get_noise_func(beam_arcmin,noise_P_uK_arcmin,ellmin=pellmin,ellmax=pellmax,TCMB=2.7255e6)
 
 kbeam_sim = cmb.gauss_beam(modlmap_sim,beam_arcmin)
 ps_noise = np.zeros((3,3,pix_ells.size))
@@ -201,14 +208,20 @@ for i in range(Nsims):
         fMaskCMB_T = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=tellmin,lmax=tellmax)
         fMaskCMB_P = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=pellmin,lmax=pellmax)
         fMask = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=kellmin,lmax=kellmax)
+        if deconvolve_beam:
+            kbeampass = None
+        else:
+            kbeampass = kbeam_dat
         qest = Estimator(template_dat,
-                         theory,
+                        theory,
                          theorySpectraForNorm=None,
                          noiseX2dTEB=[nT,nP,nP],
                          noiseY2dTEB=[nT,nP,nP],
                          fmaskX2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
                          fmaskY2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
                          fmaskKappa=fMask,
+                         kBeamX = kbeampass,
+                         kBeamY = kbeampass,
                          doCurl=False,
                          TOnly=not(pol),
                          halo=True,
@@ -216,20 +229,23 @@ for i in range(Nsims):
                          loadPickledNormAndFilters=None,
                          savePickledNormAndFilters=None)
 
-        qest_maxlike = Estimator(template_dat,
-                         theory,
-                         theorySpectraForNorm=None,
-                         noiseX2dTEB=[nT,nP,nP],
-                         noiseY2dTEB=[nT,nP,nP],
-                         fmaskX2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
-                         fmaskY2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
-                         fmaskKappa=fMask,
-                         doCurl=False,
-                         TOnly=not(pol),
-                         halo=True,
-                         gradCut=10000,verbose=False,
-                         loadPickledNormAndFilters=None,
-                         savePickledNormAndFilters=None)
+        if maxlike:
+            qest_maxlike = Estimator(template_dat,
+                             theory,
+                             theorySpectraForNorm=None,
+                             noiseX2dTEB=[nT,nP,nP],
+                             noiseY2dTEB=[nT,nP,nP],
+                             fmaskX2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
+                             fmaskY2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
+                             fmaskKappa=fMask,
+                             kBeamX = kbeampass,
+                             kBeamY = kbeampass,
+                             doCurl=False,
+                             TOnly=not(pol),
+                             halo=True,
+                             gradCut=10000,verbose=False,
+                             loadPickledNormAndFilters=None,
+                             savePickledNormAndFilters=None)
 
 
     if i==0 and debug:
@@ -326,7 +342,7 @@ for i in range(Nsims):
 
 
     fkmaps = fftfast.fft(measured,axes=[-2,-1])
-    fkmaps = np.nan_to_num(fkmaps/kbeam_dat)
+    if deconvolve_beam: fkmaps = np.nan_to_num(fkmaps/kbeam_dat)
 
 
     if maxlike and cluster:
@@ -358,7 +374,7 @@ for i in range(Nsims):
         #io.quickPlot2d(np.fft.fftshift(wfilter),out_dir+"bwf2d.png")
         #wfilter = wfilter*0.+1.
 
-        debug_edges = np.arange(kellmin,kellmax,120)
+        debug_edges = np.arange(kellmin,8000,120)
         dbinner = stats.bin2D(modlmap_dat,debug_edges)
         cents, bwf = dbinner.bin(wfilter)
         pl = io.Plotter()
@@ -432,9 +448,10 @@ for i in range(Nsims):
         for polcomb in pol_list:
             kappa_model -= kappa_model.mean()
             cents_prof, prof = binner_dat.bin(kappa_model)
-            profiles_maxlike[polcomb].append(prof)
+            if maxlike:
+                profiles_maxlike[polcomb].append(prof)
             
-            kappa_stack_maxlike[polcomb] += kappa_model
+                kappa_stack_maxlike[polcomb] += kappa_model
 
     if True: #else:
         if pol:
@@ -494,13 +511,15 @@ if cluster:
 
     vals = []
     vals.append(inp_profile)
-    for polcomb in pol_list:
+    for j,polcomb in enumerate(pol_list):
         vals.append((profstats[polcomb]['mean']+profstats[polcomb]['errmean']).ravel())
         vals.append((profstats[polcomb]['mean']-profstats[polcomb]['errmean']).ravel())
-        vals.append((profstats_maxlike[polcomb]['mean']+profstats_maxlike[polcomb]['errmean']).ravel())
-        vals.append((profstats_maxlike[polcomb]['mean']-profstats_maxlike[polcomb]['errmean']).ravel())
-        pl.addErr(cents_prof+0.1,profstats[polcomb]['mean'],yerr=profstats[polcomb]['errmean'],label=polcomb,ls="none",marker="o")
-        pl.addErr(cents_prof,profstats_maxlike[polcomb]['mean'],yerr=profstats_maxlike[polcomb]['errmean'],label=polcomb+" maxlike",ls="none",marker="o")
+        if maxlike:
+            vals.append((profstats_maxlike[polcomb]['mean']+profstats_maxlike[polcomb]['errmean']).ravel())
+            vals.append((profstats_maxlike[polcomb]['mean']-profstats_maxlike[polcomb]['errmean']).ravel())
+            pl.addErr(cents_prof-(j+1)*0.03,profstats_maxlike[polcomb]['mean'],yerr=profstats_maxlike[polcomb]['errmean'],label=polcomb+" maxlike",ls="none",marker="o")
+        pl.addErr(cents_prof+(j+1)*0.03,profstats[polcomb]['mean'],yerr=profstats[polcomb]['errmean'],label=polcomb,ls="none",marker="o")
+        
     pl.legendOn(labsize=8)
 
     vals = np.asarray(vals).ravel().tolist()
@@ -514,7 +533,7 @@ if cluster:
     pl = io.Plotter()
     for polcomb in pol_list:
         pl.add(cents,(profstats[polcomb]['mean']-inp_profile)/profstats[polcomb]['errmean'],label=polcomb)
-        pl.add(cents,(profstats_maxlike[polcomb]['mean']-inp_profile)/profstats_maxlike[polcomb]['errmean'],label=polcomb+" maxlike")
+        if maxlike: pl.add(cents,(profstats_maxlike[polcomb]['mean']-inp_profile)/profstats_maxlike[polcomb]['errmean'],label=polcomb+" maxlike")
     pl.legendOn()
     #pl._ax.set_ylim(-2.,2.)
     pl.done(out_dir+"recon_profiles_per.png")

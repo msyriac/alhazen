@@ -87,7 +87,7 @@ def getMax(polComb,tellmax,pellmax):
 class QuadNorm(object):
 
     
-    def __init__(self,templateMap,gradCut=None,verbose=False,bigell=9000):
+    def __init__(self,templateMap,gradCut=None,verbose=False,bigell=9000,kBeamX=None,kBeamY=None):
         '''
 
         templateFT is a template liteMap FFT object
@@ -101,6 +101,16 @@ class QuadNorm(object):
         self.lxHatMap = self.lxMap*np.nan_to_num(1. / self.modLMap)
         self.lyHatMap = self.lyMap*np.nan_to_num(1. / self.modLMap)
         #B = fft(self.modLMap,axes=[-2,-1],flags=['FFTW_MEASURE'])
+
+        if kBeamX is not None:           
+            self.kBeamX = kBeamX
+        else:
+            self.kBeamX = 1.
+            
+        if kBeamY is not None:           
+            self.kBeamY = kBeamY
+        else:
+            self.kBeamY = 1.
 
 
         self.uClNow2d = {}
@@ -217,7 +227,7 @@ class QuadNorm(object):
         if Y=='B': Y='E'
         gradClXY = X+Y
         if XY=='ET': gradClXY = 'TE'
-        W = np.nan_to_num(self.uClFid2d[gradClXY].copy()/(self.lClFid2d[X+X].copy()+self.noiseXX2d[X+X].copy()))*self.fMaskXX[X+X]
+        W = np.nan_to_num(self.uClFid2d[gradClXY].copy()/(self.lClFid2d[X+X].copy()+self.noiseXX2d[X+X].copy()))*self.fMaskXX[X+X]*self.kBeamX
         W[self.modLMap>self.gradCut]=0.
         if X=='T':
             W[np.where(self.modLMap >= self.lmax_T)] = 0.
@@ -230,7 +240,7 @@ class QuadNorm(object):
 
     def WY(self,YY):
         assert YY[0]==YY[1]
-        W = np.nan_to_num(1./(self.lClFid2d[YY].copy()+self.noiseYY2d[YY].copy()))*self.fMaskYY[YY]
+        W = np.nan_to_num(1./(self.lClFid2d[YY].copy()+self.noiseYY2d[YY].copy()))*self.fMaskYY[YY]*self.kBeamY
         W[np.where(self.modLMap >= self.lmax_T)] = 0.
         if YY[0]=='T':
             W[np.where(self.modLMap >= self.lmax_T)] = 0.
@@ -261,8 +271,8 @@ class QuadNorm(object):
 
             if halo:
             
-                WXY = self.WXY('TT')
-                WY = self.WY('TT')
+                WXY = self.WXY('TT')*self.kBeamX
+                WY = self.WY('TT')*self.kBeamY
 
                 # binrange = np.arange(50,4000,10)
                 # binner = bin2D(self.modLMap,binrange)
@@ -321,8 +331,8 @@ class QuadNorm(object):
             if halo:
             
 
-                WXY = self.WXY('EE')
-                WY = self.WY('EE')
+                WXY = self.WXY('EE')*self.kBeamX
+                WY = self.WY('EE')*self.kBeamY
                 rfact = 2.**0.25
                 for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
                     for trigfact in [cossqf,sinsqf,np.sqrt(2.)*sinf*cosf]:
@@ -382,8 +392,8 @@ class QuadNorm(object):
             lxhat = self.lxHatMap
             lyhat = self.lyHatMap
 
-            WXY = self.WXY('EB')
-            WY = self.WY('BB')
+            WXY = self.WXY('EB')*self.kBeamX
+            WY = self.WY('BB')*self.kBeamY
             for ellsq in [lx*lx,ly*ly,np.sqrt(2.)*lx*ly]:
                 preF = ellsq*clunlenEEArrNow*WXY
                 preG = WY
@@ -413,8 +423,8 @@ class QuadNorm(object):
                 cossqf = cosf**2.
 
 
-                WXY = self.WXY('ET')
-                WY = self.WY('TT')
+                WXY = self.WXY('ET')*self.kBeamX
+                WY = self.WY('TT')*self.kBeamY
 
                 rfact = 2.**0.25
                 for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
@@ -488,8 +498,8 @@ class QuadNorm(object):
                 cosf = cos2phi(lxhat,lyhat)
                 cossqf = cosf**2.
                 
-                WXY = self.WXY('TE')
-                WY = self.WY('EE')
+                WXY = self.WXY('TE')*self.kBeamX
+                WY = self.WY('EE')*self.kBeamY
 
                 rfact = 2.**0.25
                 for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
@@ -569,8 +579,8 @@ class QuadNorm(object):
             lxhat = self.lxHatMap
             lyhat = self.lyHatMap
             
-            WXY = self.WXY('TB')
-            WY = self.WY('BB')
+            WXY = self.WXY('TB')*self.kBeamX
+            WY = self.WY('BB')*self.kBeamY
             for ellsq in [lx*lx,ly*ly,np.sqrt(2.)*lx*ly]:
                 preF = ellsq*clunlenTEArrNow*WXY
                 preG = WY
@@ -977,6 +987,8 @@ class Estimator(object):
                  fmaskX2dTEB=[None,None,None],
                  fmaskY2dTEB=[None,None,None],
                  fmaskKappa=None,
+                 kBeamX = None,
+                 kBeamY = None,
                  doCurl=False,
                  TOnly=False,
                  halo=True,
@@ -984,7 +996,7 @@ class Estimator(object):
                  verbose=False,
                  loadPickledNormAndFilters=None,
                  savePickledNormAndFilters=None,
-                 uEqualsL=True):
+                 uEqualsL=False):
 
         '''
         All the 2d fourier objects below are pre-fftshifting. They must be of the same dimension.
@@ -1025,9 +1037,18 @@ class Estimator(object):
         self.AL = {}
         if doCurl: self.OmAL = {}
 
+        if kBeamX is not None:           
+            self.kBeamX = kBeamX
+        else:
+            self.kBeamX = 1.
+            
+        if kBeamY is not None:           
+            self.kBeamY = kBeamY
+        else:
+            self.kBeamY = 1.
 
 
-        self.N = QuadNorm(templateLiteMap,gradCut=gradCut,verbose=verbose)
+        self.N = QuadNorm(templateLiteMap,gradCut=gradCut,verbose=verbose,kBeamX=self.kBeamX,kBeamY=self.kBeamY)
         if fmaskKappa is None:
             ellMinK = 80
             ellMaxK = 3000
@@ -1196,10 +1217,16 @@ class Estimator(object):
 
 
         kappaft = -AL*fft(rawKappa,axes=[-2,-1])
-        #if weightedFt: return np.nan_to_num(kappaft/self.N.Nlkk[XY]),np.nan_to_num(1./self.N.Nlkk[XY])
+        #kappaft = np.nan_to_num(-AL*fft(rawKappa,axes=[-2,-1])) # added after beam convolved change
         self.kappa = ifft(kappaft,axes=[-2,-1],normalize=True)
-
-        assert not(np.any(np.isnan(self.kappa)))
+        try:
+            assert not(np.any(np.isnan(self.kappa)))
+        except:
+            import orphics.tools.io as io
+            io.quickPlot2d(self.kappa.real,"nankappa.png")
+            sys.exit()
+        
+            
         # from orphics.tools.io import Plotter
         # pl = Plotter()
         # #pl.plot2d(np.nan_to_num(self.kappa))
