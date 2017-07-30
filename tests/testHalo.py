@@ -17,9 +17,9 @@ import numpy as np
 
 np.random.seed(100)
 
-Nsims = 20
+Nsims = 400
 
-nstep_delens = 9
+nstep_delens = 7
 
 deconvolve_beam = False
 
@@ -33,25 +33,29 @@ analysis_pixel_scale = 0.5
 patch_width_arcmin = 100.
 cluster = True
 
-lens_order = 5
-maxlike = True #False
+lens_order = 3
+maxlike = False
 
 periodic = True
 
-beam_arcmin = 0. #1. #1.0
-noise_T_uK_arcmin = 0. #001 #1.0 #0.01
-noise_P_uK_arcmin = 0. #001 #1.0 #0.01
+beam_arcmin = 1. #1.0
+noise_T_uK_arcmin = 0.01 #01 #001 #1.0 #0.01
+noise_P_uK_arcmin = 0.01 #01 #001 #1.0 #0.01
 lmax = 8500
 tellmax = 8000
 pellmax = 8000
-tellmin = 2
-pellmin = 2
-kellmax = np.inf #22000 #min(tellmax,pellmax)
-kellmin = 2
+tellmax_noise = 8000
+pellmax_noise = 8000
+tellmin_noise = 2
+pellmin_noise = 2
+tellmin = 200
+pellmin = 200
+kellmax = 8500 #np.inf #22000 #min(tellmax,pellmax)
+kellmin = 200
 gradCut = 2000
-#pol_list = ['TT','EB','EE','ET','TE']
-#pol_list = ['TT','EB']#,'EB']
-pol_list = ['TT']#,'EB']
+pol_list = ['TT','EB','EE','ET','TE','TB']
+#pol_list = ['TT','EB']
+#pol_list = ['TT','EB']
 debug = False
 
 out_dir = os.environ['WWW']+"plots/halotest/smallpatch_"
@@ -202,6 +206,10 @@ for i in range(Nsims):
 
         nT = ntfunc(modlmap_dat)
         nP = npfunc(modlmap_dat)
+        nT[modlmap_dat>tellmax_noise]=np.inf
+        nP[modlmap_dat>pellmax_noise]=np.inf
+        nT[modlmap_dat<tellmin_noise]=np.inf
+        nP[modlmap_dat<pellmin_noise]=np.inf
         kbeam_dat = cmb.gauss_beam(modlmap_dat,beam_arcmin)
 
 
@@ -212,6 +220,7 @@ for i in range(Nsims):
             kbeampass = None
         else:
             kbeampass = kbeam_dat
+            
         qest = Estimator(template_dat,
                         theory,
                          theorySpectraForNorm=None,
@@ -347,7 +356,8 @@ for i in range(Nsims):
 
     if maxlike and cluster:
         polcomb = "TT"
-        maps = enmap.samewcs(fftfast.ifft(fkmaps*fMaskCMB_T,normalize=True,axes=[-2,-1]).real,measured)
+        fkmapsdc = np.nan_to_num(fkmaps/kbeam_dat)
+        maps = enmap.samewcs(fftfast.ifft(fkmapsdc*fMaskCMB_T,normalize=True,axes=[-2,-1]).real,measured)
         #kappa_model = init_kappa_model
         k = 0
         io.quickPlot2d(maps,out_dir+"map_iter_"+str(k).zfill(3)+".png")
@@ -421,9 +431,9 @@ for i in range(Nsims):
                 phi_model = lt.kappa_to_phi(kappa_model_filtered,modlmap_dat)
                 grad_phi = enmap.grad(phi_model)
                 delensed = lensing.delens_map(maps.copy(), grad_phi, nstep=nstep_delens, order=lens_order, mode="spline", border="cyclic")
-            #if k==0: io.quickPlot2d(delensed-maps,out_dir+"firstdiff.png",verbose=True)
+            if k==0: io.quickPlot2d(delensed-maps,out_dir+"firstdiff.png",verbose=True)
             
-            fkmaps_update = enmap.samewcs(fftfast.fft(delensed,axes=[-2,-1]),measured)
+            fkmaps_update = enmap.samewcs(fftfast.fft(delensed,axes=[-2,-1]),measured)*kbeam_dat
             qest_maxlike.updateTEB_X(fkmaps_update,alreadyFTed=True)
             qest_maxlike.updateTEB_Y()
             kappa_recon = enmap.samewcs(qest_maxlike.getKappa(polcomb).real,measured)
@@ -439,11 +449,11 @@ for i in range(Nsims):
             k += 1
             delensed = enmap.samewcs(fmaps.filter_map(delensed,wfilter_cmb,
                                                 modlmap_dat,lowPass=tellmax,highPass=tellmin),measured)
-            #io.quickPlot2d(delensed,out_dir+"map_iter_"+str(k).zfill(3)+".png",verbose=False)
-            #io.quickPlot2d(kappa_model,out_dir+"kappa_iter_"+str(k).zfill(3)+".png",verbose=False)
+            io.quickPlot2d(delensed,out_dir+"map_iter_"+str(k).zfill(3)+".png",verbose=False)
+            io.quickPlot2d(kappa_model,out_dir+"kappa_iter_"+str(k).zfill(3)+".png",verbose=False)
         kappa_model = enmap.samewcs(fmaps.filter_map(kappa_model,wfilter*0.+1.,
                                             modlmap_dat,lowPass=kellmax,highPass=kellmin),init_kappa_model)
-        #sys.exit()
+        sys.exit()
 
         for polcomb in pol_list:
             kappa_model -= kappa_model.mean()

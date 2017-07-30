@@ -1211,19 +1211,40 @@ class Estimator(object):
 
         HighMapStar = ifft(self.kHigh[Y]*WY*phaseY*fMask*phaseB,axes=[-2,-1],normalize=True).conjugate()
         kPx = fft(ifft(self.kGradx[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])
-        kPy = fft(ifft(self.kGrady[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])
+        kPy = fft(ifft(self.kGrady[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])        
         rawKappa = ifft(1.j*lx*kPx*fMask + 1.j*ly*kPy*fMask,axes=[-2,-1],normalize=True).real
-        AL = np.nan_to_num(self.AL[XY])*fMask
+
+        AL = np.nan_to_num(self.AL[XY]*fMask)
 
 
         kappaft = -AL*fft(rawKappa,axes=[-2,-1])
         #kappaft = np.nan_to_num(-AL*fft(rawKappa,axes=[-2,-1])) # added after beam convolved change
-        self.kappa = ifft(kappaft,axes=[-2,-1],normalize=True)
+        self.kappa = ifft(kappaft,axes=[-2,-1],normalize=True).real
         try:
+            #raise
             assert not(np.any(np.isnan(self.kappa)))
         except:
             import orphics.tools.io as io
+            import orphics.tools.stats as stats
             io.quickPlot2d(self.kappa.real,"nankappa.png")
+            debug_edges = np.arange(20,20000,100)
+            dbinner = stats.bin2D(self.N.modLMap,debug_edges)
+            cents, bclkk = dbinner.bin(self.N.clkk2d)
+            cents, nlkktt = dbinner.bin(self.N.Nlkk['TT'])
+            try:
+                cents, nlkkeb = dbinner.bin(self.N.Nlkk['EB'])
+            except:
+                pass
+            pl = io.Plotter(scaleY='log',scaleX='log')
+            pl.add(cents,bclkk)
+            pl.add(cents,nlkktt,label="TT")
+            try:
+                pl.add(cents,nlkkeb,label="EB")
+            except:
+                pass
+            pl.legendOn()
+            pl.done("clkk.png")
+
             sys.exit()
         
             
