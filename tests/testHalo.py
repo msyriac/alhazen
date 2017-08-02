@@ -17,46 +17,50 @@ import numpy as np
 
 np.random.seed(100)
 
-Nsims = 400
+Nsims = 10
 
 nstep_delens = 7
 
-deconvolve_beam = False
+deconvolve_beam = True
 
 # sim_pixel_scale = 1.0
 # analysis_pixel_scale = 1.0
 # patch_width_arcmin = 25.*60.
 # cluster = False
 
-sim_pixel_scale = 0.1
+sim_pixel_scale = 0.5
 analysis_pixel_scale = 0.5
 patch_width_arcmin = 100.
-cluster = True
+cluster = False
 
-lens_order = 3
+lens_order = 5
 maxlike = False
 
 periodic = True
 
-beam_arcmin = 1. #1.0
-noise_T_uK_arcmin = 0.01 #01 #001 #1.0 #0.01
-noise_P_uK_arcmin = 0.01 #01 #001 #1.0 #0.01
+beam_arcmin = 0 #1. #1.0
+noise_T_uK_arcmin = 0. #01 #01 #001 #1.0 #0.01
+noise_P_uK_arcmin = 0. # 01 #01 #001 #1.0 #0.01
 lmax = 8500
 tellmax = 8000
 pellmax = 8000
 tellmax_noise = 8000
 pellmax_noise = 8000
-tellmin_noise = 2
-pellmin_noise = 2
+tellmin_noise = 200
+pellmin_noise = 200
 tellmin = 200
 pellmin = 200
 kellmax = 8500 #np.inf #22000 #min(tellmax,pellmax)
 kellmin = 200
-gradCut = 2000
-pol_list = ['TT','EB','EE','ET','TE','TB']
+if cluster:
+    gradCut = 2000
+else:
+    gradCut = None
+    
+#pol_list = ['TT','EB','EE','ET','TE','TB']
+pol_list = ['TT','EB']
 #pol_list = ['TT','EB']
-#pol_list = ['TT','EB']
-debug = False
+debug = True
 
 out_dir = os.environ['WWW']+"plots/halotest/smallpatch_"
 
@@ -154,15 +158,24 @@ ps = cmb.enmap_power_from_orphics_theory(theory,lmax,lensed=False)
 # === SIM AND RECON LOOP ===
 
 kappa_stack = {}
-profiles = {}
-kappa_stack_maxlike = {}
-profiles_maxlike = {}
+if cluster:
+    profiles = {}
+    kappa_stack_maxlike = {}
+    profiles_maxlike = {}
+else:
+    apowers = {}
+    cpowers = {}
+    
 for polcomb in pol_list:
     kappa_stack[polcomb] = 0.
-    profiles[polcomb] = []
-    if maxlike:
-        kappa_stack_maxlike[polcomb] = 0.
-        profiles_maxlike[polcomb] = []
+    if cluster:
+        profiles[polcomb] = []
+        if maxlike:
+            kappa_stack_maxlike[polcomb] = 0.
+            profiles_maxlike[polcomb] = []
+    else:
+        apowers[polcomb] = []
+        cpowers[polcomb] = []
     
 
     
@@ -184,18 +197,6 @@ for i in range(Nsims):
         shape_dat, wcs_dat = measured.shape, measured.wcs
         modr_dat = enmap.modrmap(shape_dat,wcs_dat) * 180.*60./np.pi
 
-        if cluster:
-            bin_edges_sim = np.arange(0.,modr_sim.max(),0.2)
-            bin_edges_dat = np.arange(0.,modr_dat.max(),1.0)
-            binner_dat = stats.bin2D(modr_dat,bin_edges_dat)
-            binner_sim = stats.bin2D(modr_sim,bin_edges_sim)
-
-        if maxlike and cluster:
-           init_kappa_model,r500_init = NFWkappa(cc,model_mass,concentration,zL, \
-                                                 modr_dat,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
-        
-           true_kappa_map_dat,r500_true = NFWkappa(cc,massOverh,concentration,zL,modr_dat,winAtLens,
-                              overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 
         # === ESTIMATOR ===
 
@@ -203,6 +204,23 @@ for i in range(Nsims):
         lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape_dat,wcs_dat)
         modl_map_alt = enmap.modlmap(shape_dat,wcs_dat)
         assert np.all(np.isclose(modlmap_dat,modl_map_alt))
+
+        if cluster:
+            bin_edges_sim = np.arange(0.,modr_sim.max(),0.2)
+            bin_edges_dat = np.arange(0.,modr_dat.max(),1.0)
+            binner_dat = stats.bin2D(modr_dat,bin_edges_dat)
+            binner_sim = stats.bin2D(modr_sim,bin_edges_sim)
+        else:
+            debug_edges = np.arange(2,12000,80)
+            dbinner_dat = stats.bin2D(modlmap_dat,debug_edges)
+
+        if maxlike and cluster:
+           init_kappa_model,r500_init = NFWkappa(cc,model_mass,concentration,zL, \
+                                                 modr_dat,winAtLens,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+        
+           true_kappa_map_dat,r500_true = NFWkappa(cc,massOverh,concentration,zL,modr_dat,winAtLens,
+                              overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+        
 
         nT = ntfunc(modlmap_dat)
         nP = npfunc(modlmap_dat)
@@ -477,8 +495,18 @@ for i in range(Nsims):
             kappa_recon = enmap.samewcs(qest.getKappa(polcomb).real,measured)
             if i==0: io.quickPlot2d(kappa_recon,out_dir+"kappa_recon_single.png")
             kappa_recon -= kappa_recon.mean()
-            cents_prof, prof = binner_dat.bin(kappa_recon)
-            profiles[polcomb].append(prof)
+
+            if cluster:
+                cents_prof, prof = binner_dat.bin(kappa_recon)
+                profiles[polcomb].append(prof)
+            else:
+                downk = enmap.downgrade(kappa_map,analysis_pixel_scale/sim_pixel_scale)
+                kpower = fmaps.get_simple_power_enmap(kappa_recon)
+                cents_pwr, aclkk = dbinner_dat.bin(kpower)
+                cpower = fmaps.get_simple_power_enmap(enmap1=kappa_recon,enmap2=downk)
+                cents_pwr, cclkk = dbinner_dat.bin(cpower)
+                apowers[polcomb].append(aclkk)
+                cpowers[polcomb].append(cclkk)
             
             kappa_stack[polcomb] += kappa_recon
     
@@ -551,3 +579,35 @@ if cluster:
 
 
 
+else:
+
+
+        
+    astats = {}
+    cstats = {}
+
+    for polcomb in pol_list:
+        kappa_stack[polcomb] /= Nsims
+        k = kappa_stack[polcomb]
+        io.quickPlot2d(k,out_dir+"kappa_recon_"+polcomb+".png")
+        astats[polcomb] = stats.getStats(apowers[polcomb])
+        cstats[polcomb] = stats.getStats(cpowers[polcomb])
+    pl = io.Plotter(scaleY='log',scaleX='log')
+    pl.add(fine_ells,clkk)
+    vals = []
+    for j,polcomb in enumerate(pol_list):
+        vals.append((cstats[polcomb]['mean']+cstats[polcomb]['errmean']).ravel())
+        vals.append((cstats[polcomb]['mean']-cstats[polcomb]['errmean']).ravel())
+        pl.addErr(cents_pwr,cstats[polcomb]['mean'],yerr=cstats[polcomb]['errmean'],label=polcomb,ls="none",marker="o")
+        nlkk2d = qest.N.Nlkk[polcomb]
+        cents, nlkk = dbinner_dat.bin(nlkk2d)
+        pl.add(cents,nlkk,ls="--",label=polcomb)
+
+    pl.legendOn(labsize=8)
+
+    vals = np.asarray(vals).ravel().tolist()
+    
+    pl._ax.set_xlim(2,5000)
+    #pl._ax.set_ylim(min(vals),max(vals))
+    pl._ax.set_ylim(1.e-10,5.e-7)
+    pl.done(out_dir+"clkkrecon.png")

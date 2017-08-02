@@ -30,9 +30,9 @@ def sanitizePower(Nlbinned):
     Nlbinned[Nlbinned<0.] = np.nan
 
     # fill nans with interp
-    ok = -np.isnan(Nlbinned)
+    ok = ~np.isnan(Nlbinned)
     xp = ok.ravel().nonzero()[0]
-    fp = Nlbinned[-np.isnan(Nlbinned)]
+    fp = Nlbinned[~np.isnan(Nlbinned)]
     x  = np.isnan(Nlbinned).ravel().nonzero()[0]
     Nlbinned[np.isnan(Nlbinned)] = np.interp(x, xp, fp)
     return Nlbinned
@@ -1078,7 +1078,7 @@ class Estimator(object):
 
             if theorySpectraForNorm is not None:
                 if uEqualsL:
-                    uClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
+                    uClNorm = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
                 else:
                     uClNorm = theorySpectraForNorm.uCl(cmb,self.N.modLMap)
             else:
@@ -1214,10 +1214,10 @@ class Estimator(object):
         kPy = fft(ifft(self.kGrady[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])        
         rawKappa = ifft(1.j*lx*kPx*fMask + 1.j*ly*kPy*fMask,axes=[-2,-1],normalize=True).real
 
-        AL = np.nan_to_num(self.AL[XY]*fMask)
+        AL = np.nan_to_num(self.AL[XY])
 
 
-        kappaft = -AL*fft(rawKappa,axes=[-2,-1])
+        kappaft = -AL*fft(rawKappa,axes=[-2,-1])*fMask
         #kappaft = np.nan_to_num(-AL*fft(rawKappa,axes=[-2,-1])) # added after beam convolved change
         self.kappa = ifft(kappaft,axes=[-2,-1],normalize=True).real
         try:
