@@ -1,0 +1,5 @@
+camb==0.1.4
+matplotlib==1.5.3
+numpy==1.11.3
+pyFFTW==0.10.4
+scipy==0.18.1
