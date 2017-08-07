@@ -4,39 +4,49 @@ from alhazen.halos import NFWkappa
 from orphics.analysis import flatMaps as fmaps
 from alhazen.quadraticEstimator import Estimator
 import alhazen.lensTools as lt
+import alhazen.io as aio
 import orphics.tools.io as io
 import orphics.tools.cmb as cmb
 import orphics.tools.stats as stats
 import enlib.fft as fftfast
 import os, sys
 import numpy as np
+from mpi4py import MPI
+import argparse
+from ConfigParser import SafeConfigParser 
 
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+numcores = comm.Get_size()    
+
+parser = argparse.ArgumentParser(description='Verify lensing reconstruction.')
+
+parser.add_argument("Nsims", type=int,help='Total number of sims.')
+parser.add_argument("-c", "--cluster", action='store_true',help='Simulate a cluster kappa instead of GRF kappa.')
+parser.add_argument("Nsims", type=int,help='Total number of sims.')
 
 
 # === PARAMS ===
 
-np.random.seed(100)
+np.random.seed(rank)
 
-Nsims = 1000
+Nsims = args.Nsims
+cluster = args.cluster
 
-nstep_delens = 7
-
-deconvolve_beam = True
+#nstep_delens = Config.getint("delensing","nstep")
 
 # sim_pixel_scale = 1.0
 # analysis_pixel_scale = 1.0
 # patch_width_arcmin = 25.*60.
 # cluster = False
 
-sim_pixel_scale = 0.1
-analysis_pixel_scale = 0.5
-patch_width_arcmin = 100.
-cluster = False
+sim_pixel_scale = Config.getfloat("sims","pixel_arcmin")
+sim_width_arcmin = aio.get_patch_degrees(Config,"sims")
+analysis_pixel_scale = Config.getfloat("analysis","pixel_arcmin")
+patch_width_arcmin = aio.get_patch_degrees(Config,"analysis")
 
-lens_order = 5
-maxlike = False
+lens_order = Config.getint("sims","lens_order")
 
-periodic = True
 
 beam_arcmin = 1.4 #1. #1.0
 noise_T_uK_arcmin = 10. #01 #01 #001 #1.0 #0.01

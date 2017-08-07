@@ -863,7 +863,6 @@ class NlGenerator(object):
             Nls = sanitizePower(Nls)
             Nleach[polComb] = (ls,Nls)
 
-        
         if ('EB' not in polCombs) and ('TB' not in polCombs):
             Nlret = Nlmv(Nleach,polCombs,None,None,bin_edges)
             return bin_edges,sanitizePower(Nlret),None,None,None
