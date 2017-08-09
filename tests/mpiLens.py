@@ -15,6 +15,7 @@ from mpi4py import MPI
 import argparse
 from ConfigParser import SafeConfigParser 
 
+
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 numcores = comm.Get_size()    
@@ -24,6 +25,7 @@ parser = argparse.ArgumentParser(description='Verify lensing reconstruction.')
 parser.add_argument("Nsims", type=int,help='Total number of sims.')
 parser.add_argument("Exp", type=str,help='Experiment name.')
 parser.add_argument("-c", "--cluster", action='store_true',help='Simulate a cluster kappa instead of GRF kappa.')
+parser.add_argument("-p", "--pol", action='store_true',help='Do polarization.')
 
 
 args = parser.parse_args()
@@ -33,47 +35,36 @@ np.random.seed(rank)
 
 Nsims = args.Nsims
 cluster = args.cluster
+exp_name = args.Exp
+pol = args.pol
+
+# Read config
+iniFile = "input/recon.ini"
+Config = SafeConfigParser()
+Config.optionxform=str
+Config.read(iniFile)
 
 
-sim_pixel_scale = Config.getfloat("sims","pixel_arcmin")
-sim_width_arcmin = aio.get_patch_degrees(Config,"sims")
-analysis_pixel_scale = Config.getfloat("analysis","pixel_arcmin")
-patch_width_arcmin = aio.get_patch_degrees(Config,"analysis")
 
 lens_order = Config.getint("sims","lens_order")
 
-shape_sim, wcs_sim, shape_dat, wcs_dat = enmaps_from_config(Config,"sims","analysis")    
-parray = patch_array_from_config(Config,exp_name,shape_sim,wcs_sim)
+pol = Config.getboolean("reconstruction","pol")
+shape_sim, wcs_sim, shape_dat, wcs_dat = aio.enmaps_from_config(Config,"sims","analysis")    
+parray_sim = aio.patch_array_from_config(Config,exp_name,shape_sim,wcs_sim)
+parray_dat = aio.patch_array_from_config(Config,exp_name,shape_dat,wcs_dat)
+lmax,tellmin,tellmax,pellmin,pellmax,kellmin,kellmax = aio.ellbounds_from_config(Config,"reconstruction")
+            
 
-def enmaps_from_config(Config,sim_section,analysis_section):
-    try:
-        pt_file = Config.get(analysis_section,"patch_template")
-        imap = enmap.read_map(pt_file)
-        shape_dat = imap.shape
-        wcs_dat = imap.wcs
-
-beam_arcmin = 1.4 #1. #1.0
-noise_T_uK_arcmin = 10. #01 #01 #001 #1.0 #0.01
-noise_P_uK_arcmin = 10. # 01 #01 #001 #1.0 #0.01
-lmax = 6500
-tellmax = 6000
-pellmax = 6000
-tellmax_noise = 6000
-pellmax_noise = 6000
-tellmin_noise = 200
-pellmin_noise = 200
-tellmin = 200
-pellmin = 200
-kellmax = 6500 #np.inf #22000 #min(tellmax,pellmax)
-kellmin = 200
 if cluster:
     gradCut = 2000
 else:
     gradCut = None
+
+if pol:
+    pol_list = ['TT','EB','EE','ET','TE','TB']
+else:
+    pol_list = ['TT']
     
-#pol_list = ['TT','EB','EE','ET','TE','TB']
-pol_list = ['TT']#,'EB']
-#pol_list = ['TT','EB']
 debug = True
 
 out_dir = os.environ['WWW']+"plots/halotest/smallpatch_"
@@ -88,21 +79,14 @@ theory = cc.theory
 
 # === TEMPLATE MAPS ===
 
-pol = False if pol_list==['TT'] else True
 
 fine_ells = np.arange(0,lmax,1)
 
-shape_sim, wcs_sim = enmap.get_enmap_patch(patch_width_arcmin,sim_pixel_scale,proj="car",pol=pol)
-modr_sim = enmap.modrmap(shape_sim,wcs_sim) * 180.*60./np.pi
 
 
 
 # === LENS ===
 
-lxmap_sim,lymap_sim,modlmap_sim,angmap_sim,lx_sim,ly_sim = fmaps.get_ft_attributes_enmap(shape_sim,wcs_sim)
-pix_ells = np.arange(0,modlmap_sim.max(),1)
-modl_map_alt = enmap.modlmap(shape_sim,wcs_sim)
-assert np.all(np.isclose(modlmap_sim,modl_map_alt))
 
 
 if cluster:
@@ -146,7 +130,7 @@ alpha_pix = enmap.grad_pixf(fphi)
 # === EXPERIMENT ===
 
 
-kbeam_sim = parray. #cmb.gauss_beam(modlmap_sim,beam_arcmin)
+kbeam_sim = parray_sim.lbeam #cmb.gauss_beam(modlmap_sim,beam_arcmin)
 ps_noise = np.zeros((3,3,pix_ells.size))
 ps_noise[0,0] = pix_ells*0.+(noise_T_uK_arcmin*np.pi/180./60./TCMB)**2.
 ps_noise[1,1] = pix_ells*0.+(noise_P_uK_arcmin*np.pi/180./60./TCMB)**2.
