@@ -22,6 +22,7 @@ numcores = comm.Get_size()
 parser = argparse.ArgumentParser(description='Verify lensing reconstruction.')
 
 parser.add_argument("Nsims", type=int,help='Total number of sims.')
+parser.add_argument("Exp", type=str,help='Experiment name.')
 parser.add_argument("-c", "--cluster", action='store_true',help='Simulate a cluster kappa instead of GRF kappa.')
 
 
@@ -33,7 +34,6 @@ np.random.seed(rank)
 Nsims = args.Nsims
 cluster = args.cluster
 
-#nstep_delens = Config.getint("delensing","nstep")
 
 sim_pixel_scale = Config.getfloat("sims","pixel_arcmin")
 sim_width_arcmin = aio.get_patch_degrees(Config,"sims")
@@ -42,42 +42,15 @@ patch_width_arcmin = aio.get_patch_degrees(Config,"analysis")
 
 lens_order = Config.getint("sims","lens_order")
 
-class PatchArray(object):
-    def __init__(self,shape,wcs,skip_real=False):
-        self.shape = shape
-        self.wcs = wcs
-        self.modlmap = enmap.modlmap(shape,wcs)
-        if not(skip_real): self.modrmap = enmap.modrmap(shape,wcs)
+shape_sim, wcs_sim, shape_dat, wcs_dat = enmaps_from_config(Config,"sims","analysis")    
+parray = patch_array_from_config(Config,exp_name,shape_sim,wcs_sim)
 
-    def _fill_beam(self,beam_func):
-        self.lbeam = beam_func(self.modlmap)
-        self.lbeam[self.modlmap<2] = 1.
-        
-    def add_gaussian_beam(self,fwhm):
-        bfunc = lambda x : cmb.gauss_beam(x,fwhm)
-        self._fill_beam(bfunc)
-        
-    def add_1d_beam(self,ells,bls,fill_value="extrapolate"):
-        bfunc = interp1d(ells,bls,fill_value=fill_value)
-        self._fill_beam(bfunc)
-
-    def add_2d_beam(self,beam_2d):
-        self.lbeam = beam_2d
-
-    def add_white_noise_with_atm(self,noise_uK_arcmin_T,noise_uK_arcmin_P=None,lknee_T=0.,alpha_T=0.,lknee_P=0.,
-                        alpha_P=0.,map_dimensionless=False,TCMB=2.7255e6):
-
-        self.nT = cmb.white_noise_with_atm_func(self.modlmap,noise_uK_arcmin_T,lknee_T,alpha_T,
-                                      map_dimensionless,TCMB)
-
-        if noise_uK_arcmin_P is None and is_close(lknee_T,lknee_P) and is_close(alpha_T,alpha_P):
-            self.nP = 2.*self.nT.copy()
-        else:
-            if noise_uK_arcmin_P is None: noise_uK_arcmin_P = np.sqrt(2.)*noise_uK_arcmin_T
-            self.nP = cmb.white_noise_with_atm_func(self.modlmap,noise_uK_arcmin_P,lknee_P,alpha_P,
-                                      map_dimensionless,TCMB)
-
-        
+def enmaps_from_config(Config,sim_section,analysis_section):
+    try:
+        pt_file = Config.get(analysis_section,"patch_template")
+        imap = enmap.read_map(pt_file)
+        shape_dat = imap.shape
+        wcs_dat = imap.wcs
 
 beam_arcmin = 1.4 #1. #1.0
 noise_T_uK_arcmin = 10. #01 #01 #001 #1.0 #0.01
@@ -172,15 +145,8 @@ alpha_pix = enmap.grad_pixf(fphi)
 
 # === EXPERIMENT ===
 
-if deconvolve_beam:
-    ntfunc = cmb.get_noise_func(beam_arcmin,noise_T_uK_arcmin,ellmin=tellmin,ellmax=tellmax,TCMB=TCMB)
-    npfunc = cmb.get_noise_func(beam_arcmin,noise_P_uK_arcmin,ellmin=pellmin,ellmax=pellmax,TCMB=TCMB)
-else:
-    ntfunc = lambda x: modlmap_dat*0.+(np.pi / (180. * 60))**2.  * noise_T_uK_arcmin**2. / TCMB**2.
-    npfunc = lambda x: modlmap_dat*0.+(np.pi / (180. * 60))**2.  * noise_P_uK_arcmin**2. / TCMB**2.
 
-
-kbeam_sim = cmb.gauss_beam(modlmap_sim,beam_arcmin)
+kbeam_sim = parray. #cmb.gauss_beam(modlmap_sim,beam_arcmin)
 ps_noise = np.zeros((3,3,pix_ells.size))
 ps_noise[0,0] = pix_ells*0.+(noise_T_uK_arcmin*np.pi/180./60./TCMB)**2.
 ps_noise[1,1] = pix_ells*0.+(noise_P_uK_arcmin*np.pi/180./60./TCMB)**2.
@@ -263,8 +229,8 @@ for i in range(Nsims):
                               overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
         
 
-        nT = ntfunc(modlmap_dat)
-        nP = npfunc(modlmap_dat)
+        nT = parray.nT
+        nP = parray.nP
         nT[modlmap_dat>tellmax_noise]=np.inf
         nP[modlmap_dat>pellmax_noise]=np.inf
         nT[modlmap_dat<tellmin_noise]=np.inf
