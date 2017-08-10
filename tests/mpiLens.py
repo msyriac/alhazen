@@ -121,6 +121,8 @@ for i in range(Nsims):
     unlensed = parray_sim.get_unlensed_cmb(seed=(200+i))
     lensed = lensing.lens_map_flat_pix(unlensed.copy(), alpha_pix.copy(),order=lens_order)
 
+    #m, = lensing.rand_map(shape, wcs, ps, lmax=lmax, maplmax=maplmax, seed=(seed,i))
+
     klteb = enmap.map2harm(lensed.copy())
     klteb_beam = klteb*kbeam_sim
     lteb_beam = enmap.ifft(klteb_beam).real
