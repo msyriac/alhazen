@@ -41,8 +41,8 @@ def enmaps_from_config(Config,sim_section,analysis_section,pol=False):
 
     return shape_sim, wcs_sim, shape_dat, wcs_dat            
 
-def patch_array_from_config(Config,exp_name,shape,wcs,dimensionless=False,TCMB=2.7255e6):
-    pa = fmaps.PatchArray(shape,wcs,skip_real=False)
+def patch_array_from_config(Config,exp_name,shape,wcs,dimensionless=True,TCMB=2.7255e6):
+    pa = fmaps.PatchArray(shape,wcs,skip_real=False,dimensionless=dimensionless,TCMB=TCMB)
     try:
         bfile = Config.get(exp_name,"beam_file")
         ells,bls = np.loadtxt(bfile,delimiter=",",unpack=True,use_cols=[0,1])
@@ -65,7 +65,8 @@ def patch_array_from_config(Config,exp_name,shape,wcs,dimensionless=False,TCMB=2
         alpha_T = Config.getfloat(exp_name,"alpha_T")
         alpha_P = Config.getfloat(exp_name,"alpha_P")
 
-        pa.add_white_noise_with_atm(noise_T,noise_P,lknee_T,alpha_T,lknee_P,alpha_P,map_dimensionless=dimensionless,TCMB=TCMB)
+
+        pa.add_white_noise_with_atm(noise_T,noise_P,lknee_T,alpha_T,lknee_P,alpha_P)
 
 
     return pa
@@ -104,4 +105,29 @@ def ellbounds_from_config(Config,recon_section):
         ret.append(Config.getint(recon_section,rval))
 
     return ret
-    
+
+
+def kappa_grf_generator(theory):
+
+    clkk = theory.gCl("kk",fine_ells)
+    clkk.resize((1,1,clkk.size))
+    kappa_map = enmap.rand_map(shape_sim[-2:],wcs_sim,cov=clkk,scalar=True)
+
+
+
+def kappa_from_config(Config,kappa_section):
+
+    ktype = Config.get(kappa_section,"type")
+
+    if ktype=="cluster_nfw":
+        raise NotImplementedError
+    elif ktype=="cluster_battaglia":
+        raise NotImplementedError
+    elif ktype=="grf":
+        vary = Config.getboolean(kappa_section,"vary")
+        if vary:
+            raise NotImplementedError
+        else:
+            pass
+    else:
+        raise ValueError

@@ -227,7 +227,7 @@ class QuadNorm(object):
         if Y=='B': Y='E'
         gradClXY = X+Y
         if XY=='ET': gradClXY = 'TE'
-        W = np.nan_to_num(self.uClFid2d[gradClXY].copy()/(self.lClFid2d[X+X].copy()+self.noiseXX2d[X+X].copy()))*self.fMaskXX[X+X]*self.kBeamX
+        W = np.nan_to_num(self.uClFid2d[gradClXY].copy()/(self.lClFid2d[X+X].copy()*self.kBeamX**2.+self.noiseXX2d[X+X].copy()))*self.fMaskXX[X+X]*self.kBeamX
         W[self.modLMap>self.gradCut]=0.
         if X=='T':
             W[np.where(self.modLMap >= self.lmax_T)] = 0.
@@ -240,7 +240,7 @@ class QuadNorm(object):
 
     def WY(self,YY):
         assert YY[0]==YY[1]
-        W = np.nan_to_num(1./(self.lClFid2d[YY].copy()+self.noiseYY2d[YY].copy()))*self.fMaskYY[YY]*self.kBeamY
+        W = np.nan_to_num(1./(self.lClFid2d[YY].copy()*self.kBeamY**2.+self.noiseYY2d[YY].copy()))*self.fMaskYY[YY]*self.kBeamY
         W[np.where(self.modLMap >= self.lmax_T)] = 0.
         if YY[0]=='T':
             W[np.where(self.modLMap >= self.lmax_T)] = 0.
@@ -250,8 +250,15 @@ class QuadNorm(object):
 
     def getCurlNlkk2d(self,XY,halo=False):
         raise NotImplementedError
+
+    def super_dumb_N0_TTTT(self,data_power_2d_TT):
+        ratio = np.nan_to_num(data_power_2d_TT*self.WY("TT")/self.kBeamY)
+        lmap = self.modLMap
+        replaced = np.nan_to_num(self.getNlkk2d("TT",halo=True,l1Scale=ratio*self.fMaskXX["TT"],l2Scale=ratio*self.fMaskYY["TT"],setNl=False) / (2. * np.nan_to_num(1. / lmap/(lmap+1.))))
+        unreplaced = self.Nlkk["TT"].copy()
+        return np.nan_to_num(unreplaced**2./replaced)
     
-    def getNlkk2d(self,XY,halo=False):
+    def getNlkk2d(self,XY,halo=True,l1Scale=1.,l2Scale=1.,setNl=True):
         if not(halo): raise NotImplementedError
         lx,ly = self.lxMap,self.lyMap
         lmap = self.modLMap
@@ -271,8 +278,8 @@ class QuadNorm(object):
 
             if halo:
             
-                WXY = self.WXY('TT')*self.kBeamX
-                WY = self.WY('TT')*self.kBeamY
+                WXY = self.WXY('TT')*self.kBeamX*l1Scale
+                WY = self.WY('TT')*self.kBeamY*l2Scale
 
                 # binrange = np.arange(50,4000,10)
                 # binner = bin2D(self.modLMap,binrange)
@@ -603,7 +610,9 @@ class QuadNorm(object):
 
         retval = np.nan_to_num(NL.real * self.pixScaleX*self.pixScaleY  )
 
-        self.Nlkk[XY] = retval.copy()
+        if setNl:
+            self.Nlkk[XY] = retval.copy()
+            print "SETTING NL"
 
 
 
@@ -1242,6 +1251,7 @@ class Estimator(object):
             except:
                 pass
             pl.legendOn()
+            pl._ax.set_ylim(1.e-9,1.e-6)
             pl.done("clkk.png")
 
             sys.exit()
