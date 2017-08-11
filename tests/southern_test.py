@@ -192,10 +192,10 @@ for i,k in enumerate(irange):
         cents,dcltt = dbinner_dat.bin(p2d)
 
         
-        pickle.dump((cents_pwr,n0subbed),open(output_dir+"clkk_n0subbed_"+str(k).zfill(2)+".pkl",'wb'))
-        pickle.dump((cents_pwr,aclkk),open(output_dir+"rawclkk_"+str(k).zfill(2)+".pkl",'wb'))
-        pickle.dump((cents_pwr,sdp),open(output_dir+"superdumbn0_"+str(k).zfill(2)+".pkl",'wb'))
-        pickle.dump((cents,dcltt),open(output_dir+"cltt_"+str(k).zfill(2)+".pkl",'wb'))
+        pickle.dump((cents_pwr,n0subbed),open(output_dir+exp_name+"_clkk_n0subbed_"+str(k).zfill(2)+".pkl",'wb'))
+        pickle.dump((cents_pwr,aclkk),open(output_dir+exp_name+"_rawclkk_"+str(k).zfill(2)+".pkl",'wb'))
+        pickle.dump((cents_pwr,sdp),open(output_dir+exp_name+"_superdumbn0_"+str(k).zfill(2)+".pkl",'wb'))
+        pickle.dump((cents,dcltt),open(output_dir+exp_name+"_cltt_"+str(k).zfill(2)+".pkl",'wb'))
         # sys.exit()
         
 sys.exit()
