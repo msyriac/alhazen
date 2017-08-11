@@ -80,12 +80,11 @@ fine_ells = np.arange(2,5000,1)
 
 #for i in range(Nsims):
 
-i = rank
-
-#big
-if True:
+Nsims = int(50/numcores)
+irange = range(rank*Nsims,(rank+1)*Nsims)
+for i,k in enumerate(irange):
     print i
-    measured = enmap.read_map(mapfile(i))
+    measured = enmap.read_map(mapfile(k))
     measured = measured[0]/TCMB
 
 
@@ -193,13 +192,13 @@ if True:
         cents,dcltt = dbinner_dat.bin(p2d)
 
         
-        pickle.dump((cents_pwr,n0subbed),open(output_dir+"clkk_n0subbed_"+str(i).zfill(2)+".pkl",'wb'))
-        pickle.dump((cents_pwr,aclkk),open(output_dir+"rawclkk_"+str(i).zfill(2)+".pkl",'wb'))
-        pickle.dump((cents_pwr,sdp),open(output_dir+"superdumbn0_"+str(i).zfill(2)+".pkl",'wb'))
-        pickle.dump((cents,dcltt),open(output_dir+"cltt_"+str(i).zfill(2)+".pkl",'wb'))
-        sys.exit()
+        pickle.dump((cents_pwr,n0subbed),open(output_dir+"clkk_n0subbed_"+str(k).zfill(2)+".pkl",'wb'))
+        pickle.dump((cents_pwr,aclkk),open(output_dir+"rawclkk_"+str(k).zfill(2)+".pkl",'wb'))
+        pickle.dump((cents_pwr,sdp),open(output_dir+"superdumbn0_"+str(k).zfill(2)+".pkl",'wb'))
+        pickle.dump((cents,dcltt),open(output_dir+"cltt_"+str(k).zfill(2)+".pkl",'wb'))
+        # sys.exit()
         
-
+sys.exit()
 clkk = theory.gCl("kk",fine_ells)
 
 
