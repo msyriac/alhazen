@@ -24,6 +24,7 @@ parser = argparse.ArgumentParser(description='Verify lensing reconstruction.')
 
 parser.add_argument("Nsims", type=int,help='Total number of sims.')
 parser.add_argument("Exp", type=str,help='Experiment name.')
+parser.add_argument("ExpFilter", type=str,help='Filter Experiment name.')
 parser.add_argument("-c", "--cluster", action='store_true',help='Simulate a cluster kappa instead of GRF kappa.')
 parser.add_argument("-p", "--pol", action='store_true',help='Do polarization.')
 
@@ -36,6 +37,7 @@ np.random.seed(rank)
 Nsims = args.Nsims
 cluster = args.cluster
 exp_name = args.Exp
+expf_name = args.ExpFilter
 pol = args.pol
 
 # Read config
@@ -54,7 +56,7 @@ pixratio = Config.getfloat("analysis","pixel_arcmin")/Config.getfloat("sims","pi
 pol = Config.getboolean("reconstruction","pol")
 shape_sim, wcs_sim, shape_dat, wcs_dat = aio.enmaps_from_config(Config,"sims","analysis",pol=pol)    
 parray_sim = aio.patch_array_from_config(Config,exp_name,shape_sim,wcs_sim,dimensionless=True)
-parray_dat = aio.patch_array_from_config(Config,exp_name,shape_dat,wcs_dat,dimensionless=True)
+parray_dat = aio.patch_array_from_config(Config,expf_name,shape_dat,wcs_dat,dimensionless=True)
 lmax,tellmin,tellmax,pellmin,pellmax,kellmin,kellmax = aio.ellbounds_from_config(Config,"reconstruction")
             
 
@@ -126,7 +128,7 @@ for i in range(Nsims):
     klteb = enmap.map2harm(lensed.copy())
     klteb_beam = klteb*kbeam_sim
     lteb_beam = enmap.ifft(klteb_beam).real
-    noise = parray_sim.get_noise_sim(seed=(300+i))
+    noise = 0. #parray_sim.get_noise_sim(seed=(300+i))
     observed = lteb_beam + noise
     measured = enmap.downgrade(observed,pixratio)
     if i==0:
@@ -141,16 +143,12 @@ for i in range(Nsims):
         template_dat = fmaps.simple_flipper_template_from_enmap(shape_dat,wcs_dat)
         lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape_dat,wcs_dat)
 
-        debug_edges = np.arange(200,8000,150)
+        debug_edges = np.arange(400,8000,150)
         dbinner_dat = stats.bin2D(modlmap_dat,debug_edges)
 
         
         nT = parray_dat.nT
         nP = parray_dat.nP
-        # nT[modlmap_dat>tellmax]=np.inf
-        # nP[modlmap_dat>pellmax]=np.inf
-        # nT[modlmap_dat<tellmin]=np.inf
-        # nP[modlmap_dat<pellmin]=np.inf
         kbeam_dat = parray_dat.lbeam
 
 

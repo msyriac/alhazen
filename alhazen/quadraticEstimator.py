@@ -235,6 +235,17 @@ class QuadNorm(object):
             W[np.where(self.modLMap >= self.lmax_P)] = 0.
 
 
+        # debug_edges = np.arange(400,6000,50)
+        # import orphics.tools.stats as stats
+        # import orphics.tools.io as io
+        # binner = stats.bin2D(self.modLMap,debug_edges)
+        # cents,ws = binner.bin(W)
+        # pl = io.Plotter()
+        # pl.add(cents,ws)
+        # pl.done("ws.png")
+        # sys.exit()
+        
+            
         return W
         
 
@@ -246,6 +257,22 @@ class QuadNorm(object):
             W[np.where(self.modLMap >= self.lmax_T)] = 0.
         else:
             W[np.where(self.modLMap >= self.lmax_P)] = 0.
+
+
+        # debug_edges = np.arange(400,6000,50)
+        # import orphics.tools.stats as stats
+        # import orphics.tools.io as io
+        # io.quickPlot2d(np.fft.fftshift(W.real),"wy2d.png")
+        # binner = stats.bin2D(self.modLMap,debug_edges)
+        # cents,ws = binner.bin(W.real)
+        # print cents
+        # print ws
+        # pl = io.Plotter()#scaleY='log')
+        # pl.add(cents,ws)
+        # pl._ax.set_xlim(2,6000)
+        # pl.done("wy.png")
+        # sys.exit()
+            
         return W
 
     def getCurlNlkk2d(self,XY,halo=False):
@@ -263,6 +290,10 @@ class QuadNorm(object):
         lx,ly = self.lxMap,self.lyMap
         lmap = self.modLMap
 
+        X,Y = XY
+        XX = X+X
+        YY = Y+Y
+
         if self.verbose: 
             print "Calculating norm for ", XY
 
@@ -278,13 +309,11 @@ class QuadNorm(object):
 
             if halo:
             
-                WXY = self.WXY('TT')*self.kBeamX*l1Scale
-                WY = self.WY('TT')*self.kBeamY*l2Scale
+                WXY = self.WXY('TT')*self.kBeamX*l1Scale*self.fMaskXX["TT"]
+                WY = self.WY('TT')*self.kBeamY*l2Scale*self.fMaskYY["TT"]
 
-                # binrange = np.arange(50,4000,10)
-                # binner = bin2D(self.modLMap,binrange)
-                # self.cents,self.wxy = binner.bin(WXY)
 
+                
                 preG = WY
                 rfact = 2.**0.25
                 for ell1,ell2 in [(lx,lx),(ly,ly),(rfact*lx,rfact*ly)]:
@@ -605,7 +634,7 @@ class QuadNorm(object):
         
                         
         ALinv = np.real(np.sum( allTerms, axis = 0))
-        NL = (lmap**2.) * ((lmap + 1.)**2.) *np.nan_to_num(1. / ALinv)/ 4.
+        NL = (lmap**2.) * ((lmap + 1.)**2.) *np.nan_to_num(1. / ALinv)/ 4.*self.fMaskXX[XX]*self.fMaskYY[YY]
         NL[np.where(np.logical_or(lmap >= self.bigell, lmap == 0.))] = 0.
 
         retval = np.nan_to_num(NL.real * self.pixScaleX*self.pixScaleY  )
@@ -615,8 +644,21 @@ class QuadNorm(object):
             print "SETTING NL"
 
 
+        # debug_edges = np.arange(400,6000,50)
+        # import orphics.tools.stats as stats
+        # import orphics.tools.io as io
+        # io.quickPlot2d((np.fft.fftshift(retval)),"nl2d.png")
+        # binner = stats.bin2D(self.modLMap,debug_edges)
+        # cents,ws = binner.bin(retval.real)
+        # pl = io.Plotter()#scaleY='log')
+        # pl.add(cents,ws)
+        # pl._ax.set_xlim(2,6000)
+        # pl.done("nl.png")
+        # sys.exit()
 
-        
+
+
+            
         return retval * 2. * np.nan_to_num(1. / lmap/(lmap+1.))
         
         
@@ -1225,6 +1267,20 @@ class Estimator(object):
         AL = np.nan_to_num(self.AL[XY])
 
 
+        # debug_edges = np.arange(400,6000,50)
+        # import orphics.tools.stats as stats
+        # import orphics.tools.io as io
+        # io.quickPlot2d(np.fft.fftshift(rawKappa),"kappa.png")
+        # binner = stats.bin2D(self.modLMap,debug_edges)
+        # cents,ws = binner.bin(rawKappa.real)
+        # pl = io.Plotter()#scaleY='log')
+        # pl.add(cents,ws)
+        # pl._ax.set_xlim(2,6000)
+        # pl.done("rawkappa1d.png")
+        # sys.exit()
+
+
+        
         kappaft = -AL*fft(rawKappa,axes=[-2,-1])*fMask
         #kappaft = np.nan_to_num(-AL*fft(rawKappa,axes=[-2,-1])) # added after beam convolved change
         self.kappa = ifft(kappaft,axes=[-2,-1],normalize=True).real
