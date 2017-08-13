@@ -143,6 +143,15 @@ for i in range(Nsims):
         template_dat = fmaps.simple_flipper_template_from_enmap(shape_dat,wcs_dat)
         lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape_dat,wcs_dat)
 
+
+        taper_percent = 15.0
+        Ny,Nx = shape_dat
+        taper = fmaps.cosineWindow(Ny,Nx,lenApodY=taper_percent*min(Ny,Nx)/100.,lenApodX=taper_percent*min(Ny,Nx)/100.,padY=0,padX=0)
+        tapered = measured*taper
+        w2 = np.mean(taper**2.)
+        w4 = np.mean(taper**4.)
+
+        
         debug_edges = np.arange(400,8000,150)
         dbinner_dat = stats.bin2D(modlmap_dat,debug_edges)
 
@@ -277,7 +286,7 @@ for i in range(Nsims):
         pl.add(fine_ells,lclte*fine_ells**2.,color="C0",ls="--")
         pl.done(out_dir+"lccompte.png")
 
-
+    measured = measured * taper
     fkmaps = fftfast.fft(measured,axes=[-2,-1])
 
 
@@ -298,9 +307,9 @@ for i in range(Nsims):
         kappa_recon -= kappa_recon.mean()
 
         downk = enmap.downgrade(kappa_map,pixratio)
-        kpower = fmaps.get_simple_power_enmap(kappa_recon)
+        kpower = fmaps.get_simple_power_enmap(kappa_recon)/w4
         cents_pwr, aclkk = dbinner_dat.bin(kpower)
-        cpower = fmaps.get_simple_power_enmap(enmap1=kappa_recon,enmap2=downk)
+        cpower = fmaps.get_simple_power_enmap(enmap1=kappa_recon,enmap2=downk)/w2
         cents_pwr, cclkk = dbinner_dat.bin(cpower)
         apowers[polcomb].append(aclkk)
         cpowers[polcomb].append(cclkk)
@@ -311,7 +320,7 @@ for i in range(Nsims):
         if polcomb=="TT":
             m = measured[0] if pol else measured
             data_power_2d_TT = fmaps.get_simple_power_enmap(m)
-            sd = qest.N.super_dumb_N0_TTTT(data_power_2d_TT)
+            sd = qest.N.super_dumb_N0_TTTT(data_power_2d_TT)/w2**2.
             cents_pwr, sdp = dbinner_dat.bin(sd)
             super_dumbs.append(sdp)
 
