@@ -69,7 +69,9 @@ super_dumbs = []
 n0subs = []
 # BE CAREFUL WITH THE GORRAM SEEDS!!!!
 
-mapfile = lambda x: "/home/msyriac/data/sigurdsims/"+exp_name+"_curved_lensed_car_"+str(x).zfill(2)+".fits"
+#mapfile = lambda x: "/home/msyriac/data/sigurdsims/"+exp_name+"_curved_lensed_car_"+str(x).zfill(2)+".fits"
+mapfile = lambda x: "/gpfs01/astro/workarea/msyriac/data/sigurd_sims/"+exp_name+"_curved_lensed_car_"+str(x).zfill(2)+".fits"
+
 
 # === COSMOLOGY ===
 cc = Cosmology(lmax=lmax,pickling=True)
@@ -179,10 +181,12 @@ for i,k in enumerate(irange):
         apowers[polcomb].append(aclkk)
 
         m = measured[0] if pol else measured
-        data_power_2d_TT = fmaps.get_simple_power_enmap(m)/w2
-        sd = qest.N.super_dumb_N0_TTTT(data_power_2d_TT)
+        data_power_2d_TT = fmaps.get_simple_power_enmap(m)
+        sd = qest.N.super_dumb_N0_TTTT(data_power_2d_TT)/w2**2.
         cents_pwr, sdp = dbinner_dat.bin(sd)
         super_dumbs.append(sdp)
+
+        
         
         n0sub = kpower - sd
         cents_pwr, n0subbed = dbinner_dat.bin(n0sub)
