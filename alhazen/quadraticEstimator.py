@@ -309,8 +309,8 @@ class QuadNorm(object):
 
             if halo:
             
-                WXY = self.WXY('TT')*self.kBeamX*l1Scale*self.fMaskXX["TT"]
-                WY = self.WY('TT')*self.kBeamY*l2Scale*self.fMaskYY["TT"]
+                WXY = self.WXY('TT')*self.kBeamX*l1Scale#*self.fMaskXX["TT"]
+                WY = self.WY('TT')*self.kBeamY*l2Scale#*self.fMaskYY["TT"]
 
 
                 
@@ -634,14 +634,14 @@ class QuadNorm(object):
         
                         
         ALinv = np.real(np.sum( allTerms, axis = 0))
-        NL = (lmap**2.) * ((lmap + 1.)**2.) *np.nan_to_num(1. / ALinv)/ 4.*self.fMaskXX[XX]*self.fMaskYY[YY]
+        NL = (lmap**2.) * ((lmap + 1.)**2.) *np.nan_to_num(1. / ALinv)/ 4. #*self.fMaskXX[XX]*self.fMaskYY[YY]
         NL[np.where(np.logical_or(lmap >= self.bigell, lmap == 0.))] = 0.
 
         retval = np.nan_to_num(NL.real * self.pixScaleX*self.pixScaleY  )
 
         if setNl:
             self.Nlkk[XY] = retval.copy()
-            print "SETTING NL"
+            #print "SETTING NL"
 
 
         # debug_edges = np.arange(400,6000,50)
