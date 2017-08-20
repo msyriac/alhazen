@@ -1,3 +1,8 @@
 *.pyc
 *.png
 *.pdf
+*.log
+*.txt
+*.csv
+*.dat
+*.fits
