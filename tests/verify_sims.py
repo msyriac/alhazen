@@ -30,9 +30,9 @@ def plot_stats(cents,cont,ells,ells_pp,theory):
     pl.done(os.environ['WORK']+"/web/plots/clste.png")
     pl = io.Plotter(scaleY='log')
     for spec in ['pp']:
-        pl.add(ells_pp,theory[spec]*ells_pp**2.,lw=2)
-        pl.addErr(cents,st[spec]['mean']*cents**2.,yerr=st[spec]['errmean']*cents**2.,ls="none",marker="o")
-
+        pl.add(ells_pp,theory[spec],lw=2)
+        pl.addErr(cents,st[spec]['mean'],yerr=st[spec]['errmean'],ls="none",marker="o")
+    pl._ax.set_xlim(2,3000)
     pl.done(os.environ['WORK']+"/web/plots/clspp.png")
 
 
@@ -40,7 +40,7 @@ root_dir = os.environ['WORK'] + "/data/sigurdsims/south"
 
 
 Nsims = 32
-taper_percent = 25.0  # smaller values cause larger biases in phi and B power
+taper_percent = 20.0  # smaller values cause larger biases in phi and B power
 
 
 
@@ -60,7 +60,7 @@ theory = {}
 for spec in ['tt','ee','te','bb','pp']:
     container[spec] = []
     if spec=='pp':
-        theory[spec] = cl[spec]*2.*np.pi/ells_pp**2./(ells_pp+1.)**2.
+        theory[spec] = cl[spec]*2.*np.pi/4. #/ells_pp**2./(ells_pp+1.)**2.
     else:
         theory[spec] = cl[spec]*2.*np.pi/ells/(ells+1.)
 
@@ -72,7 +72,8 @@ for i in range(Nsims):
 
     if i==0:
         Ny,Nx = imap.shape[-2:]
-        taper = fmaps.cosineWindow(Ny,Nx,lenApodY=taper_percent*min(Ny,Nx)/100.,lenApodX=taper_percent*min(Ny,Nx)/100.,padY=0,padX=0)
+        #taper = fmaps.cosineWindow(Ny,Nx,lenApodY=taper_percent*min(Ny,Nx)/100.,lenApodX=taper_percent*min(Ny,Nx)/100.,padY=0,padX=0)
+        taper = fmaps.cosineWindow(Ny,Nx,lenApodY=taper_percent*Ny/100.,lenApodX=taper_percent*Nx/100.,padY=0,padX=0)
         w2 = np.mean(taper**2.)
         w4 = np.mean(taper**4.)
 
@@ -102,7 +103,7 @@ for i in range(Nsims):
     spec2d['ee'] = np.nan_to_num(fmaps.get_simple_power_enmap(e))/w2
     spec2d['bb'] = np.nan_to_num(fmaps.get_simple_power_enmap(b))/w2
     spec2d['te'] = np.nan_to_num(fmaps.get_simple_power_enmap(t,enmap2=e))/w2
-    spec2d['pp'] = np.nan_to_num(fmaps.get_simple_power_enmap(phi))/w2
+    spec2d['pp'] = np.nan_to_num(fmaps.get_simple_power_enmap(phi))/w2*(modlmap*(modlmap+1.))**2./4.
 
     print "Binning..."
     
