@@ -2,6 +2,31 @@ import sys
 from enlib import enmap
 import numpy as np
 import orphics.analysis.flatMaps as fmaps
+import orphics.tools.io as oio
+
+def plot_powers(unlensed_map,lensed_map,modlmap,theory,lbinner_dat,out_dir):
+    utt2d = fmaps.get_simple_power_enmap(unlensed_map)
+    ltt2d = fmaps.get_simple_power_enmap(lensed_map)
+
+    
+    iutt2d = theory.uCl("TT",modlmap)
+    iltt2d = theory.lCl("TT",modlmap)
+
+    lb = lbinner_dat
+    cents,utt = lb.bin(utt2d)
+    cents,ltt = lb.bin(ltt2d)
+    cents,iutt = lb.bin(iutt2d)
+    cents,iltt = lb.bin(iltt2d)
+
+    pl = oio.Plotter()
+    pdiff = (utt-iutt)*100./iutt
+    pl.add(cents,pdiff)
+    pl.done(out_dir+"uclpdiff.png")
+
+    pl = oio.Plotter()
+    pdiff = (ltt-iltt)*100./iltt
+    pl.add(cents,pdiff)
+    pl.done(out_dir+"lclpdiff.png")
 
 def enmaps_from_config(Config,sim_section,analysis_section,pol=False):
     """
@@ -24,8 +49,14 @@ def enmaps_from_config(Config,sim_section,analysis_section,pol=False):
         wcs_dat = imap.wcs
     except:
         pixel_analysis = Config.getfloat(analysis_section,"pixel_arcmin")
-        width_analysis_deg = Config.getfloat(analysis_section,"patch_degrees_width")
-        height_analysis_deg = Config.getfloat(analysis_section,"patch_degrees_height")
+        try:
+            width_analysis_deg = Config.getfloat(analysis_section,"patch_degrees_width")
+        except:
+            width_analysis_deg = Config.getfloat(analysis_section,"patch_arcmin_width")/60.
+        try:   
+            height_analysis_deg = Config.getfloat(analysis_section,"patch_degrees_height")
+        except:
+            height_analysis_deg = Config.getfloat(analysis_section,"patch_arcmin_height")/60.
         ra_offset = Config.getfloat(analysis_section,"ra_offset")
         dec_offset = Config.getfloat(analysis_section,"dec_offset")
         projection = Config.get(analysis_section,"projection")

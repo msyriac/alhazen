@@ -147,6 +147,9 @@ class QuadNorm(object):
     def __setstate__(self, state):
         self.verbose, self.lxMap,self.lyMap,self.modLMap,self.thetaMap,self.lx,self.ly, self.lxHatMap, self.lyHatMap,self.uClNow2d, self.uClFid2d, self.lClFid2d, self.noiseXX2d, self.noiseYY2d, self.fMaskXX, self.fMaskYY, self.lmax_T, self.lmax_P, self.defaultMaskT, self.defaultMaskP, self.bigell, self.gradCut,self.Nlkk,self.pixScaleX,self.pixScaleY = state
 
+    def fmask_func(self,arr,mask):        
+        arr[mask<1.e-3] = 0.
+        return arr
 
     def addUnlensedFilter2DPower(self,XY,power2dData):
         '''
@@ -228,6 +231,7 @@ class QuadNorm(object):
         gradClXY = X+Y
         if XY=='ET': gradClXY = 'TE'
         W = np.nan_to_num(self.uClFid2d[gradClXY].copy()/(self.lClFid2d[X+X].copy()*self.kBeamX**2.+self.noiseXX2d[X+X].copy()))*self.fMaskXX[X+X]*self.kBeamX
+        W = self.fmask_func(np.nan_to_num(self.uClFid2d[gradClXY].copy()/(self.lClFid2d[X+X].copy()*self.kBeamX**2.+self.noiseXX2d[X+X].copy()))*self.kBeamX,self.fMaskXX[X+X])
         W[self.modLMap>self.gradCut]=0.
         if X=='T':
             W[np.where(self.modLMap >= self.lmax_T)] = 0.
@@ -251,7 +255,7 @@ class QuadNorm(object):
 
     def WY(self,YY):
         assert YY[0]==YY[1]
-        W = np.nan_to_num(1./(self.lClFid2d[YY].copy()*self.kBeamY**2.+self.noiseYY2d[YY].copy()))*self.fMaskYY[YY]*self.kBeamY
+        W = self.fmask_func(np.nan_to_num(1./(self.lClFid2d[YY].copy()*self.kBeamY**2.+self.noiseYY2d[YY].copy()))*self.kBeamY,self.fMaskYY[YY])
         W[np.where(self.modLMap >= self.lmax_T)] = 0.
         if YY[0]=='T':
             W[np.where(self.modLMap >= self.lmax_T)] = 0.
@@ -281,7 +285,7 @@ class QuadNorm(object):
     def super_dumb_N0_TTTT(self,data_power_2d_TT):
         ratio = np.nan_to_num(data_power_2d_TT*self.WY("TT")/self.kBeamY)
         lmap = self.modLMap
-        replaced = np.nan_to_num(self.getNlkk2d("TT",halo=True,l1Scale=ratio*self.fMaskXX["TT"],l2Scale=ratio*self.fMaskYY["TT"],setNl=False) / (2. * np.nan_to_num(1. / lmap/(lmap+1.))))
+        replaced = np.nan_to_num(self.getNlkk2d("TT",halo=True,l1Scale=self.fmask_func(ratio,self.fMaskXX["TT"]),l2Scale=self.fmask_func(ratio,self.fMaskYY["TT"]),setNl=False) / (2. * np.nan_to_num(1. / lmap/(lmap+1.))))
         unreplaced = self.Nlkk["TT"].copy()
         return np.nan_to_num(unreplaced**2./replaced)
     
@@ -309,8 +313,8 @@ class QuadNorm(object):
 
             if halo:
             
-                WXY = self.WXY('TT')*self.kBeamX*l1Scale#*self.fMaskXX["TT"]
-                WY = self.WY('TT')*self.kBeamY*l2Scale#*self.fMaskYY["TT"]
+                WXY = self.WXY('TT')*self.kBeamX*l1Scale
+                WY = self.WY('TT')*self.kBeamY*l2Scale
 
 
                 
@@ -634,7 +638,7 @@ class QuadNorm(object):
         
                         
         ALinv = np.real(np.sum( allTerms, axis = 0))
-        NL = (lmap**2.) * ((lmap + 1.)**2.) *np.nan_to_num(1. / ALinv)/ 4. #*self.fMaskXX[XX]*self.fMaskYY[YY]
+        NL = (lmap**2.) * ((lmap + 1.)**2.) *np.nan_to_num(1. / ALinv)/ 4.
         NL[np.where(np.logical_or(lmap >= self.bigell, lmap == 0.))] = 0.
 
         retval = np.nan_to_num(NL.real * self.pixScaleX*self.pixScaleY  )
@@ -1107,6 +1111,8 @@ class Estimator(object):
         else:
             self.fmaskK = fmaskKappa
 
+        
+
         if TOnly: 
             nList = ['TT']
             cmbList = ['TT']
@@ -1159,6 +1165,7 @@ class Estimator(object):
                 pickle.dump((self.N,self.AL,self.OmAL,self.fmaskK,self.phaseY),fout)
 
 
+    
         
 
     def updateTEB_X(self,T2DData,E2DData=None,B2DData=None,alreadyFTed=False):
@@ -1234,6 +1241,12 @@ class Estimator(object):
             except:
                 pass
 
+
+    def fmask_func(self,arr):
+        fMask = self.fmaskK
+        arr[fMask<1.e-3] = 0.
+        return arr
+        
     def getKappa(self,XY,weightedFt=False):
 
         assert self._hasX and self._hasY
@@ -1259,29 +1272,31 @@ class Estimator(object):
 
         if self.verbose: startTime = time.time()
 
-        HighMapStar = ifft(self.kHigh[Y]*WY*phaseY*fMask*phaseB,axes=[-2,-1],normalize=True).conjugate()
+        HighMapStar = ifft(self.fmask_func(self.kHigh[Y]*WY*phaseY*phaseB),axes=[-2,-1],normalize=True).conjugate()
         kPx = fft(ifft(self.kGradx[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])
         kPy = fft(ifft(self.kGrady[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])        
-        rawKappa = ifft(1.j*lx*kPx*fMask + 1.j*ly*kPy*fMask,axes=[-2,-1],normalize=True).real
+        rawKappa = ifft(self.fmask_func(1.j*lx*kPx) + self.fmask_func(1.j*ly*kPy),axes=[-2,-1],normalize=True).real
 
         AL = np.nan_to_num(self.AL[XY])
 
 
+        assert not(np.any(np.isnan(rawKappa)))
         # debug_edges = np.arange(400,6000,50)
         # import orphics.tools.stats as stats
         # import orphics.tools.io as io
-        # io.quickPlot2d(np.fft.fftshift(rawKappa),"kappa.png")
-        # binner = stats.bin2D(self.modLMap,debug_edges)
+        # io.quickPlot2d(rawKappa,"kappa.png")
+        # binner = stats.bin2D(self.N.modLMap,debug_edges)
         # cents,ws = binner.bin(rawKappa.real)
         # pl = io.Plotter()#scaleY='log')
         # pl.add(cents,ws)
         # pl._ax.set_xlim(2,6000)
         # pl.done("rawkappa1d.png")
-        # sys.exit()
+        #sys.exit()
 
 
+        lmap = self.N.modLMap
         
-        kappaft = -AL*fft(rawKappa,axes=[-2,-1])*fMask
+        kappaft = -self.fmask_func(AL*fft(rawKappa,axes=[-2,-1]))
         #kappaft = np.nan_to_num(-AL*fft(rawKappa,axes=[-2,-1])) # added after beam convolved change
         self.kappa = ifft(kappaft,axes=[-2,-1],normalize=True).real
         try:
@@ -1290,11 +1305,14 @@ class Estimator(object):
         except:
             import orphics.tools.io as io
             import orphics.tools.stats as stats
+            io.quickPlot2d(np.fft.fftshift(np.abs(kappaft)),"ftkappa.png")
+            io.quickPlot2d(np.fft.fftshift(fMask),"fmask.png")
             io.quickPlot2d(self.kappa.real,"nankappa.png")
             debug_edges = np.arange(20,20000,100)
             dbinner = stats.bin2D(self.N.modLMap,debug_edges)
             cents, bclkk = dbinner.bin(self.N.clkk2d)
             cents, nlkktt = dbinner.bin(self.N.Nlkk['TT'])
+            cents, alkktt = dbinner.bin(AL/2.*lmap*(lmap+1.))
             try:
                 cents, nlkkeb = dbinner.bin(self.N.Nlkk['EB'])
             except:
@@ -1302,12 +1320,13 @@ class Estimator(object):
             pl = io.Plotter(scaleY='log',scaleX='log')
             pl.add(cents,bclkk)
             pl.add(cents,nlkktt,label="TT")
+            pl.add(cents,alkktt,label="TTnorm",ls="--")
             try:
                 pl.add(cents,nlkkeb,label="EB")
             except:
                 pass
             pl.legendOn()
-            pl._ax.set_ylim(1.e-9,1.e-6)
+            pl._ax.set_ylim(1.e-9,1.e-5)
             pl.done("clkk.png")
 
             sys.exit()
