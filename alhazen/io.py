@@ -3,6 +3,53 @@ from enlib import enmap
 import numpy as np
 import orphics.analysis.flatMaps as fmaps
 import orphics.tools.io as oio
+import warnings
+import logging
+logger = logging.getLogger()
+
+
+def theory_from_config(Config,theory_section):
+    sec_type = Config.get(theory_section,"cosmo_type")
+    lmax = Config.getint(theory_section,"lmax")
+    cc = None
+    
+    if sec_type=="pycamb_params":
+        raise NotImplementedError
+    elif sec_type=="cluster":
+        from szar.cosmology import ClusterCosmology
+        with oio.nostdout():
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                logger.disabled = True
+                cc = ClusterCosmology(lmax=lmax,pickling=True)
+                theory = cc.theory
+                logger.disabled = False
+    elif sec_type=="default":
+        from orphics.theory.cosmology import Cosmology
+        with oio.nostdout():
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                logger.disabled = True
+                cc = Cosmology(lmax=lmax,pickling=True)
+                theory = cc.theory
+                logger.disabled = False
+        
+    elif sec_type=="camb_file":
+        cc = None
+        raise NotImplementedError
+    elif sec_type=="enlib_file":
+        import orphics.tools.cmb as cmb
+        file_root = Config.get(theory_section,"enlib_file_root")
+        theory = cmb.load_theory_spectra_from_enlib(file_root,lpad=lmax)
+        cc = None
+
+    else:
+        print sec_type
+        raise ValueError
+
+
+    return theory, cc, lmax
+
 
 def plot_powers(unlensed_map,lensed_map,modlmap,theory,lbinner_dat,out_dir):
     utt2d = fmaps.get_simple_power_enmap(unlensed_map)
@@ -42,11 +89,21 @@ def enmaps_from_config(Config,sim_section,analysis_section,pol=False):
     
     pixel_sim = Config.getfloat(sim_section,"pixel_arcmin")
     buffer_sim = Config.getfloat(sim_section,"buffer")
+    projection = Config.get(analysis_section,"projection")
     try:
         pt_file = Config.get(analysis_section,"patch_template")
         imap = enmap.read_map(pt_file)
         shape_dat = imap.shape
         wcs_dat = imap.wcs
+
+        res = np.min(imap.extent()/imap.shape[-2:])*60.*180./np.pi
+        if np.isclose(pixel_sim,res,1.e-2):
+            shape_sim = shape_dat
+            wcs_sim = wcs_dat
+        else:
+            bbox = enmap.box(shape_dat,wcs_dat)
+            shape_sim, wcs_sim = enmap.geometry(bbox,res=pixel_sim*np.pi/180./60.,proj=projection)
+            
     except:
         pixel_analysis = Config.getfloat(analysis_section,"pixel_arcmin")
         try:
@@ -59,7 +116,6 @@ def enmaps_from_config(Config,sim_section,analysis_section,pol=False):
             height_analysis_deg = Config.getfloat(analysis_section,"patch_arcmin_height")/60.
         ra_offset = Config.getfloat(analysis_section,"ra_offset")
         dec_offset = Config.getfloat(analysis_section,"dec_offset")
-        projection = Config.get(analysis_section,"projection")
 
 
         
@@ -132,7 +188,7 @@ def get_patch_degrees(Config,section):
 
 def ellbounds_from_config(Config,recon_section):
     ret = []
-    for rval in ["lmax","tellmin","tellmax","pellmin","pellmax","kellmin","kellmax"]:
+    for rval in ["tellmin","tellmax","pellmin","pellmax","kellmin","kellmax"]:
         ret.append(Config.getint(recon_section,rval))
 
     return ret
