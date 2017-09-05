@@ -186,10 +186,13 @@ def get_patch_degrees(Config,section):
 
     
 
-def ellbounds_from_config(Config,recon_section):
-    ret = []
-    for rval in ["tellmin","tellmax","pellmin","pellmax","kellmin","kellmax"]:
-        ret.append(Config.getint(recon_section,rval))
+def ellbounds_from_config(Config,recon_section,min_ell):
+    ret = {}
+    for rval in ["tellminX","tellmaxX","pellminX","pellmaxX",
+                 "tellminY","tellmaxY","pellminY","pellmaxY",
+                 "kellmin","kellmax"]:
+        conf_val = oio.get_none_or_int(Config,recon_section,rval)
+        ret[rval] = min_ell if conf_val is None else conf_val
 
     return ret
 

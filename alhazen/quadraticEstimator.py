@@ -136,6 +136,8 @@ class QuadNorm(object):
         self.Nlkk = {}
         self.pixScaleX = templateMap.pixScaleX
         self.pixScaleY = templateMap.pixScaleY
+        self.noiseX_is_total = False
+        self.noiseY_is_total = False
         
 
     def __getstate__(self):
@@ -175,7 +177,7 @@ class QuadNorm(object):
         be perturbed if/when calculating derivatives.
         '''
         self.lClFid2d[XY] = power2dData.copy()+0.j
-    def addNoise2DPowerXX(self,XX,power2dData,fourierMask=None):
+    def addNoise2DPowerXX(self,XX,power2dData,fourierMask=None,is_total=False):
         '''
         Noise power for the X leg of the quadratic estimator
         XX = TT, EE, BB
@@ -185,6 +187,7 @@ class QuadNorm(object):
         fftshift state as power2d.powerMap
         '''
         # check if fourier mask is int!
+        self.noiseX_is_total = is_total
         self.noiseXX2d[XX] = power2dData.copy()+0.j
         if fourierMask is not None:
             self.noiseXX2d[XX][fourierMask==0] = np.inf
@@ -195,7 +198,7 @@ class QuadNorm(object):
             else:
                 self.noiseXX2d[XX][self.defaultMaskP==0] = np.inf
 
-    def addNoise2DPowerYY(self,YY,power2dData,fourierMask=None):
+    def addNoise2DPowerYY(self,YY,power2dData,fourierMask=None,is_total=False):
         '''
         Noise power for the Y leg of the quadratic estimator
         XX = TT, EE, BB
@@ -205,6 +208,7 @@ class QuadNorm(object):
         fftshift state as power2d.powerMap
         '''
         # check if fourier mask is int!
+        self.noiseY_is_total = is_total
         self.noiseYY2d[YY] = power2dData.copy()+0.j
         if fourierMask is not None:
             self.noiseYY2d[YY][fourierMask==0] = np.inf
@@ -230,8 +234,9 @@ class QuadNorm(object):
         if Y=='B': Y='E'
         gradClXY = X+Y
         if XY=='ET': gradClXY = 'TE'
-        W = np.nan_to_num(self.uClFid2d[gradClXY].copy()/(self.lClFid2d[X+X].copy()*self.kBeamX**2.+self.noiseXX2d[X+X].copy()))*self.fMaskXX[X+X]*self.kBeamX
-        W = self.fmask_func(np.nan_to_num(self.uClFid2d[gradClXY].copy()/(self.lClFid2d[X+X].copy()*self.kBeamX**2.+self.noiseXX2d[X+X].copy()))*self.kBeamX,self.fMaskXX[X+X])
+
+        totnoise = self.noiseXX2d[X+X].copy() if self.noiseX_is_total else (self.lClFid2d[X+X].copy()*self.kBeamX**2.+self.noiseXX2d[X+X].copy())
+        W = self.fmask_func(np.nan_to_num(self.uClFid2d[gradClXY].copy()/totnoise)*self.kBeamX,self.fMaskXX[X+X])
         W[self.modLMap>self.gradCut]=0.
         if X=='T':
             W[np.where(self.modLMap >= self.lmax_T)] = 0.
@@ -255,7 +260,8 @@ class QuadNorm(object):
 
     def WY(self,YY):
         assert YY[0]==YY[1]
-        W = self.fmask_func(np.nan_to_num(1./(self.lClFid2d[YY].copy()*self.kBeamY**2.+self.noiseYY2d[YY].copy()))*self.kBeamY,self.fMaskYY[YY])
+        totnoise = self.noiseYY2d[YY].copy() if self.noiseY_is_total else (self.lClFid2d[YY].copy()*self.kBeamY**2.+self.noiseYY2d[YY].copy())
+        W = self.fmask_func(np.nan_to_num(1./totnoise)*self.kBeamY,self.fMaskYY[YY])
         W[np.where(self.modLMap >= self.lmax_T)] = 0.
         if YY[0]=='T':
             W[np.where(self.modLMap >= self.lmax_T)] = 0.
@@ -1038,6 +1044,8 @@ class Estimator(object):
                  theorySpectraForNorm=None,
                  noiseX2dTEB=[None,None,None],
                  noiseY2dTEB=[None,None,None],
+                 noiseX_is_total = False,
+                 noiseY_is_total = False,
                  fmaskX2dTEB=[None,None,None],
                  fmaskY2dTEB=[None,None,None],
                  fmaskKappa=None,
@@ -1124,6 +1132,7 @@ class Estimator(object):
             cmbList = ['TT','TE','EE','BB']
             estList = ['TT','TE','ET','EB','EE','TB']
 
+        self.nList = nList
         
         if self.verbose: print "Initializing filters and normalization for quadratic estimators..."
         for cmb in cmbList:
@@ -1144,20 +1153,23 @@ class Estimator(object):
             self.N.addLensedFilter2DPower(cmb,lClFilt)
             self.N.addUnlensedNorm2DPower(cmb,uClNorm)
         for i,noise in enumerate(nList):
-            self.N.addNoise2DPowerXX(noise,noiseX2dTEB[i],fmaskX2dTEB[i])
-            self.N.addNoise2DPowerYY(noise,noiseY2dTEB[i],fmaskY2dTEB[i])
-
+            self.N.addNoise2DPowerXX(noise,noiseX2dTEB[i],fmaskX2dTEB[i],is_total=noiseX_is_total)
+            self.N.addNoise2DPowerYY(noise,noiseY2dTEB[i],fmaskY2dTEB[i],is_total=noiseY_is_total)
+        self.fmaskX2dTEB = fmaskX2dTEB
+        self.fmaskY2dTEB = fmaskY2dTEB
         try:
             self.N.addClkk2DPower(theorySpectraForFilters.gCl("kk",self.N.modLMap))
         except:
             print "Couldn't add Clkk2d power"
-            
+
+        self.estList = estList
         self.OmAL = None
         for est in estList:
             self.AL[est] = self.N.getNlkk2d(est,halo=halo)
             if doCurl: self.OmAL[est] = self.N.getCurlNlkk2d(est,halo=halo)
 
-
+        self.doCurl = doCurl
+        self.halo = halo
         if savePickledNormAndFilters is not None:
 
             if verbose: print "Pickling..."
@@ -1165,8 +1177,17 @@ class Estimator(object):
                 pickle.dump((self.N,self.AL,self.OmAL,self.fmaskK,self.phaseY),fout)
 
 
-    
-        
+    def updateNoise(self,nTX,nEX,nBX,nTY,nEY,nBY,noiseX_is_total=False,noiseY_is_total=False):
+        noiseX2dTEB = [nTX,nEX,nBX]
+        noiseY2dTEB = [nTY,nEY,nBY]
+        for i,noise in enumerate(self.nList):
+            self.N.addNoise2DPowerXX(noise,noiseX2dTEB[i],self.fmaskX2dTEB[i],is_total=noiseX_is_total)
+            self.N.addNoise2DPowerYY(noise,noiseY2dTEB[i],self.fmaskY2dTEB[i],is_total=noiseY_is_total)
+
+        for est in self.estList:
+            self.AL[est] = self.N.getNlkk2d(est,halo=self.halo)
+            if self.doCurl: self.OmAL[est] = self.N.getCurlNlkk2d(est,halo=self.halo)
+            
 
     def updateTEB_X(self,T2DData,E2DData=None,B2DData=None,alreadyFTed=False):
         '''
