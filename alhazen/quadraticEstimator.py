@@ -47,40 +47,6 @@ def getMax(polComb,tellmax,pellmax):
         return max(tellmax,pellmax)
 
 
-# class MLEstimator(Estimator):
-
-#     def __init__(self,templateLiteMap,
-#                  theorySpectraForFilters,
-#                  theorySpectraForNorm=None,
-#                  noiseX2dTEB=[None,None,None],
-#                  noiseY2dTEB=[None,None,None],
-#                  fmaskX2dTEB=[None,None,None],
-#                  fmaskY2dTEB=[None,None,None],
-#                  fmaskKappa=None,
-#                  doCurl=False,
-#                  TOnly=False,
-#                  halo=False,
-#                  gradCut=None,
-#                  verbose=False,
-#                  loadPickledNormAndFilters=None,
-#                  savePickledNormAndFilters=None,
-#                  numIterations=20):
-    
-#         self.Estimator(templateLiteMap,
-#                  theorySpectraForFilters,
-#                  theorySpectraForNorm,
-#                  noiseX2dTEB,
-#                  noiseY2dTEB,
-#                  fmaskX2dTEB,
-#                  fmaskY2dTEB,
-#                  fmaskKappa,
-#                  doCurl,
-#                  TOnly,
-#                  halo,
-#                  gradCut,
-#                  verbose,
-#                  loadPickledNormAndFilters,
-#                  savePickledNormAndFilters)
 
         
         
@@ -97,10 +63,11 @@ class QuadNorm(object):
         '''
         self.verbose = verbose
         self.Ny,self.Nx = templateMap.Ny, templateMap.Nx
-        self.lxMap,self.lyMap,self.modLMap,self.thetaMap,self.lx,self.ly = fmaps.getFTAttributesFromLiteMap(templateMap)
+        self.lxMap,self.lyMap,self.modLMap,thetaMap,lx,ly = fmaps.getFTAttributesFromLiteMap(templateMap)
         self.lxHatMap = self.lxMap*np.nan_to_num(1. / self.modLMap)
         self.lyHatMap = self.lyMap*np.nan_to_num(1. / self.modLMap)
         #B = fft(self.modLMap,axes=[-2,-1],flags=['FFTW_MEASURE'])
+        del thetaMap
 
         if kBeamX is not None:           
             self.kBeamX = kBeamX
@@ -123,8 +90,10 @@ class QuadNorm(object):
 
         self.lmax_T=bigell #9000.
         self.lmax_P=bigell #9000.
-        self.defaultMaskT = fmaps.fourierMask(self.lx,self.ly,self.modLMap,lmin=2,lmax=self.lmax_T)
-        self.defaultMaskP = fmaps.fourierMask(self.lx,self.ly,self.modLMap,lmin=2,lmax=self.lmax_P)
+        self.defaultMaskT = fmaps.fourierMask(lx,ly,self.modLMap,lmin=2,lmax=self.lmax_T)
+        self.defaultMaskP = fmaps.fourierMask(lx,ly,self.modLMap,lmin=2,lmax=self.lmax_P)
+        del lx
+        del ly
         self.bigell=bigell #9000.
         if gradCut is not None: 
             self.gradCut = gradCut
@@ -140,14 +109,6 @@ class QuadNorm(object):
         self.noiseY_is_total = False
         
 
-    def __getstate__(self):
-        # Clkk2d is not pickled yet!!!
-        return self.verbose, self.lxMap,self.lyMap,self.modLMap,self.thetaMap,self.lx,self.ly, self.lxHatMap, self.lyHatMap,self.uClNow2d, self.uClFid2d, self.lClFid2d, self.noiseXX2d, self.noiseYY2d, self.fMaskXX, self.fMaskYY, self.lmax_T, self.lmax_P, self.defaultMaskT, self.defaultMaskP, self.bigell, self.gradCut,self.Nlkk,self.pixScaleX,self.pixScaleY
-
-
-
-    def __setstate__(self, state):
-        self.verbose, self.lxMap,self.lyMap,self.modLMap,self.thetaMap,self.lx,self.ly, self.lxHatMap, self.lyHatMap,self.uClNow2d, self.uClFid2d, self.lClFid2d, self.noiseXX2d, self.noiseYY2d, self.fMaskXX, self.fMaskYY, self.lmax_T, self.lmax_P, self.defaultMaskT, self.defaultMaskP, self.bigell, self.gradCut,self.Nlkk,self.pixScaleX,self.pixScaleY = state
 
     def fmask_func(self,arr,mask):        
         arr[mask<1.e-3] = 0.
@@ -1058,7 +1019,9 @@ class Estimator(object):
                  verbose=False,
                  loadPickledNormAndFilters=None,
                  savePickledNormAndFilters=None,
-                 uEqualsL=False):
+                 uEqualsL=False,
+                 bigell=9000,
+                 mpi_comm=None):
 
         '''
         All the 2d fourier objects below are pre-fftshifting. They must be of the same dimension.
@@ -1109,8 +1072,9 @@ class Estimator(object):
         else:
             self.kBeamY = 1.
 
+        self.doCurl = doCurl
+        self.halo = halo
 
-        self.N = QuadNorm(templateLiteMap,gradCut=gradCut,verbose=verbose,kBeamX=self.kBeamX,kBeamY=self.kBeamY)
         if fmaskKappa is None:
             ellMinK = 80
             ellMaxK = 3000
@@ -1120,7 +1084,6 @@ class Estimator(object):
             self.fmaskK = fmaskKappa
 
         
-
         if TOnly: 
             nList = ['TT']
             cmbList = ['TT']
@@ -1133,49 +1096,62 @@ class Estimator(object):
             estList = ['TT','TE','ET','EB','EE','TB']
 
         self.nList = nList
-        
-        if self.verbose: print "Initializing filters and normalization for quadratic estimators..."
-        for cmb in cmbList:
-            if uEqualsL:
-                uClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
-            else:
-                uClFilt = theorySpectraForFilters.uCl(cmb,self.N.modLMap)
-
-            if theorySpectraForNorm is not None:
-                if uEqualsL:
-                    uClNorm = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
-                else:
-                    uClNorm = theorySpectraForNorm.uCl(cmb,self.N.modLMap)
-            else:
-                uClNorm = uClFilt
-            lClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
-            self.N.addUnlensedFilter2DPower(cmb,uClFilt)
-            self.N.addLensedFilter2DPower(cmb,lClFilt)
-            self.N.addUnlensedNorm2DPower(cmb,uClNorm)
-        for i,noise in enumerate(nList):
-            self.N.addNoise2DPowerXX(noise,noiseX2dTEB[i],fmaskX2dTEB[i],is_total=noiseX_is_total)
-            self.N.addNoise2DPowerYY(noise,noiseY2dTEB[i],fmaskY2dTEB[i],is_total=noiseY_is_total)
         self.fmaskX2dTEB = fmaskX2dTEB
         self.fmaskY2dTEB = fmaskY2dTEB
-        try:
-            self.N.addClkk2DPower(theorySpectraForFilters.gCl("kk",self.N.modLMap))
-        except:
-            print "Couldn't add Clkk2d power"
+        
+        # Get MPI comm
+        comm = mpi_comm
+        if comm is not None:
+            rank = comm.Get_rank()
+            numcores = comm.Get_size()
+        else:
+            rank = 0
+            numcores = 1
 
-        self.estList = estList
-        self.OmAL = None
-        for est in estList:
-            self.AL[est] = self.N.getNlkk2d(est,halo=halo)
-            if doCurl: self.OmAL[est] = self.N.getCurlNlkk2d(est,halo=halo)
+        if rank==0:
+            self.N = QuadNorm(templateLiteMap,gradCut=gradCut,verbose=verbose,kBeamX=self.kBeamX,kBeamY=self.kBeamY,bigell=bigell)
 
-        self.doCurl = doCurl
-        self.halo = halo
-        if savePickledNormAndFilters is not None:
 
-            if verbose: print "Pickling..."
-            with open(savePickledNormAndFilters,'wb') as fout:
-                pickle.dump((self.N,self.AL,self.OmAL,self.fmaskK,self.phaseY),fout)
 
+            if self.verbose: print "Initializing filters and normalization for quadratic estimators..."
+            for cmb in cmbList:
+                if uEqualsL:
+                    uClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
+                else:
+                    uClFilt = theorySpectraForFilters.uCl(cmb,self.N.modLMap)
+
+                if theorySpectraForNorm is not None:
+                    if uEqualsL:
+                        uClNorm = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
+                    else:
+                        uClNorm = theorySpectraForNorm.uCl(cmb,self.N.modLMap)
+                else:
+                    uClNorm = uClFilt
+                lClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
+                self.N.addUnlensedFilter2DPower(cmb,uClFilt)
+                self.N.addLensedFilter2DPower(cmb,lClFilt)
+                self.N.addUnlensedNorm2DPower(cmb,uClNorm)
+            for i,noise in enumerate(nList):
+                self.N.addNoise2DPowerXX(noise,noiseX2dTEB[i],fmaskX2dTEB[i],is_total=noiseX_is_total)
+                self.N.addNoise2DPowerYY(noise,noiseY2dTEB[i],fmaskY2dTEB[i],is_total=noiseY_is_total)
+            try:
+                self.N.addClkk2DPower(theorySpectraForFilters.gCl("kk",self.N.modLMap))
+            except:
+                print "Couldn't add Clkk2d power"
+
+            self.estList = estList
+            self.OmAL = None
+            for est in estList:
+                self.AL[est] = self.N.getNlkk2d(est,halo=halo)
+                #if doCurl: self.OmAL[est] = self.N.getCurlNlkk2d(est,halo=halo)
+                
+                # send_dat = np.array(self.vectors[label]).astype(np.float64)
+                # self.comm.Send(send_dat, dest=0, tag=self.tag_start+k)
+
+        else:
+
+            pass
+        
 
     def updateNoise(self,nTX,nEX,nBX,nTY,nEY,nBY,noiseX_is_total=False,noiseY_is_total=False):
         noiseX2dTEB = [nTX,nEX,nBX]
@@ -1268,7 +1244,7 @@ class Estimator(object):
         arr[fMask<1.e-3] = 0.
         return arr
         
-    def getKappa(self,XY,weightedFt=False):
+    def getKappa(self,XY,returnFt=False):
 
         assert self._hasX and self._hasY
         assert XY in ['TT','TE','ET','EB','TB','EE']
@@ -1380,8 +1356,10 @@ class Estimator(object):
 
 
 
-            
-        return self.kappa
+        if returnFt:
+            return self.kappa,kappaft
+        else:
+            return self.kappa
 
 
 

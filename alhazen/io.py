@@ -16,7 +16,7 @@ def theory_from_config(Config,theory_section):
     if sec_type=="pycamb_params":
         raise NotImplementedError
     elif sec_type=="cluster":
-        from szar.cosmology import ClusterCosmology
+        from szar.counts import ClusterCosmology
         with oio.nostdout():
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
@@ -36,7 +36,9 @@ def theory_from_config(Config,theory_section):
         
     elif sec_type=="camb_file":
         cc = None
-        raise NotImplementedError
+        import orphics.tools.cmb as cmb
+        file_root = Config.get(theory_section,"camb_file_root")
+        theory = cmb.loadTheorySpectraFromCAMB(file_root,unlensedEqualsLensed=False,useTotal=False,TCMB = 2.7255e6,lpad=lmax)
     elif sec_type=="enlib_file":
         import orphics.tools.cmb as cmb
         file_root = Config.get(theory_section,"enlib_file_root")
@@ -128,8 +130,41 @@ def enmaps_from_config(Config,sim_section,analysis_section,pol=False):
 
     return shape_sim, wcs_sim, shape_dat, wcs_dat            
 
-def patch_array_from_config(Config,exp_name,shape,wcs,dimensionless=True,TCMB=2.7255e6):
-    pa = fmaps.PatchArray(shape,wcs,skip_real=False,dimensionless=dimensionless,TCMB=TCMB)
+
+def enmap_from_config_section(Config,section,pol=False):
+    analysis_section = section
+    
+    projection = Config.get(analysis_section,"projection")
+    try:
+        pt_file = Config.get(analysis_section,"patch_template")
+        imap = enmap.read_map(pt_file)
+        shape_dat = imap.shape
+        wcs_dat = imap.wcs
+
+        res = np.min(imap.extent()/imap.shape[-2:])*60.*180./np.pi
+            
+    except:
+        pixel_analysis = Config.getfloat(analysis_section,"pixel_arcmin")
+        try:
+            width_analysis_deg = Config.getfloat(analysis_section,"patch_degrees_width")
+        except:
+            width_analysis_deg = Config.getfloat(analysis_section,"patch_arcmin_width")/60.
+        try:   
+            height_analysis_deg = Config.getfloat(analysis_section,"patch_degrees_height")
+        except:
+            height_analysis_deg = Config.getfloat(analysis_section,"patch_arcmin_height")/60.
+        ra_offset = Config.getfloat(analysis_section,"ra_offset")
+        dec_offset = Config.getfloat(analysis_section,"dec_offset")
+
+
+        
+        shape_dat, wcs_dat = enmap.get_enmap_patch(width_analysis_deg*60.,pixel_analysis,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
+
+    return shape_dat, wcs_dat            
+
+
+def patch_array_from_config(Config,exp_name,shape,wcs,dimensionless=True,TCMB=2.7255e6,skip_real=False):
+    pa = fmaps.PatchArray(shape,wcs,dimensionless=dimensionless,TCMB=TCMB,skip_real=skip_real)
     try:
         bfile = Config.get(exp_name,"beam_file")
         ells,bls = np.loadtxt(bfile,delimiter=",",unpack=True,use_cols=[0,1])
