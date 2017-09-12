@@ -41,7 +41,7 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 numcores = comm.Get_size()    
 
-gradCut = None #2000 #None #2000
+gradCut = 2000 #None #2000
 
 # i/o directories
 out_dir = os.environ['WWW']+"plots/"+expf_name+"_"+str(gradCut)+"_"  # for plots
@@ -60,7 +60,7 @@ my_tasks = each_tasks[rank]
 
 
 # Read config
-iniFile = "input/recon.ini"
+iniFile = "../halofg/input/recon.ini"
 Config = SafeConfigParser()
 Config.optionxform=str
 Config.read(iniFile)

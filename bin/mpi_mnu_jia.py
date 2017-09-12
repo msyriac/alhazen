@@ -49,8 +49,8 @@ out_dir = os.environ['WWW']+"plots/jiav2_"+mass+"_"+expf_name+"_"  # for plots
 
 from peakaboo.liuSims import LiuConvergence
 if Ntot is None: Ntot = 1000
-liucon = LiuConvergence("/gpfs01/astro/workarea/msyriac/data/jiav2/"+mass+"/")
-save_func = lambda x,ftype: "/gpfs01/astro/workarea/msyriac/data/jiav2/"+mass+"/"+ftype+"_"+expf_name+"_"+str(x).zfill(9)+".fits"
+liucon = LiuConvergence("/gpfs01/astro/workarea/msyriac/data/sims/jia/cmb/"+mass+"/")
+save_func = lambda x,ftype: "/gpfs01/astro/workarea/msyriac/data/sims/jia/output/"+mass+"_"+ftype+"_"+expf_name+"_"+str(x).zfill(9)+".fits"
 
 # Efficiently distribute sims over MPI cores
 num_each,each_tasks = mpi_distribute(Ntot,numcores)
@@ -64,7 +64,7 @@ my_tasks = each_tasks[rank]
 
 
 # Read config
-iniFile = "input/recon.ini"
+iniFile = "../halofg/input/recon.ini"
 Config = SafeConfigParser()
 Config.optionxform=str
 Config.read(iniFile)
@@ -91,7 +91,7 @@ lbinner_sim = stats.bin2D(modlmap_sim,lbin_edges)
 # === COSMOLOGY ===
 theory, cc, lmax = aio.theory_from_config(Config,cosmology_section)
 parray_dat.add_theory(theory,lmax)
-gradCut = 2000
+gradCut = None
 template_dat = fmaps.simple_flipper_template_from_enmap(shape_dat,wcs_dat)
 nT = parray_dat.nT
 nP = parray_dat.nP
@@ -132,7 +132,7 @@ parray_sim.add_theory(theory,lmax)
 k = -1
 for index in my_tasks:
     
-    kappa = parray_sim.get_kappa(ktype="grf",vary=False)
+    kappa = liucon.get_kappa(index+1) #parray_sim.get_kappa(ktype="grf",vary=False)
 
     phi, fphi = lt.kappa_to_phi(kappa,parray_sim.modlmap,return_fphi=True)
     #alpha_pix = enmap.grad_pixf(fphi)

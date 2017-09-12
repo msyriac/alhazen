@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger()
 
 
-def theory_from_config(Config,theory_section):
+def theory_from_config(Config,theory_section,dimensionless=True):
     sec_type = Config.get(theory_section,"cosmo_type")
     lmax = Config.getint(theory_section,"lmax")
     cc = None
@@ -38,7 +38,21 @@ def theory_from_config(Config,theory_section):
         cc = None
         import orphics.tools.cmb as cmb
         file_root = Config.get(theory_section,"camb_file_root")
-        theory = cmb.loadTheorySpectraFromCAMB(file_root,unlensedEqualsLensed=False,useTotal=False,TCMB = 2.7255e6,lpad=lmax)
+        theory = cmb.loadTheorySpectraFromCAMB(file_root,unlensedEqualsLensed=False,useTotal=False,TCMB = 2.7255e6,lpad=lmax,get_dimensionless=False)
+        try:
+            cforce = Config.getboolean(theory_section,"cluster_force")
+        except:
+            cforce = False
+        if cforce:
+            from szar.counts import ClusterCosmology
+            with oio.nostdout():
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    logger.disabled = True
+                    cc = ClusterCosmology(skipCls=True)
+                    logger.disabled = False
+            
+            
     elif sec_type=="enlib_file":
         import orphics.tools.cmb as cmb
         file_root = Config.get(theory_section,"enlib_file_root")

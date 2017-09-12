@@ -53,7 +53,7 @@ def getMax(polComb,tellmax,pellmax):
 class QuadNorm(object):
 
     
-    def __init__(self,templateMap,gradCut=None,verbose=False,bigell=9000,kBeamX=None,kBeamY=None):
+    def __init__(self,templateMap,gradCut=None,verbose=False,bigell=9000,kBeamX=None,kBeamY=None,fmask=None):
         '''
 
         templateFT is a template liteMap FFT object
@@ -68,6 +68,8 @@ class QuadNorm(object):
         self.lyHatMap = self.lyMap*np.nan_to_num(1. / self.modLMap)
         #B = fft(self.modLMap,axes=[-2,-1],flags=['FFTW_MEASURE'])
         del thetaMap
+
+        self.fmask = fmask
 
         if kBeamX is not None:           
             self.kBeamX = kBeamX
@@ -605,8 +607,11 @@ class QuadNorm(object):
         
                         
         ALinv = np.real(np.sum( allTerms, axis = 0))
-        NL = (lmap**2.) * ((lmap + 1.)**2.) *np.nan_to_num(1. / ALinv)/ 4.
-        NL[np.where(np.logical_or(lmap >= self.bigell, lmap == 0.))] = 0.
+        alval = np.nan_to_num(1. / ALinv)
+        if self.fmask is not None: alval = self.fmask_func(alval,self.fmask)
+        l4 = (lmap**2.) * ((lmap + 1.)**2.)
+        NL = l4 *alval/ 4.
+        NL[np.where(np.logical_or(lmap >= self.bigell, lmap <2.))] = 0.
 
         retval = np.nan_to_num(NL.real * self.pixScaleX*self.pixScaleY  )
 
@@ -1109,7 +1114,7 @@ class Estimator(object):
             numcores = 1
 
         if rank==0:
-            self.N = QuadNorm(templateLiteMap,gradCut=gradCut,verbose=verbose,kBeamX=self.kBeamX,kBeamY=self.kBeamY,bigell=bigell)
+            self.N = QuadNorm(templateLiteMap,gradCut=gradCut,verbose=verbose,kBeamX=self.kBeamX,kBeamY=self.kBeamY,bigell=bigell,fmask=self.fmaskK)
 
 
 
@@ -1269,10 +1274,15 @@ class Estimator(object):
 
         if self.verbose: startTime = time.time()
 
-        HighMapStar = ifft(self.fmask_func(self.kHigh[Y]*WY*phaseY*phaseB),axes=[-2,-1],normalize=True).conjugate()
+        # HighMapStar = ifft(self.fmask_func(self.kHigh[Y]*WY*phaseY*phaseB),axes=[-2,-1],normalize=True).conjugate()
+        # kPx = fft(ifft(self.kGradx[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])
+        # kPy = fft(ifft(self.kGrady[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])        
+        # rawKappa = ifft(self.fmask_func(1.j*lx*kPx) + self.fmask_func(1.j*ly*kPy),axes=[-2,-1],normalize=True).real
+
+        HighMapStar = ifft((self.kHigh[Y]*WY*phaseY*phaseB),axes=[-2,-1],normalize=True).conjugate()
         kPx = fft(ifft(self.kGradx[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])
         kPy = fft(ifft(self.kGrady[X]*WXY*phaseY,axes=[-2,-1],normalize=True)*HighMapStar,axes=[-2,-1])        
-        rawKappa = ifft(self.fmask_func(1.j*lx*kPx) + self.fmask_func(1.j*ly*kPy),axes=[-2,-1],normalize=True).real
+        rawKappa = ifft((1.j*lx*kPx) + (1.j*ly*kPy),axes=[-2,-1],normalize=True).real
 
         AL = np.nan_to_num(self.AL[XY])
 
