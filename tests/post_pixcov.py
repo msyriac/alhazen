@@ -72,8 +72,9 @@ for i in range(N):
     print totlikes
 
 pl = io.Plotter()
-likes = np.exp(-0.5*totlikes)
-print likes
-likes /= likes.sum()
+likes = -0.5*totlikes
+#likes = np.exp(-0.5*totlikes)
+#print likes
+#likes /= likes.sum()
 pl.add(mrange,likes)
 pl.done("lnlikes.png")

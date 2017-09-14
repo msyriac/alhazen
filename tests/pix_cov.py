@@ -6,6 +6,7 @@ import orphics.tools.io as io
 import alhazen.lensTools as lt
 from mpi4py import MPI
 import sys
+from scipy.linalg import pinv2
 
 def nfwkappa(massOverh):
     zL = 0.7
@@ -43,10 +44,11 @@ shape,wcs = enmap.get_enmap_patch(arc,px,proj="car")
     
 pa = fmaps.PatchArray(shape,wcs,dimensionless=False,skip_real=False)
 pa.add_theory(theory,lmax)
+pa.add_white_noise_with_atm(0.01,0.,0,1,0,1)
 
 
 
-N = 30000
+N = 10000
 Nmasses = numcores #10
 
 
@@ -71,6 +73,7 @@ if True:
         cmb_map = pa.get_unlensed_cmb(seed=i)
         #lensed = lensing.lens_map(cmb_map, grad_phi, order=lens_order, mode="spline", border="cyclic", trans=False, deriv=False, h=1e-7)
         lensed = lensing.lens_map_flat_pix(cmb_map, alpha_pix,order=lens_order)
+        lensed += pa.get_noise_sim(seed=i*100000)
 
         cmb = lensed.reshape((1,shape[0]*shape[1]))
         if i==0:
@@ -81,13 +84,14 @@ if True:
     print vec.shape
     print "Calculating cov..."
     c = np.cov(vec.T)
+    
     print c
     print c.shape
     cs.append(c)
     #io.quickPlot2d(c,"cov.png")
     print "Inverting cov..."
     from btip import inpaintStamp as ins
-    cinv = np.linalg.pinv(c)
+    cinv = pinv2(c)
     cinvs.append(cinv)
 
 
