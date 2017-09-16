@@ -5,9 +5,20 @@ from szar.counts import ClusterCosmology
 import orphics.tools.io as io
 import alhazen.lensTools as lt
 from mpi4py import MPI
-import sys
+import sys, os
 from scipy.linalg import pinv2
+from orphics.analysis.pipeline import mpi_distribute, MPIStats
+import argparse
+import cPickle as pickle
 
+# Parse command line
+parser = argparse.ArgumentParser(description='Verify lensing reconstruction.')
+parser.add_argument("-M", "--mass",     type=float)
+args = parser.parse_args()
+M = args.mass
+
+
+out_dir = os.environ['WWW']+"plots/"
 def nfwkappa(massOverh):
     zL = 0.7
     overdensity = 180.
@@ -33,7 +44,7 @@ cc = ClusterCosmology(lmax=lmax,pickling=True)
 theory = cc.theory
 
 arc = 10.0
-px = 1.0
+px = 0.5
 lens_order = 5
 
 
@@ -44,84 +55,68 @@ shape,wcs = enmap.get_enmap_patch(arc,px,proj="car")
     
 pa = fmaps.PatchArray(shape,wcs,dimensionless=False,skip_real=False)
 pa.add_theory(theory,lmax)
-pa.add_white_noise_with_atm(0.01,0.,0,1,0,1)
+pa.add_white_noise_with_atm(0.1,0.,0,1,0,1)
 
 
 
-N = 10000
-Nmasses = numcores #10
+N = 130000
+Ntot = N
 
+# Efficiently distribute sims over MPI cores
+num_each,each_tasks = mpi_distribute(Ntot,numcores)
+# Initialize a container for stats and stacks
+mpibox = MPIStats(comm,num_each,tag_start=333)
+if rank==0: print "At most ", max(num_each) , " tasks..."
 
 from alhazen.halos import NFWkappa
 
-mrange = np.linspace(2.,4.,Nmasses)*1.e14
-cs = []
-cinvs = []
-
-
-
-#for M in mrange:
-if True:
-    M = mrange[rank]
-    kappa = nfwkappa(M)
-    phi, fphi = lt.kappa_to_phi(kappa,pa.modlmap,return_fphi=True)
-    #grad_phi = enmap.grad(phi)
-    alpha_pix = enmap.grad_pixf(fphi)
-
-
-    for i in range(N):
-        cmb_map = pa.get_unlensed_cmb(seed=i)
-        #lensed = lensing.lens_map(cmb_map, grad_phi, order=lens_order, mode="spline", border="cyclic", trans=False, deriv=False, h=1e-7)
-        lensed = lensing.lens_map_flat_pix(cmb_map, alpha_pix,order=lens_order)
-        lensed += pa.get_noise_sim(seed=i*100000)
-
-        cmb = lensed.reshape((1,shape[0]*shape[1]))
-        if i==0:
-            vec = cmb
-        else:
-            vec = np.append(vec,cmb,axis=0)
-        if i%1000==0: print M,i
-    print vec.shape
-    print "Calculating cov..."
-    c = np.cov(vec.T)
-    
-    print c
-    print c.shape
-    cs.append(c)
-    #io.quickPlot2d(c,"cov.png")
-    print "Inverting cov..."
-    from btip import inpaintStamp as ins
-    cinv = pinv2(c)
-    cinvs.append(cinv)
-
-
-
-np.save("c_"+str(rank),c)
-np.save("cinv_"+str(rank),cinv)
-sys.exit()
-from alhazen.maxlike import lnlike
-
-M = 3.5
 kappa = nfwkappa(M)
 phi, fphi = lt.kappa_to_phi(kappa,pa.modlmap,return_fphi=True)
 #grad_phi = enmap.grad(phi)
 alpha_pix = enmap.grad_pixf(fphi)
 
-N = 1000
+# What am I doing?
+my_tasks = each_tasks[rank]
 
-totlikes = 0.
-for i in range(N):
-    lnlikes = []
-    cmb_map = pa.get_unlensed_cmb(seed=i+100000)
-    lensed = lensing.lens_map_flat_pix(cmb_map, alpha_pix,order=lens_order)
 
-    for k,M in enumerate(mrange):
+for k,index in enumerate(my_tasks):
     
-        print i,M
-        lnlikes.append(lnlike(cs[k],cinvs[k],lensed))
+    cmb_map = pa.get_unlensed_cmb(seed=2*index)
+    lensed = lensing.lens_map_flat_pix(cmb_map, alpha_pix,order=lens_order)
+    noise = pa.get_noise_sim(seed=2*index+1)
+    measured = lensed + noise
 
-    totlikes += np.array(lnlikes)
+    if index==0 or index==1:
+        io.quickPlot2d(cmb_map,out_dir+"cmbmap_"+str(index)+".png")
+        io.quickPlot2d(lensed,out_dir+"lcmbmap_"+str(index)+".png")
+        io.quickPlot2d(noise,out_dir+"ncmbmap_"+str(index)+".png")
+        io.quickPlot2d(measured,out_dir+"mcmbmap_"+str(index)+".png")
 
-pl = io.Plotter()
-pl.add(mrange,np.exp(-0.5*totlikes))
-pl.done("lnlikes.png")
+    #cmb = measured.reshape((1,shape[0]*shape[1]))
+    cmb = measured.reshape((shape[0]*shape[1]))
+    mpibox.add_to_stats("vec",cmb)
+
+    if k%1000==0: print M,k
+
+mpibox.get_stats()
+
+if rank==0:
+    cov = mpibox.stats["vec"]["cov"]
+
+    print "Inverting cov..."
+    cinv = pinv2(cov)
+
+    s,logdet = np.linalg.slogdet(cov)
+    #print s,logdet
+    try:
+        assert s>0
+    except:
+        print "ERROR: Negative log"
+        print s,logdet
+        
+        sys.exit()
+
+    pickle.dump((M,logdet,cinv),open("c_"+str(M)+".pkl",'wb'))
+    io.quickPlot2d(cov,out_dir+"cov_"+str(M)+".png")
+    io.quickPlot2d(cinv,out_dir+"cinv_"+str(M)+".png")
+        

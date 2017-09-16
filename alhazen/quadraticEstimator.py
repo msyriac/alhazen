@@ -224,7 +224,7 @@ class QuadNorm(object):
     def WY(self,YY):
         assert YY[0]==YY[1]
         totnoise = self.noiseYY2d[YY].copy() if self.noiseY_is_total else (self.lClFid2d[YY].copy()*self.kBeamY**2.+self.noiseYY2d[YY].copy())
-        W = self.fmask_func(np.nan_to_num(1./totnoise)*self.kBeamY,self.fMaskYY[YY])
+        W = self.fmask_func(np.nan_to_num(1./totnoise)*self.kBeamY,self.fMaskYY[YY]) #* self.modLMap  # !!!!!
         W[np.where(self.modLMap >= self.lmax_T)] = 0.
         if YY[0]=='T':
             W[np.where(self.modLMap >= self.lmax_T)] = 0.

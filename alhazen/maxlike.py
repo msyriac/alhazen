@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def lnlike(cov,covinv,stamp):
+def lnlike(logdet,covinv,stamp):
 
     
     Npix = stamp.size
@@ -10,9 +10,13 @@ def lnlike(cov,covinv,stamp):
     # print "Calculating norm of lnlike..."
     #lognorm = -0.5*(Npix*np.log(2.*np.pi)+np.trace(np.log(cov)))
     #lognorm = np.trace(np.log(cov))
-    s,logdet = np.linalg.slogdet(cov)
-    #print s,logdet
-    assert s>0
+    # s,logdet = np.linalg.slogdet(cov)
+    # #print s,logdet
+    # try:
+    #     assert s>0
+    # except:
+    #     print s,logdet
+    #     sys.exit()
     lognorm = logdet
     # print lognorm
     

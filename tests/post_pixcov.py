@@ -7,6 +7,7 @@ import orphics.tools.io as io
 import alhazen.lensTools as lt
 from mpi4py import MPI
 import sys
+import cPickle as pickle
 
 def nfwkappa(massOverh):
     zL = 0.7
@@ -29,7 +30,7 @@ cc = ClusterCosmology(lmax=lmax,pickling=True)
 theory = cc.theory
 
 arc = 10.0
-px = 1.0
+px = 0.5
 lens_order = 5
 
 
@@ -40,9 +41,10 @@ shape,wcs = enmap.get_enmap_patch(arc,px,proj="car")
     
 pa = fmaps.PatchArray(shape,wcs,dimensionless=False,skip_real=False)
 pa.add_theory(theory,lmax)
+pa.add_white_noise_with_atm(0.01,0.,0,1,0,1)
 
 Nmasses = 4
-mrange = np.linspace(2.,4.,Nmasses)*1.e14
+mrange = np.arange(1.,10.,0.5)*1.e14
 
 
 M = 3.5
@@ -55,21 +57,36 @@ N = 1000
 
 totlikes = 0.
 allike = 1.
+
+Ms = []
+logdets = []
+cinvs = []
+for k,M in enumerate(mrange):
+    
+    M,logdet,cinv = pickle.load(open("c_"+str(M)+".pkl",'rb'))
+    Ms.append(  M )
+    logdets.append( logdet)
+    cinvs.append( cinv)
+
 for i in range(N):
     lnlikes = []
-    cmb_map = pa.get_unlensed_cmb(seed=i+100000)
+    cmb_map = pa.get_unlensed_cmb(seed=140000+2*i)
     lensed = lensing.lens_map_flat_pix(cmb_map, alpha_pix,order=lens_order)
+    noise = pa.get_noise_sim(seed=140000+2*i+1)
+    measured = lensed + noise
 
     if i%100==0: print i
     for k,M in enumerate(mrange):
     
-        c = np.load("c_"+str(k)+".npy")
-        cinv = np.load("cinv_"+str(k)+".npy")
-        lnlikeval = lnlike(c,cinv,lensed)
+        #M,logdet,cinv = pickle.load(open("c_"+str(M)+".pkl",'rb'))
+        logdet = logdets[k]
+        cinv = cinvs[k]
+        
+        lnlikeval = lnlike(logdet,cinv,measured)
         lnlikes.append(lnlikeval)
         #print lnlikeval
     totlikes += np.array(lnlikes)
-    print totlikes
+    #print totlikes
 
 pl = io.Plotter()
 likes = -0.5*totlikes
