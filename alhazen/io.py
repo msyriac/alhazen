@@ -30,7 +30,7 @@ def theory_from_config(Config,theory_section,dimensionless=True):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 logger.disabled = True
-                cc = Cosmology(lmax=lmax,pickling=True)
+                cc = Cosmology(lmax=lmax,pickling=True,dimensionless=dimensionless)
                 theory = cc.theory
                 logger.disabled = False
         
@@ -38,7 +38,7 @@ def theory_from_config(Config,theory_section,dimensionless=True):
         cc = None
         import orphics.tools.cmb as cmb
         file_root = Config.get(theory_section,"camb_file_root")
-        theory = cmb.loadTheorySpectraFromCAMB(file_root,unlensedEqualsLensed=False,useTotal=False,TCMB = 2.7255e6,lpad=lmax,get_dimensionless=False)
+        theory = cmb.loadTheorySpectraFromCAMB(file_root,unlensedEqualsLensed=False,useTotal=False,TCMB = 2.7255e6,lpad=lmax,get_dimensionless=dimensionless)
         try:
             cforce = Config.getboolean(theory_section,"cluster_force")
         except:

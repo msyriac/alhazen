@@ -67,7 +67,7 @@ class QuadNorm(object):
         self.lxHatMap = self.lxMap*np.nan_to_num(1. / self.modLMap)
         self.lyHatMap = self.lyMap*np.nan_to_num(1. / self.modLMap)
         #B = fft(self.modLMap,axes=[-2,-1],flags=['FFTW_MEASURE'])
-        del thetaMap
+        #del thetaMap
 
         self.fmask = fmask
 
@@ -94,8 +94,12 @@ class QuadNorm(object):
         self.lmax_P=bigell #9000.
         self.defaultMaskT = fmaps.fourierMask(lx,ly,self.modLMap,lmin=2,lmax=self.lmax_T)
         self.defaultMaskP = fmaps.fourierMask(lx,ly,self.modLMap,lmin=2,lmax=self.lmax_P)
-        del lx
-        del ly
+        #del lx
+        #del ly
+        self.thetaMap = thetaMap
+        self.lx = lx
+        self.ly = ly
+        
         self.bigell=bigell #9000.
         if gradCut is not None: 
             self.gradCut = gradCut
@@ -728,7 +732,7 @@ def Nlmv(Nleach,pols,centers,nlkk,bin_edges):
 
 
 class NlGenerator(object):
-    def __init__(self,templateMap,theorySpectra,bin_edges=None,gradCut=None,TCMB=2.725e6,bigell=9000):
+    def __init__(self,templateMap,theorySpectra,bin_edges=None,gradCut=None,TCMB=2.725e6,bigell=9000,lensedEqualsUnlensed=False):
 
         self.N = QuadNorm(templateMap,gradCut=gradCut,bigell=bigell)
         self.TCMB = TCMB
@@ -741,7 +745,10 @@ class NlGenerator(object):
             uClNorm = uClFilt
             lClFilt = theorySpectra.lCl(cmb,self.N.modLMap)
             self.N.addUnlensedFilter2DPower(cmb,uClFilt)
-            self.N.addLensedFilter2DPower(cmb,lClFilt)
+            if lensedEqualsUnlensed:
+                self.N.addLensedFilter2DPower(cmb,uClFilt)
+            else:
+                self.N.addLensedFilter2DPower(cmb,lClFilt)
             self.N.addUnlensedNorm2DPower(cmb,uClNorm)
 
         Clkk2d = theorySpectra.gCl("kk",self.N.modLMap)    
@@ -1089,18 +1096,6 @@ class Estimator(object):
             self.fmaskK = fmaskKappa
 
         
-        if TOnly: 
-            nList = ['TT']
-            cmbList = ['TT']
-            estList = ['TT']
-            self.phaseY = 1.
-        else:
-            self.phaseY = np.cos(2.*self.N.thetaMap)+1.j*np.sin(2.*self.N.thetaMap)
-            nList = ['TT','EE','BB']
-            cmbList = ['TT','TE','EE','BB']
-            estList = ['TT','TE','ET','EB','EE','TB']
-
-        self.nList = nList
         self.fmaskX2dTEB = fmaskX2dTEB
         self.fmaskY2dTEB = fmaskY2dTEB
         
@@ -1117,6 +1112,18 @@ class Estimator(object):
             self.N = QuadNorm(templateLiteMap,gradCut=gradCut,verbose=verbose,kBeamX=self.kBeamX,kBeamY=self.kBeamY,bigell=bigell,fmask=self.fmaskK)
 
 
+            if TOnly: 
+                nList = ['TT']
+                cmbList = ['TT']
+                estList = ['TT']
+                self.phaseY = 1.
+            else:
+                self.phaseY = np.cos(2.*self.N.thetaMap)+1.j*np.sin(2.*self.N.thetaMap)
+                nList = ['TT','EE','BB']
+                cmbList = ['TT','TE','EE','BB']
+                estList = ['TT','TE','ET','EB','EE','TB']
+
+            self.nList = nList
 
             if self.verbose: print "Initializing filters and normalization for quadratic estimators..."
             for cmb in cmbList:
