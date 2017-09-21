@@ -21,7 +21,7 @@ def theory_from_config(Config,theory_section,dimensionless=True):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 logger.disabled = True
-                cc = ClusterCosmology(lmax=lmax,pickling=True)
+                cc = ClusterCosmology(lmax=lmax,pickling=True,dimensionless=dimensionless)
                 theory = cc.theory
                 logger.disabled = False
     elif sec_type=="default":

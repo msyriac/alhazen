@@ -110,7 +110,7 @@ qest = Estimator(template_dat,
                  bigell=lmax)
 
 
-
+clkk2d = theory.gCl('kk',modlmap_dat)
 
 
 for k,index in enumerate(my_tasks):
@@ -148,11 +148,55 @@ for k,index in enumerate(my_tasks):
     # rphieb, rfphieb = lt.kappa_to_phi(kappa_recon_EB,parray_dat.modlmap,return_fphi=True)
     # rgrad_phieb = enmap.grad(rphieb)
 
-    dummy,dummy = sverif_kappa.add_power("rttXreb",kappa_recon_TT,imap2=kappa_recon_EB)
-    dummy,dummy = sverif_kappa.add_power("rttXikk",kappa_recon_TT,imap2=kappa)
-    dummy,dummy = sverif_kappa.add_power("rebXikk",kappa_recon_EB,imap2=kappa)
+    lrtt,lreb = sverif_kappa.add_power("rttXreb",kappa_recon_TT,imap2=kappa_recon_EB)
+    lrtt,likk = sverif_kappa.add_power("rttXikk",kappa_recon_TT,imap2=kappa)
+    lreb,likk = sverif_kappa.add_power("rebXikk",kappa_recon_EB,imap2=kappa)
 
     # delens TT with EB and vice versa
+
+    rtt2d = sverif_kappa.fcalc.f2power(lrtt,lrtt,pixel_units=False)
+    reb2d = sverif_kappa.fcalc.f2power(lreb,lreb,pixel_units=False)
+
+    thntt2d = qest.N.Nlkk['TT']
+    thneb2d = qest.N.Nlkk['EB']
+
+    wienerTT = clkk2d/(clkk2d+thntt2d)
+    wienerEB = clkk2d/(clkk2d+thneb2d)
+
+
+    if rank==0 and k==0:
+        io.quickPlot2d(np.fft.fftshift(rtt2d),out_dir+"rtt2d.png")
+        io.quickPlot2d(np.fft.fftshift(reb2d),out_dir+"reb2d.png")
+
+        finells = np.arange(2,kellmax,1)
+        clkk1d = theory.gCl('kk',finells)
+        ntt2d = rtt2d - clkk2d
+        neb2d = reb2d - clkk2d
+
+        cents, rtt1d = lbinner_dat.bin(rtt2d)
+        cents, reb1d = lbinner_dat.bin(reb2d)
+        cents, ntt1d = lbinner_dat.bin(ntt2d)
+        cents, neb1d = lbinner_dat.bin(neb2d)
+
+        cents, thntt1d = lbinner_dat.bin(thntt2d)
+        cents, thneb1d = lbinner_dat.bin(thneb2d)
+        
+        pl = io.Plotter(scaleX='linear',scaleY='log')
+        pl.add(finells,clkk1d,color="k")
+
+        pl.add(cents,rtt1d,ls="none",marker="o",alpha=0.1,label="clkk+ntt",color="C0")
+        pl.add(cents,reb1d,ls="none",marker="o",alpha=0.1,label="clkk+neb",color="C1")
+
+        pl.add(cents,ntt1d,ls="-.",label="data ntt",color="C0")
+        pl.add(cents,neb1d,ls="-.",label="data neb",color="C1")
+        pl.add(cents,thntt1d,ls="--",label="theory ntt",color="C0")
+        pl.add(cents,thneb1d,ls="--",label="theory neb",color="C1")
+
+        pl.legendOn(loc='lower left',labsize=10)
+        pl._ax.set_xlim(2,kellmax)
+        pl._ax.set_ylim(1.e-9,1.e-6)
+        pl.done(out_dir+"clkkcomp.png")
+    
 
     
     
