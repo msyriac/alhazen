@@ -114,22 +114,22 @@ qest = Estimator(template_dat,
 
 
 for k,index in enumerate(my_tasks):
-    if rank==0: print "Rank ", rank, " doing job ",k, " / ",len(my_tasks),"..."
+    if rank==0: print "Rank ", rank, " doing job ",k+1, " / ",len(my_tasks),"..."
     unlensed = parray_sim.get_unlensed_cmb(seed=index,scalar=False)
     luteb,dummy = sverif_cmb.add_power("unlensed",unlensed)
 
     kappa = parray_sim.get_kappa(ktype="grf",vary=False,seed=index+1000000)
     phi, fphi = lt.kappa_to_phi(kappa,parray_sim.modlmap,return_fphi=True)
     grad_phi = enmap.grad(phi)
-    lensed = lensing.lens_map(unlensed.copy(), grad_phi, order=lens_order, mode="spline", border="cyclic", trans=False, deriv=False, h=1e-7)
+    lensed = lensing.lens_map(unlensed.copy(), grad_phi, order=lens_order)
     llteb,dummy = sverif_cmb.add_power("lensed",lensed)
 
 
-    pdelensed = lensing.delens_map(lensed, grad_phi, nstep=delens_steps, order=lens_order, mode="spline", border="cyclic")
+    pdelensed = lensing.delens_map(lensed, grad_phi, nstep=delens_steps, order=lens_order)
     lpteb,dummy = sverif_cmb.add_power("pdelensed",pdelensed)
 
 
-    qest.updateTEB_X(llteb[0],llteb[1],llteb[2],alreadyFTed=True)  # WRONG FFT FACTOR
+    qest.updateTEB_X(llteb[0],llteb[1],llteb[2],alreadyFTed=True)
     qest.updateTEB_Y(alreadyFTed=True)
     with io.nostdout():
         rawkappa_TT = qest.getKappa("TT").real
