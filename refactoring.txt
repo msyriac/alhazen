@@ -1,0 +1,55 @@
+Refactoring recommendation
+==========================
+
+Merge orphics and alhazen
+
+orphics
+	- io.py
+	  - Plotter
+	  - quickPlot2d
+	  - highResPlot2d
+	  - printC
+	  
+	- stats.py
+	  - get_stats
+	  - MPIStats
+	  - bin2d
+	  - bin1d
+	  
+	- maps.py
+	  - ft_attributes_from_enmap
+	  - real_attributes_from_enmap
+	  
+	- cosmology.py
+	  - Cosmology
+	  - LimberCosmology
+	  - TheorySpectra
+	  - load_theory_spectra*
+	  - GaussianCov
+
+	- cmb.py
+	  - gauss_beam
+	  - white_noise*
+
+	- quadratic.py
+	  - Estimator
+	  
+
+	- catalogs.py
+	
+	- halos.py
+	
+
+Other repos
+-----------
+
+pyfisher
+
+
+Key classes
+-----------
+
+MPIStats -- collect stacks and vectors across MPI cores
+PatchArray -- generate CMB sims on a patch and array
+FourierCalculator -- calculate powers on a patch
+MapGen -- generate GRFs on a patch
