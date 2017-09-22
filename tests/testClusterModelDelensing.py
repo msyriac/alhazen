@@ -48,16 +48,16 @@ parser.add_argument("Nsims", type=int,help='Total number of sims.')
 args = parser.parse_args()
 Nsims = args.Nsims
 
-out_dir = "./cluster_"
+out_dir = os.environ['WWW']+"plots/cluster_"
 analysis_section = "analysis_arc"
 sim_section = "sims_arc"
-expf_name = "experiment_noiseless"
+expf_name = "experiment_regular"
 #cosmology_section = "cc_cluster"
 cosmology_section = "cc_cluster_high"
 #recon_section = "reconstruction_cluster_lowell"
 recon_section = "reconstruction_cluster"
 lens_order = 5
-delens_steps = 3
+delens_steps = 5
 gradCut = None
 
 Config = io.config_from_file("../halofg/input/recon.ini")
@@ -69,7 +69,7 @@ min_ell = fmaps.minimum_ell(shape_dat,wcs_dat)
 
 parray_dat = aio.patch_array_from_config(Config,expf_name,shape_dat,wcs_dat,dimensionless=False)
 parray_sim = aio.patch_array_from_config(Config,expf_name,shape_sim,wcs_sim,dimensionless=False)
-
+arcmap = parray_sim.modrmap* 180.*60./np.pi
 
 # Efficiently distribute sims over MPI cores
 num_each,each_tasks = mpi_distribute(Nsims,numcores)
@@ -131,16 +131,17 @@ qest = Estimator(template_dat,
                  halo=True,
                  uEqualsL=False,
                  gradCut=gradCut,verbose=False,
-                 bigell=lmax)
+                 bigell=lmax,
+                 lEqualsU=False)
 
 
 
 
-kappa = get_nfw(2.e14)
+kappa = get_nfw(5.e14) + parray_sim.get_kappa("grf")
 phi, fphi = lt.kappa_to_phi(kappa,parray_sim.modlmap,return_fphi=True)
 grad_phi = enmap.grad(phi)
 
-kappa_model = 0.5*kappa.copy()
+kappa_model = 0.9*kappa.copy() #/5.
 
 
 for k,index in enumerate(my_tasks):
@@ -149,12 +150,10 @@ for k,index in enumerate(my_tasks):
     luteb,dummy = sverif_cmb.add_power("unlensed",unlensed)
 
     lensed = lensing.lens_map(unlensed.copy(), grad_phi, order=lens_order)
+    lensed += parray_dat.get_noise_sim(seed=index+100000)
     llteb,dummy = sverif_cmb.add_power("lensed",lensed)
 
-
-    # pdelensed = lensing.delens_map(lensed, grad_phi, nstep=delens_steps, order=lens_order)
-    # lpteb,dummy = sverif_cmb.add_power("pdelensed",pdelensed)
-
+    
 
     qest.updateTEB_X(llteb,alreadyFTed=True)
     qest.updateTEB_Y(alreadyFTed=True)
@@ -167,10 +166,10 @@ for k,index in enumerate(my_tasks):
     mpibox.add_to_stack("kapparecon",kappa_recon)
 
     if rank==0 and k==0:
-        # io.quickPlot2d(kappa,out_dir+"kappa.png")
-        # io.quickPlot2d(kappa_model,out_dir+"kappamodel.png")
-        # io.quickPlot2d(unlensed,out_dir+"unlensed.png")
-        # io.quickPlot2d(lensed-unlensed,out_dir+"difflensed.png")
+        io.quickPlot2d(kappa,out_dir+"kappa.png")
+        io.quickPlot2d(kappa_model,out_dir+"kappamodel.png")
+        io.quickPlot2d(unlensed,out_dir+"unlensed.png")
+        io.quickPlot2d(lensed-unlensed,out_dir+"difflensed.png")
         # io.quickPlot2d(pdelensed-unlensed,out_dir+"diffpdelensed.png")
         io.quickPlot2d(kappa_recon,out_dir+"rtt.png")
 
@@ -183,6 +182,12 @@ for k,index in enumerate(my_tasks):
 
     niter = 10
 
+    # if rank==0 and k==0:
+    #     pl = io.Plotter(scaleY='log')
+        
+    # fc = enmap.FourierCalc(shape_dat,wcs_dat)
+    # cluster_power = np.sqrt(fc.power2d(kappa_model)[0])
+        
     for j in range(niter):
 
         kappa_iter_recon = enmap.ndmap(fmaps.filter_map(kappa_iter_recon,kappa*0.+1.,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)
@@ -202,16 +207,57 @@ for k,index in enumerate(my_tasks):
         with io.nostdout():
             rawkappa = qest.getKappa("TT").real
         kappa_recon = enmap.ndmap(rawkappa,wcs_dat)
-        fwhm = 1.0
-        kappa_recon = fmaps.smooth(kappa_recon,modlmap_sim,fwhm)
+
+            
+        if j==0:
+            # ps_noise = np.zeros((1,1,modlmap_dat.shape[0],modlmap_dat.shape[1]))
+            # ps_noise[0,0] = qest.N.Nlkk['TT']
+            # ngen = enmap.MapGen(shape_dat,wcs_dat,ps_noise)
+
+            # cents,kp1d = lbinner_dat.bin(qest.N.Nlkk['TT'])
+            # pl.add(cents,kp1d,ls="-")
+
+            cluster_power = theory.gCl('kk',modlmap_dat)
+            wiener = cluster_power*np.nan_to_num(1./(cluster_power+qest.N.Nlkk['TT']))
+            wiener[fMask<1.] = 0.
+            #wiener = cluster_power*np.nan_to_num(1./(qest.N.Nlkk['TT']))
+            if rank==0 and k==0:
+                cents,cluster1d = lbinner_dat.bin(cluster_power)
+                cents,n1d = lbinner_dat.bin(qest.N.Nlkk['TT'])
+                pl = io.Plotter(scaleY='log')
+                pl.add(cents,cluster1d)
+                pl.add(cents,n1d)
+                pl.done(out_dir+"cluster1d.png")
+                io.quickPlot2d(np.fft.fftshift(wiener),out_dir+"wiener2d.png")
+                cents, wiener1d = lbinner_dat.bin(wiener)
+                pl = io.Plotter()
+                pl.add(cents,wiener1d)
+                pl.done(out_dir+"wiener1d.png")
+
+            pass
+            
+        #kappa_recon = ngen.get_map(index+j)
+        # cents,kp1d = lbinner_dat.bin(fc.power2d(kappa_recon)[0])
+        # pl.add(cents,kp1d,alpha=0.5,ls="--",label=str(j))
+        #fwhm = 1.5
+        #kappa_recon = fmaps.smooth(kappa_recon,modlmap_sim,fwhm)
+        kappa_recon = enmap.ndmap(fmaps.filter_map(kappa_recon,wiener,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)
+        arcmax = 5.
+        conv = np.mean(np.abs(kappa_recon[arcmap<arcmax]/kappa[arcmap<arcmax]))
+        if rank==0 and k==0: print j,conv*100.
 
         # update model with residual
         kappa_iter_recon = kappa_iter_recon + kappa_recon
+        #kappa_iter_recon = kappa_model + kappa_recon
         
         if rank==0 and k==0:
             io.quickPlot2d(kappa_iter_recon,out_dir+"rtt_itertot_"+str(j)+".png")
+            io.highResPlot2d(delensed,out_dir+"iterdelensed_"+str(j)+".png")
             io.quickPlot2d(kappa_recon,out_dir+"rtt_iterinst_"+str(j)+".png")
 
+    # if rank==0 and k==0:
+    #     pl.legendOn()
+    #     pl.done(out_dir+"n1ds.png")
     
     mpibox.add_to_stack("kappaiterrecon",kappa_iter_recon)
     rcents, recon1d = binner_dat.bin(kappa_iter_recon)

@@ -1033,7 +1033,8 @@ class Estimator(object):
                  savePickledNormAndFilters=None,
                  uEqualsL=False,
                  bigell=9000,
-                 mpi_comm=None):
+                 mpi_comm=None,
+                 lEqualsU=False):
 
         '''
         All the 2d fourier objects below are pre-fftshifting. They must be of the same dimension.
@@ -1126,6 +1127,7 @@ class Estimator(object):
             self.nList = nList
 
             if self.verbose: print "Initializing filters and normalization for quadratic estimators..."
+            assert not(uEqualsL and lEqualsU)
             for cmb in cmbList:
                 if uEqualsL:
                     uClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
@@ -1139,7 +1141,13 @@ class Estimator(object):
                         uClNorm = theorySpectraForNorm.uCl(cmb,self.N.modLMap)
                 else:
                     uClNorm = uClFilt
-                lClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
+
+                if lEqualsU:
+                    lClFilt = theorySpectraForFilters.uCl(cmb,self.N.modLMap)
+                else:
+                    lClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
+                    
+                #lClFilt = theorySpectraForFilters.lCl(cmb,self.N.modLMap)
                 self.N.addUnlensedFilter2DPower(cmb,uClFilt)
                 self.N.addLensedFilter2DPower(cmb,lClFilt)
                 self.N.addUnlensedNorm2DPower(cmb,uClNorm)
