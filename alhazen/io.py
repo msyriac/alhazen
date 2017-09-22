@@ -49,7 +49,7 @@ def theory_from_config(Config,theory_section,dimensionless=True):
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     logger.disabled = True
-                    cc = ClusterCosmology(skipCls=True)
+                    cc = ClusterCosmology(skipCls=True,dimensionless=dimensionless)
                     logger.disabled = False
             
             

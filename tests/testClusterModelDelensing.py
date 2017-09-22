@@ -52,7 +52,10 @@ out_dir = "./cluster_"
 analysis_section = "analysis_arc"
 sim_section = "sims_arc"
 expf_name = "experiment_noiseless"
-cosmology_section = "cc_cluster"
+#cosmology_section = "cc_cluster"
+cosmology_section = "cc_cluster_high"
+#recon_section = "reconstruction_cluster_lowell"
+recon_section = "reconstruction_cluster"
 lens_order = 5
 delens_steps = 3
 gradCut = None
@@ -81,7 +84,7 @@ theory, cc, lmax = aio.theory_from_config(Config,cosmology_section,dimensionless
 parray_dat.add_theory(theory,lmax,orphics_is_dimensionless=False)
 parray_sim.add_theory(theory,lmax,orphics_is_dimensionless=False)
 
-lb = aio.ellbounds_from_config(Config,"reconstruction_cluster_lowell",min_ell)
+lb = aio.ellbounds_from_config(Config,recon_section,min_ell)
 tellmin = lb['tellminY']
 tellmax = lb['tellmaxY']
 pellmin = lb['pellminY']
@@ -92,9 +95,11 @@ kellmax = lb['kellmax']
 
 lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape_dat,wcs_dat)
 lxmap_sim,lymap_sim,modlmap_sim,angmap_sim,lx_sim,ly_sim = fmaps.get_ft_attributes_enmap(shape_sim,wcs_sim)
-lbin_edges = np.arange(kellmin,kellmax,50)
+lbin_edges = np.arange(kellmin,kellmax,200)
 lbinner_dat = stats.bin2D(modlmap_dat,lbin_edges)
 lbinner_sim = stats.bin2D(modlmap_sim,lbin_edges)
+bin_edges = np.arange(0.,20.,analysis_resolution*2.)
+binner_dat = stats.bin2D(parray_dat.modrmap*60.*180./np.pi,bin_edges)
 
 
 sverif_cmb = SpectrumVerification(mpibox,theory,shape_sim,wcs_sim,lbinner=lbinner_sim,pol=pol)
@@ -103,10 +108,10 @@ sverif_kappa = SpectrumVerification(mpibox,theory,shape_dat,wcs_dat,lbinner=lbin
 template_dat = fmaps.simple_flipper_template_from_enmap(shape_dat,wcs_dat)
 nT = parray_dat.nT
 nP = parray_dat.nP
-if rank==0: io.quickPlot2d(nT,out_dir+"nt.png")
+# if rank==0: io.quickPlot2d(nT,out_dir+"nt.png")
 kbeam_dat = parray_dat.lbeam
 kbeampass = kbeam_dat
-if rank==0: io.quickPlot2d(kbeampass,out_dir+"kbeam.png")
+# if rank==0: io.quickPlot2d(kbeampass,out_dir+"kbeam.png")
 fMaskCMB_T = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=tellmin,lmax=tellmax)
 fMaskCMB_P = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=pellmin,lmax=pellmax)
 fMask = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=kellmin,lmax=kellmax)
@@ -129,14 +134,13 @@ qest = Estimator(template_dat,
                  bigell=lmax)
 
 
-clkk2d = theory.gCl('kk',modlmap_dat)
 
 
 kappa = get_nfw(2.e14)
 phi, fphi = lt.kappa_to_phi(kappa,parray_sim.modlmap,return_fphi=True)
 grad_phi = enmap.grad(phi)
 
-kappa_model = 0.9*kappa.copy()
+kappa_model = 0.5*kappa.copy()
 
 
 for k,index in enumerate(my_tasks):
@@ -148,8 +152,8 @@ for k,index in enumerate(my_tasks):
     llteb,dummy = sverif_cmb.add_power("lensed",lensed)
 
 
-    pdelensed = lensing.delens_map(lensed, grad_phi, nstep=delens_steps, order=lens_order)
-    lpteb,dummy = sverif_cmb.add_power("pdelensed",pdelensed)
+    # pdelensed = lensing.delens_map(lensed, grad_phi, nstep=delens_steps, order=lens_order)
+    # lpteb,dummy = sverif_cmb.add_power("pdelensed",pdelensed)
 
 
     qest.updateTEB_X(llteb,alreadyFTed=True)
@@ -158,28 +162,60 @@ for k,index in enumerate(my_tasks):
         rawkappa = qest.getKappa("TT").real
 
     kappa_recon = enmap.ndmap(rawkappa,wcs_dat)
+    rcents, recon1d = binner_dat.bin(kappa_recon)
+    mpibox.add_to_stats("kapparecon1d",recon1d)
     mpibox.add_to_stack("kapparecon",kappa_recon)
 
     if rank==0 and k==0:
-        io.quickPlot2d(kappa,out_dir+"kappa.png")
-        io.quickPlot2d(kappa_model,out_dir+"kappamodel.png")
-        io.quickPlot2d(unlensed,out_dir+"unlensed.png")
-        io.quickPlot2d(lensed-unlensed,out_dir+"difflensed.png")
-        io.quickPlot2d(pdelensed-unlensed,out_dir+"diffpdelensed.png")
+        # io.quickPlot2d(kappa,out_dir+"kappa.png")
+        # io.quickPlot2d(kappa_model,out_dir+"kappamodel.png")
+        # io.quickPlot2d(unlensed,out_dir+"unlensed.png")
+        # io.quickPlot2d(lensed-unlensed,out_dir+"difflensed.png")
+        # io.quickPlot2d(pdelensed-unlensed,out_dir+"diffpdelensed.png")
         io.quickPlot2d(kappa_recon,out_dir+"rtt.png")
 
-    # rphitt, rfphitt = lt.kappa_to_phi(kappa_recon_TT,parray_dat.modlmap,return_fphi=True)
-    # rgrad_phitt = enmap.grad(rphitt)
-
-    # rphieb, rfphieb = lt.kappa_to_phi(kappa_recon_EB,parray_dat.modlmap,return_fphi=True)
-    # rgrad_phieb = enmap.grad(rphieb)
 
     lrtt,likk = sverif_kappa.add_power("rttXikk",kappa_recon,imap2=kappa)
 
 
-    
+    # BEGIN ITERATIVE DELENSING
+    kappa_iter_recon = kappa_model.copy()
+
+    niter = 10
+
+    for j in range(niter):
+
+        kappa_iter_recon = enmap.ndmap(fmaps.filter_map(kappa_iter_recon,kappa*0.+1.,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)
+        
+        # convert kappa to alpha
+        rphitt, rfphitt = lt.kappa_to_phi(kappa_iter_recon,parray_dat.modlmap,return_fphi=True)
+        rgrad_phitt = enmap.grad(rphitt)
+
+        # delens original lensed with current model
+        delensed = lensing.delens_map(lensed.copy(), rgrad_phitt, nstep=delens_steps, order=lens_order)
+        delensed = enmap.ndmap(fmaps.filter_map(delensed,delensed*0.+1.,parray_sim.modlmap,lowPass=tellmax,highPass=tellmin),wcs_sim)
+
+        # get fft of delensed map and reconstruct
+        llteb = enmap.fft(delensed,normalize=False)
+        qest.updateTEB_X(llteb,alreadyFTed=True)
+        qest.updateTEB_Y(llteb,alreadyFTed=True)
+        with io.nostdout():
+            rawkappa = qest.getKappa("TT").real
+        kappa_recon = enmap.ndmap(rawkappa,wcs_dat)
+        fwhm = 1.0
+        kappa_recon = fmaps.smooth(kappa_recon,modlmap_sim,fwhm)
+
+        # update model with residual
+        kappa_iter_recon = kappa_iter_recon + kappa_recon
+        
+        if rank==0 and k==0:
+            io.quickPlot2d(kappa_iter_recon,out_dir+"rtt_itertot_"+str(j)+".png")
+            io.quickPlot2d(kappa_recon,out_dir+"rtt_iterinst_"+str(j)+".png")
 
     
+    mpibox.add_to_stack("kappaiterrecon",kappa_iter_recon)
+    rcents, recon1d = binner_dat.bin(kappa_iter_recon)
+    mpibox.add_to_stats("kappaiterrecon1d",recon1d)
     
 
     
@@ -188,8 +224,9 @@ mpibox.get_stacks()
 if rank==0:
 
     io.quickPlot2d(mpibox.stacks['kapparecon'],out_dir+"reconstack.png")
+    io.quickPlot2d(mpibox.stacks['kappaiterrecon'],out_dir+"iterreconstack.png")
     
-    plot_list = ["unlensed","lensed","pdelensed"]
+    plot_list = ["unlensed","lensed"]#,"pdelensed"]
     spec_list = ["TT"]
     for spec in spec_list:
         sverif_cmb.plot(spec,plot_list,out_dir+"cl"+spec+".png")
@@ -199,3 +236,46 @@ if rank==0:
     plot_list = ['rttXikk']
     sverif_kappa.plot(spec,plot_list,out_dir+"cl"+spec+".png",scale_spectrum=False)
     sverif_kappa.plot_diff(spec,plot_list,out_dir+"cl"+spec+"diff.png")
+
+
+    inpkappa = enmap.ndmap(fmaps.filter_map(kappa,kappa*0.+1.,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)
+
+    rcents, inpkappa1d = binner_dat.bin(inpkappa)
+    kapparecon_stats = mpibox.stats["kapparecon1d"]
+    kappaiterrecon_stats = mpibox.stats["kappaiterrecon1d"]
+
+    pl = io.Plotter(scaleX='log',scaleY='log')
+    pl.add(rcents,inpkappa1d)
+    pl.addErr(rcents,kapparecon_stats['mean'],yerr=kapparecon_stats['errmean'],ls="-")
+    pl.addErr(rcents,kappaiterrecon_stats['mean'],yerr=kappaiterrecon_stats['errmean'],ls="--")
+    pl._ax.set_xlim(0.1,10.)
+    pl._ax.set_ylim(0.001,0.63)
+    pl.done(out_dir+"kappa1d.png")
+
+
+    
+    pl = io.Plotter()
+    
+    rec = kapparecon_stats['mean']
+    inp = inpkappa1d
+    recerr = kapparecon_stats['errmean']
+    diff = (rec-inp)/inp
+    differr = recerr/inp
+    
+    pl.addErr(rcents,diff,yerr=differr,marker="o",ls="-")
+
+    rec = kappaiterrecon_stats['mean']
+    inp = inpkappa1d
+    recerr = kappaiterrecon_stats['errmean']
+    diff = (rec-inp)/inp
+    differr = recerr/inp
+    
+    pl.addErr(rcents,diff,yerr=differr,marker="d",ls="--")
+
+    
+    pl.legendOn(labsize=8,loc="lower right")
+    pl.hline()
+    pl._ax.set_ylim(-0.30,0.10)
+    pl._ax.set_xlim(0.,10.)
+    pl.done(out_dir+"diffper.png")
+
