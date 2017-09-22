@@ -35,17 +35,10 @@ def get_corr_cls(theory,lmax):
     import orphics.tools.cmb as cmb
     dtheory = cmb.TheorySpectra()
 
-    ell, ucltt, uclee, uclbb, uclte, cldd = np.loadtxt(uFile,unpack=True,usecols=[0,1,2,3,4,5])
-    mult = 2.*np.pi/ell/(ell+1.)/TCMB**2.
-    ucltt *= mult
-    uclee *= mult
-    uclte *= mult
-    uclbb *= mult
-    clkk = 2.*np.pi*cldd/4.
-    theory.loadCls(ell,ucltt,'TT',lensed=False,interporder="linear",lpad=lpad)
-    theory.loadCls(ell,uclte,'TE',lensed=False,interporder="linear",lpad=lpad)
-    theory.loadCls(ell,uclee,'EE',lensed=False,interporder="linear",lpad=lpad)
-    theory.loadCls(ell,uclbb,'BB',lensed=False,interporder="linear",lpad=lpad)
+    dtheory.loadCls(ellrange,ucltt,'TT',lensed=False,interporder="linear",lpad=lpad)
+    dtheory.loadCls(ell,uclte,'TE',lensed=False,interporder="linear",lpad=lpad)
+    dtheory.loadCls(ell,uclee,'EE',lensed=False,interporder="linear",lpad=lpad)
+    dtheory.loadCls(ell,uclbb,'BB',lensed=False,interporder="linear",lpad=lpad)
     theory.loadGenericCls(ell,clkk,"kk",lpad=lpad)
 
     ell, lcltt, lclee, lclbb, lclte = np.loadtxt(lFile,unpack=True,usecols=[0,1,2,3,4])
