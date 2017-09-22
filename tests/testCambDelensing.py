@@ -24,38 +24,41 @@ def get_lensed_cls(theory,ells,clkk,lmax):
     cmbarr = np.vstack((ucltt,uclee,uclbb,uclte)).T
     print "Calculating lensed cls..."
     lcls = corr.lensed_cls(cmbarr,clpp)
-    ellrange = cellrange.ravel()[:lmax]
-    lclall = lcls[:lmax,0]
+    cellrange = ellrange[:lmax].reshape((ellrange[:lmax].size,1)) #cellrange.ravel()[:lmax]
+    lclall = lcls[:lmax,:]
     lclall = np.nan_to_num(lclall/cellrange/(cellrange+1.)*2.*np.pi)
+    cellrange = cellrange.ravel()
     #clcltt = lcls[:lmax,0]
     #clcltt = np.nan_to_num(clcltt/cellrange/(cellrange+1.)*2.*np.pi)
     #print clcltt
     lpad = lmax
     import orphics.tools.cmb as cmb
     dtheory = cmb.TheorySpectra()
-    mult = 1./multfact
+    mult = 1./mulfact
     ucltt *= mult
     uclee *= mult
     uclte *= mult
     uclbb *= mult
-    dtheory.loadCls(ellrange,ucltt,'TT',lensed=False,interporder="linear",lpad=lpad)
-    dtheory.loadCls(ellrange,uclte,'TE',lensed=False,interporder="linear",lpad=lpad)
-    dtheory.loadCls(ellrange,uclee,'EE',lensed=False,interporder="linear",lpad=lpad)
-    dtheory.loadCls(ellrange,uclbb,'BB',lensed=False,interporder="linear",lpad=lpad)
+    print cellrange.shape
+    print ucltt.shape
+    dtheory.loadCls(cellrange,ucltt[:lmax],'TT',lensed=False,interporder="linear",lpad=lpad)
+    dtheory.loadCls(cellrange,uclte[:lmax],'TE',lensed=False,interporder="linear",lpad=lpad)
+    dtheory.loadCls(cellrange,uclee[:lmax],'EE',lensed=False,interporder="linear",lpad=lpad)
+    dtheory.loadCls(cellrange,uclbb[:lmax],'BB',lensed=False,interporder="linear",lpad=lpad)
     dtheory.loadGenericCls(ells,clkk,"kk",lpad=lpad)
 
-    lcltt = lcall[:,0]
-    lclee = lcall[:,1]
-    lclbb = lcall[:,2]
-    lclte = lcall[:,3]
+    lcltt = lclall[:,0]
+    lclee = lclall[:,1]
+    lclbb = lclall[:,2]
+    lclte = lclall[:,3]
     #lcltt *= mult
     #lclee *= mult
     #lclte *= mult
     #lclbb *= mult
-    dtheory.loadCls(ellrange,lcltt,'TT',lensed=True,interporder="linear",lpad=lpad)
-    dtheory.loadCls(ellrange,lclte,'TE',lensed=True,interporder="linear",lpad=lpad)
-    dtheory.loadCls(ellrange,lclee,'EE',lensed=True,interporder="linear",lpad=lpad)
-    dtheory.loadCls(ellrange,lclbb,'BB',lensed=True,interporder="linear",lpad=lpad)
+    dtheory.loadCls(cellrange,lcltt,'TT',lensed=True,interporder="linear",lpad=lpad)
+    dtheory.loadCls(cellrange,lclte,'TE',lensed=True,interporder="linear",lpad=lpad)
+    dtheory.loadCls(cellrange,lclee,'EE',lensed=True,interporder="linear",lpad=lpad)
+    dtheory.loadCls(cellrange,lclbb,'BB',lensed=True,interporder="linear",lpad=lpad)
 
 
     return dtheory
