@@ -24,7 +24,7 @@ def get_lensed_cls(theory,ells,clkk,lmax):
     cmbarr = np.vstack((ucltt,uclee,uclbb,uclte)).T
     print "Calculating lensed cls..."
     lcls = corr.lensed_cls(cmbarr,clpp)
-    cellrange = cellrange.ravel()[:lmax]
+    ellrange = cellrange.ravel()[:lmax]
     lclall = lcls[:lmax,0]
     lclall = np.nan_to_num(lclall/cellrange/(cellrange+1.)*2.*np.pi)
     #clcltt = lcls[:lmax,0]
