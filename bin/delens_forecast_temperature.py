@@ -23,10 +23,18 @@ tellmin = 10
 tellmax = 6000
 pellmin = tellmin
 pellmax = tellmax
-niter = 12
+niter = 10
+
+# S4
+#beam = 1.0
+#noiseT = 1.5
+
+# noiseless
+beam = 0.
+noiseT = 0.
 
 # cosmology
-cc = Cosmology(lmax=lmax_global,pickling=True,dimensionless=False)
+cc = Cosmology(lmax=lmax_global,pickling=True)#,dimensionless=False)
 theory = cc.theory
 ellrange = np.arange(0,lmax_global,1)
 clkk = theory.gCl('kk',ellrange)
@@ -38,18 +46,18 @@ deg = 5.
 px = 0.5
 shape, wcs = enmap.get_enmap_patch(deg*60.,px,proj="car",pol=False)
 template = fmaps.simple_flipper_template_from_enmap(shape,wcs)
-kbeam = np.zeros(shape)+1.
 lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape,wcs)
 lbin_edges = np.arange(kellmin,kellmax,200)
 lbinner_dat = stats.bin2D(modlmap_dat,lbin_edges)
 fmask = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=kellmin,lmax=kellmax)
 nlgen = qe.NlGenerator(template,theory)
-nlgen.updateNoise(beamX=0.,noiseTX=0.,noisePX=0.,tellminX=tellmin,tellmaxX=tellmax,pellminX=pellmin,pellmaxX=pellmax)
+nTX,nPX,nTY,nPY = nlgen.updateNoise(beamX=beam,noiseTX=noiseT,noisePX=0.,tellminX=tellmin,tellmaxX=tellmax,pellminX=pellmin,pellmaxX=pellmax)
 nlgen.N.getNlkk2d('TT',halo=True)
 nlkk0_2d = nlgen.N.Nlkk['TT']
 cents,nlkk0 = lbinner_dat.bin(nlkk0_2d)
 clkk2d = theory.gCl('kk',modlmap_dat)
 
+cents,nltt = lbinner_dat.bin(nTX)
 
 # lensed cls prediction
 dtheory = cmb.get_lensed_cls(theory,ellrange,clkk,lmax)
@@ -63,11 +71,12 @@ plkk.add(cents,nlkk0,ls="--")#,alpha=1/(niter+3.))
 pltt = io.Plotter(scaleY='log')
 pltt.add(ellrange,ucltt*ellrange**2.,ls="--")
 pltt.add(ellrange,lcltt*ellrange**2.,ls="-")
+pltt.add(cents,nltt*cents**2.,ls="--",color="k")
 #pltt.add(ellrange,dlcltt*ellrange**2.,ls="-.")
 
 # unlensed limit
 nlgen = qe.NlGenerator(template,theory,lensedEqualsUnlensed=True)
-nlgen.updateNoise(beamX=0.,noiseTX=0.,noisePX=0.,tellminX=tellmin,tellmaxX=tellmax,pellminX=pellmin,pellmaxX=pellmax)
+nlgen.updateNoise(beamX=beam,noiseTX=noiseT,noisePX=0.,tellminX=tellmin,tellmaxX=tellmax,pellminX=pellmin,pellmaxX=pellmax)
 nlgen.N.getNlkk2d('TT',halo=True)
 nlkku2d = nlgen.N.Nlkk['TT']
 cents,nlkku = lbinner_dat.bin(nlkku2d)
@@ -90,7 +99,7 @@ for i in range(niter):
     dlcltt = dtheory.lCl('TT',ellrange)
     pltt.add(ellrange,dlcltt*ellrange**2.,ls="-.",alpha=alpha)
     nlgen = qe.NlGenerator(template,dtheory)
-    nlgen.updateNoise(beamX=0.,noiseTX=0.,noisePX=0.,
+    nlgen.updateNoise(beamX=beam,noiseTX=noiseT,noisePX=0.,
                       tellminX=tellmin,tellmaxX=tellmax,pellminX=pellmin,pellmaxX=pellmax)
     nlgen.N.getNlkk2d('TT',halo=True)
     nlkk2d = nlgen.N.Nlkk['TT']
