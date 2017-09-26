@@ -5,7 +5,7 @@ import sys
 from enlib import enmap
 import numpy as np
 
-from flipper.fft import fft as fft_gen,ifft as ifft_gen
+from enlib.fft import fft as fft_gen,ifft as ifft_gen
 
 
 def fft(m):

@@ -81,8 +81,8 @@ my_tasks = each_tasks[rank]
 
 # === COSMOLOGY ===
 theory, cc, lmax = aio.theory_from_config(Config,cosmology_section,dimensionless=False)
-parray_dat.add_theory(theory,lmax,orphics_is_dimensionless=False)
-parray_sim.add_theory(theory,lmax,orphics_is_dimensionless=False)
+parray_dat.add_theory(theory=theory,lmax=lmax,orphics_is_dimensionless=False)
+parray_sim.add_theory(theory=theory,lmax=lmax,orphics_is_dimensionless=False)
 
 lb = aio.ellbounds_from_config(Config,recon_section,min_ell)
 tellmin = lb['tellminY']
@@ -137,11 +137,13 @@ qest = Estimator(template_dat,
 
 
 
-kappa = get_nfw(5.e14) + parray_sim.get_kappa("grf")
+kappa = get_nfw(5.e14)
+#+  parray_sim.get_grf_kappa(seed=10,skip_update=False)
 phi, fphi = lt.kappa_to_phi(kappa,parray_sim.modlmap,return_fphi=True)
 grad_phi = enmap.grad(phi)
 
-kappa_model = 0.9*kappa.copy() #/5.
+kappa_model = kappa.copy() /5.
+#kappa_model = kappa.copy()# /5.
 
 
 for k,index in enumerate(my_tasks):
@@ -185,12 +187,12 @@ for k,index in enumerate(my_tasks):
     # if rank==0 and k==0:
     #     pl = io.Plotter(scaleY='log')
         
-    # fc = enmap.FourierCalc(shape_dat,wcs_dat)
-    # cluster_power = np.sqrt(fc.power2d(kappa_model)[0])
+    fc = enmap.FourierCalc(shape_dat,wcs_dat)
+    cluster_power = fc.power2d(kappa_model)[0]
         
     for j in range(niter):
 
-        kappa_iter_recon = enmap.ndmap(fmaps.filter_map(kappa_iter_recon,kappa*0.+1.,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)
+        #kappa_iter_recon = enmap.ndmap(fmaps.filter_map(kappa_iter_recon,kappa*0.+1.,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)
         
         # convert kappa to alpha
         rphitt, rfphitt = lt.kappa_to_phi(kappa_iter_recon,parray_dat.modlmap,return_fphi=True)
@@ -215,39 +217,43 @@ for k,index in enumerate(my_tasks):
             # ngen = enmap.MapGen(shape_dat,wcs_dat,ps_noise)
 
             # cents,kp1d = lbinner_dat.bin(qest.N.Nlkk['TT'])
-            # pl.add(cents,kp1d,ls="-")
+            # # pl.add(cents,kp1d,ls="-")
 
-            cluster_power = theory.gCl('kk',modlmap_dat)
-            wiener = cluster_power*np.nan_to_num(1./(cluster_power+qest.N.Nlkk['TT']))
-            wiener[fMask<1.] = 0.
-            #wiener = cluster_power*np.nan_to_num(1./(qest.N.Nlkk['TT']))
-            if rank==0 and k==0:
-                cents,cluster1d = lbinner_dat.bin(cluster_power)
-                cents,n1d = lbinner_dat.bin(qest.N.Nlkk['TT'])
-                pl = io.Plotter(scaleY='log')
-                pl.add(cents,cluster1d)
-                pl.add(cents,n1d)
-                pl.done(out_dir+"cluster1d.png")
-                io.quickPlot2d(np.fft.fftshift(wiener),out_dir+"wiener2d.png")
-                cents, wiener1d = lbinner_dat.bin(wiener)
-                pl = io.Plotter()
-                pl.add(cents,wiener1d)
-                pl.done(out_dir+"wiener1d.png")
+            # #cluster_power = theory.gCl('kk',modlmap_dat)
+            # #wiener = cluster_power*np.nan_to_num(1./(cluster_power+qest.N.Nlkk['TT']))
+            # wiener = cluster_power*np.nan_to_num(1./(qest.N.Nlkk['TT']))
+            # wiener[fMask<1.] = 0.
+            # wiener /= wiener.max()
+            # wiener = np.nan_to_num(wiener)
+            # if rank==0 and k==0:
+            #     cents,cluster1d = lbinner_dat.bin(cluster_power)
+            #     cents,n1d = lbinner_dat.bin(qest.N.Nlkk['TT'])
+            #     pl = io.Plotter(scaleY='log')
+            #     pl.add(cents,cluster1d)
+            #     pl.add(cents,n1d)
+            #     pl.done(out_dir+"cluster1d.png")
+            #     io.quickPlot2d(np.fft.fftshift(wiener),out_dir+"wiener2d.png")
+            #     cents, wiener1d = lbinner_dat.bin(wiener)
+            #     pl = io.Plotter()
+            #     pl.add(cents,wiener1d)
+            #     pl.done(out_dir+"wiener1d.png")
 
             pass
             
         #kappa_recon = ngen.get_map(index+j)
         # cents,kp1d = lbinner_dat.bin(fc.power2d(kappa_recon)[0])
         # pl.add(cents,kp1d,alpha=0.5,ls="--",label=str(j))
-        #fwhm = 1.5
-        #kappa_recon = fmaps.smooth(kappa_recon,modlmap_sim,fwhm)
+        fwhm = 1.5
+        kappa_recon = fmaps.smooth(kappa_recon,modlmap_sim,fwhm)
+        wiener = kappa_model*0.+1.
+        #kellmax = 3000
         kappa_recon = enmap.ndmap(fmaps.filter_map(kappa_recon,wiener,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)
         arcmax = 5.
         conv = np.mean(np.abs(kappa_recon[arcmap<arcmax]/kappa[arcmap<arcmax]))
         if rank==0 and k==0: print j,conv*100.
 
         # update model with residual
-        kappa_iter_recon = kappa_iter_recon + kappa_recon
+        kappa_iter_recon = kappa_model.copy() + kappa_recon
         #kappa_iter_recon = kappa_model + kappa_recon
         
         if rank==0 and k==0:

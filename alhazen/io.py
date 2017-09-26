@@ -45,12 +45,8 @@ def theory_from_config(Config,theory_section,dimensionless=True):
             cforce = False
         if cforce:
             from szar.counts import ClusterCosmology
-            with oio.nostdout():
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    logger.disabled = True
-                    cc = ClusterCosmology(skipCls=True,dimensionless=dimensionless)
-                    logger.disabled = False
+            cc = ClusterCosmology(skipCls=True,dimensionless=dimensionless)
+            cc.theory = theory
             
             
     elif sec_type=="enlib_file":
@@ -246,27 +242,37 @@ def ellbounds_from_config(Config,recon_section,min_ell):
     return ret
 
 
-def kappa_grf_generator(theory):
-
-    clkk = theory.gCl("kk",fine_ells)
-    clkk.resize((1,1,clkk.size))
-    kappa_map = enmap.rand_map(shape_sim[-2:],wcs_sim,cov=clkk,scalar=True)
 
 
 
-def kappa_from_config(Config,kappa_section):
+def nfw_kappa_from_config(Config,kappa_section,cc,modrmap_radians):
+    from alhazen.halos import NFWkappa
+
+    massOverh = Config.getfloat(kappa_section,"massOverh")
+    zL = Config.getfloat(kappa_section,"zL")
+    overdensity = Config.getfloat(kappa_section,"overdensity")
+    critical = Config.getboolean(kappa_section,"critical")
+    atClusterZ = Config.getboolean(kappa_section,"atClusterZ")
+    concentration = Config.getfloat(kappa_section,"concentration")
+    comS = cc.results.comoving_radial_distance(cc.cmbZ)*cc.h
+    comL = cc.results.comoving_radial_distance(zL)*cc.h
+    winAtLens = (comS-comL)/comS
+    kappa,r500 = NFWkappa(cc,massOverh,concentration,zL,modrmap_radians* 180.*60./np.pi,winAtLens,
+                          overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+
+    return kappa
+
+def kappa_from_config(Config,kappa_section,parray,seed=None):
 
     ktype = Config.get(kappa_section,"type")
 
     if ktype=="cluster_nfw":
-        raise NotImplementedError
+        kappa = nfw_kappa_from_config(Config,kappa_section,parray.cc,parray.modrmap)
+        return kappa
     elif ktype=="cluster_battaglia":
         raise NotImplementedError
     elif ktype=="grf":
-        vary = Config.getboolean(kappa_section,"vary")
-        if vary:
-            raise NotImplementedError
-        else:
-            pass
+        kappa = parray.get_grf_kappa(seed=seed,skip_update=False)
+        return kappa
     else:
         raise ValueError

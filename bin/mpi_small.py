@@ -86,7 +86,7 @@ lbinner_sim = stats.bin2D(modlmap_sim,lbin_edges)
 
 # === COSMOLOGY ===
 theory, cc, lmax = aio.theory_from_config(Config,cosmology_section)
-parray_dat.add_theory(theory,lmax)
+parray_dat.add_theory(None,theory,lmax)
 template_dat = fmaps.simple_flipper_template_from_enmap(shape_dat,wcs_dat)
 nT = parray_dat.nT
 nP = parray_dat.nP
@@ -121,7 +121,7 @@ pixratio = analysis_resolution/Config.getfloat(sim_section,"pixel_arcmin")
 px_dat = analysis_resolution
 lens_order = Config.getint(sim_section,"lens_order")
 parray_sim = aio.patch_array_from_config(Config,expf_name,shape_sim,wcs_sim,dimensionless=True)
-parray_sim.add_theory(theory,lmax)
+parray_sim.add_theory(None,theory,lmax)
 
 
 k = -1
