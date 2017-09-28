@@ -21,8 +21,10 @@ import argparse
 from mpi4py import MPI
 
 # Runtime params that should be moved to command line
-analysis_section = "analysis_small"
-sim_section = "sims_small"
+#analysis_section = "analysis_small" # this gives lower noise curves?
+#sim_section = "sims_small"
+analysis_section = "analysis_high"
+sim_section = "sims_high"
 cosmology_section = "cc_nam"
 
 
@@ -127,7 +129,7 @@ parray_sim.add_theory(None,theory,lmax)
 k = -1
 for index in my_tasks:
     
-    kappa = parray_sim.get_kappa(ktype="grf",vary=False,seed=index+1000000)
+    kappa = parray_sim.get_grf_kappa(seed=index+1000000)
 
     phi, fphi = lt.kappa_to_phi(kappa,parray_sim.modlmap,return_fphi=True)
     #alpha_pix = enmap.grad_pixf(fphi)
@@ -138,19 +140,39 @@ for index in my_tasks:
     if rank==0: print "Lensing..."
     #lensed = lensing.lens_map_flat_pix(unlensed.copy(), alpha_pix.copy(),order=lens_order)
     lensed = lensing.lens_map(unlensed.copy(), grad_phi, order=lens_order, mode="spline", border="cyclic", trans=False, deriv=False, h=1e-7)
+
+    
+    # === ADD NOISE BEFORE DOWNSAMPLE
+    # if rank==0: print "Beam convolving..."
+    # olensed = enmap.ndmap(lensed.copy() if abs(pixratio-1.)<1.e-3 else resample.resample_fft(lensed.copy(),shape_dat),wcs_dat)
+    # flensed = fftfast.fft(lensed,axes=[-2,-1])
+    # flensed *= parray_sim.lbeam
+    # lensed = fftfast.ifft(flensed,axes=[-2,-1],normalize=True).real
+    # if rank==0: print "Adding noise..."    
+    # noise = parray_sim.get_noise_sim(seed=index+20000)
+    # lensed += noise    
+    # if rank==0: print "Downsampling..."
+    # cmb = lensed if abs(pixratio-1.)<1.e-3 else resample.resample_fft(lensed,shape_dat)
+
+    
+    # === ADD NOISE AFTER DOWNSAMPLE
     if rank==0: print "Beam convolving..."
     olensed = enmap.ndmap(lensed.copy() if abs(pixratio-1.)<1.e-3 else resample.resample_fft(lensed.copy(),shape_dat),wcs_dat)
-
-    flensed = fftfast.fft(lensed,axes=[-2,-1])
-    flensed *= parray_sim.lbeam
+    flensed = fftfast.fft(olensed,axes=[-2,-1])
+    flensed *= parray_dat.lbeam
     lensed = fftfast.ifft(flensed,axes=[-2,-1],normalize=True).real
-    if rank==0: print "Adding noise..."
-    
-    noise = parray_sim.get_noise_sim(seed=index+20000)
-    lensed += noise
-    
+    if rank==0: print "Adding noise..."    
+    noise = parray_dat.get_noise_sim(seed=index+20000)
+
+    lcents, noise1d = lbinner_dat.bin(fmaps.get_simple_power_enmap(noise))
+    mpibox.add_to_stats('noisett',noise1d)        
+
+    lensed += noise    
     if rank==0: print "Downsampling..."
-    cmb = lensed if abs(pixratio-1.)<1.e-3 else resample.resample_fft(lensed,shape_dat)
+    cmb = lensed
+
+    
+    
     cmb = enmap.ndmap(cmb,wcs_dat)
     if rank==0: print "Calculating powers for diagnostics..."
     utt2d = fmaps.get_simple_power_enmap(enmap.ndmap(unlensed if abs(pixratio-1.)<1.e-3 else resample.resample_fft(unlensed,shape_dat),wcs_dat))
@@ -254,8 +276,13 @@ if rank==0:
 
     io.quickPlot2d(stats.cov2corr(astats['covmean']),out_dir+"corr.png")
     io.quickPlot2d(stats.cov2corr(rstats['covmean']),out_dir+"rcorr.png")
-    np.save(out_dir+"4sqdeg_covmat_dl300.npy",rstats['cov'])
-    np.save(out_dir+"4sqdeg_lbin_edges_dl300.npy",lbin_edges)
+
+
+    np.save(out_dir+str(area)+"sqdeg_covmat_dl300.npy",rstats['cov'])
+    np.save(out_dir+str(area)+"sqdeg_autocovmat_dl300.npy",astats['cov'])
+    np.save(out_dir+str(area)+"sqdeg_lbin_edges_dl300.npy",lbin_edges)
+    import cPickle as pickle
+    pickle.dump((lcents,mpibox.stats['noisett']['mean']),open(out_dir+"noise_mpismall.pkl",'wb'))
 
     pl = io.Plotter()
     ldiff = (cstats['mean']-istats['mean'])*100./istats['mean']

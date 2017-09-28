@@ -27,6 +27,8 @@ parser.add_argument("Kappa", type=str,help='Kappa section name')
 parser.add_argument("Out", type=str,help='Output Directory Name (not path, that\'s specified in ini')
 parser.add_argument("Nsims", type=int,help='Total number of sims')
 parser.add_argument("-s", "--covseed",     type=int,  default=0)
+parser.add_argument("-x", "--kellmin",     type=int,  default=100)
+parser.add_argument("-y", "--kellmax",     type=int,  default=3000)
 parser.add_argument("-t", "--skip_pol", action='store_true',help='Skip polarization')
 parser.add_argument("-v", "--verify_only", action='store_true',help='Does not generate sims. Reads them from disk and verifies them.')
 
@@ -100,9 +102,9 @@ parray_sim.add_theory(cc,theory,lmax,orphics_is_dimensionless=False)
 
 lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape_dat,wcs_dat)
 lxmap_sim,lymap_sim,modlmap_sim,angmap_sim,lx_sim,ly_sim = fmaps.get_ft_attributes_enmap(shape_sim,wcs_sim)
-kellmin = 100
-kellmax = 3000
-lbin_edges = np.arange(kellmin,kellmax,80)
+kellmin = args.kellmin
+kellmax = args.kellmax
+lbin_edges = np.arange(kellmin,kellmax,200)
 lbinner_dat = stats.bin2D(modlmap_dat,lbin_edges)
 lbinner_sim = stats.bin2D(modlmap_sim,lbin_edges)
 
@@ -166,7 +168,7 @@ if rank==0:
     spec_list = ["TT","EE","BB"] if pol else ['TT']
     pl = io.Plotter(scaleY='log')
     for spec in spec_list:
-        sverif_cmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl)
+        if not(vonly): sverif_cmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl)
         sverif_dcmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl)
     pl.done(pout_dir+"cl.png")
 
@@ -175,7 +177,7 @@ if rank==0:
         spec_list = ["TE"]
         pl = io.Plotter()
         for spec in spec_list:
-            sverif_cmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl)
+            if not(vonly): sverif_cmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl)
             sverif_dcmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl)
         pl.done(pout_dir+"clte.png")
 
@@ -184,12 +186,12 @@ if rank==0:
             spec_list = ["BB","EB","TB"]
             pl = io.Plotter()
             for spec in spec_list:
-                sverif_cmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl,skip_uzero=False)
+                if not(vonly): sverif_cmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl,skip_uzero=False)
                 sverif_dcmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl,skip_uzero=False)
         plot_list = ["lensed","dlensed"] if not(vonly) else ['dlensed']
         spec_list = ["EB","TB"]
         for spec in spec_list:
-            sverif_cmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl,skip_uzero=False)
+            if not(vonly): sverif_cmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl,skip_uzero=False)
             sverif_dcmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl,skip_uzero=False)
         pl.done(pout_dir+"clzero.png")
 
@@ -197,7 +199,7 @@ if rank==0:
     spec_list = ["TT","EE","BB"] if pol else ['TT']
     pl = io.Plotter()
     for spec in spec_list:
-        sverif_cmb.plot_diff(spec,plot_list,xlim=[kellmin,kellmax],pl=pl)
+        if not(vonly): sverif_cmb.plot_diff(spec,plot_list,xlim=[kellmin,kellmax],pl=pl)
         sverif_dcmb.plot_diff(spec,plot_list,xlim=[kellmin,kellmax],pl=pl)
     pl.done(pout_dir+"cldiffrat.png")
 
@@ -206,7 +208,7 @@ if rank==0:
         spec_list = ["TE","EB","TB"]
         pl = io.Plotter()
         for spec in spec_list:
-            sverif_cmb.plot_diff(spec,plot_list,xlim=[kellmin,kellmax],pl=pl,ratio=False)
+            if not(vonly): sverif_cmb.plot_diff(spec,plot_list,xlim=[kellmin,kellmax],pl=pl,ratio=False)
             sverif_dcmb.plot_diff(spec,plot_list,xlim=[kellmin,kellmax],pl=pl,ratio=False)
         pl.done(pout_dir+"cldiff.png")
 
@@ -214,14 +216,14 @@ if rank==0:
     spec = "kk"
     plot_list = ['kappa','dkappa'] if not(vonly) else ['dkappa']
     pl = io.Plotter(scaleY='log')
-    sverif_kappa.plot(spec,plot_list,scale_spectrum=False,pl=pl)
+    if not(vonly): sverif_kappa.plot(spec,plot_list,scale_spectrum=False,pl=pl)
     sverif_dkappa.plot(spec,plot_list,scale_spectrum=False,pl=pl)
     pl.done(pout_dir+"clkk.png")
     
     spec = "kk"
     plot_list = ['kappa','dkappa']if not(vonly) else ['dkappa']
     pl = io.Plotter()
-    sverif_kappa.plot_diff(spec,plot_list,pl=pl)
+    if not(vonly): sverif_kappa.plot_diff(spec,plot_list,pl=pl)
     sverif_dkappa.plot_diff(spec,plot_list,pl=pl)
     pl.done(pout_dir+"clkkdiff.png")
     
