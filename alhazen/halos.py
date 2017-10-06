@@ -22,6 +22,17 @@ gnfw = lambda x: np.piecewise(x, [x>1., x<1., x==1.], \
 f_c = lambda c: np.log(1.+c) - (c/(1.+c))
 
 
+def nfw_kappa(massOverh,modrmap_radians,cc,zL=0.7,concentration=3.2,overdensity=180.,critical=False,atClusterZ=False):
+    sgn = 1. if massOverh>0. else -1.
+    comS = cc.results.comoving_radial_distance(cc.cmbZ)*cc.h
+    comL = cc.results.comoving_radial_distance(zL)*cc.h
+    winAtLens = (comS-comL)/comS
+    kappa,r500 = NFWkappa(cc,np.abs(massOverh),concentration,zL,modrmap_radians* 180.*60./np.pi,winAtLens,
+                          overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
+
+    return sgn*kappa
+
+
 #@timeit
 def getProfiles(generator,stepfilter_ellmax,kappaMap,binner,N):
     profiles = []

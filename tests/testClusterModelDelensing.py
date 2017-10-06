@@ -49,15 +49,15 @@ args = parser.parse_args()
 Nsims = args.Nsims
 
 out_dir = os.environ['WWW']+"plots/cluster_"
-analysis_section = "analysis_arc"
-sim_section = "sims_arc"
+analysis_section = "analysis_arcdelens"
+sim_section = "sims_arcdelens"
 expf_name = "experiment_regular"
 #cosmology_section = "cc_cluster"
 cosmology_section = "cc_cluster_high"
 #recon_section = "reconstruction_cluster_lowell"
 recon_section = "reconstruction_cluster"
 lens_order = 5
-delens_steps = 5
+delens_steps = 0
 gradCut = None
 
 Config = io.config_from_file("../halofg/input/recon.ini")
@@ -243,8 +243,8 @@ for k,index in enumerate(my_tasks):
         #kappa_recon = ngen.get_map(index+j)
         # cents,kp1d = lbinner_dat.bin(fc.power2d(kappa_recon)[0])
         # pl.add(cents,kp1d,alpha=0.5,ls="--",label=str(j))
-        fwhm = 1.5
-        kappa_recon = fmaps.smooth(kappa_recon,modlmap_sim,fwhm)
+        # fwhm = 1.5
+        # kappa_recon = fmaps.smooth(kappa_recon,modlmap_sim,fwhm)
         wiener = kappa_model*0.+1.
         #kellmax = 3000
         kappa_recon = enmap.ndmap(fmaps.filter_map(kappa_recon,wiener,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)

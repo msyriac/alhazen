@@ -1,3 +1,4 @@
+print "starting imports..."
 import numpy as np
 from enlib import enmap,resample,lensing
 import orphics.analysis.flatMaps as fmaps
@@ -6,10 +7,13 @@ from szar.counts import ClusterCosmology
 import orphics.tools.io as io
 import alhazen.lensTools as lt
 from mpi4py import MPI
-import sys
+import sys,os
 import cPickle as pickle
+import enlib.fft as fftfast
+print "finished imports..."
 
 def nfwkappa(massOverh):
+    sgn = 1. if massOverh>0. else -1.
     zL = 0.7
     overdensity = 180.
     critical = False
@@ -18,12 +22,14 @@ def nfwkappa(massOverh):
     comS = cc.results.comoving_radial_distance(cc.cmbZ)*cc.h
     comL = cc.results.comoving_radial_distance(zL)*cc.h
     winAtLens = (comS-comL)/comS
-    kappa,r500 = NFWkappa(cc,massOverh,concentration,zL,pa.modrmap* 180.*60./np.pi,winAtLens,
+    kappa,r500 = NFWkappa(cc,np.abs(massOverh),concentration,zL,pa.modrmap* 180.*60./np.pi,winAtLens,
                           overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 
-    return kappa
+    return sgn*kappa
 
 from alhazen.maxlike import lnlike
+
+out_dir = os.environ['WWW']+"plots/maxlike_hdv_nodim_"
 
 lmax = 8000
 cc = ClusterCosmology(lmax=lmax,pickling=True)
@@ -37,23 +43,25 @@ lens_order = 5
 shape,wcs = enmap.get_enmap_patch(arc,px,proj="car")
 
 
-
+noise_T = 1.0
     
 pa = fmaps.PatchArray(shape,wcs,dimensionless=False,skip_real=False)
-pa.add_theory(theory,lmax)
-pa.add_white_noise_with_atm(0.01,0.,0,1,0,1)
+pa.add_theory(cc,theory,lmax)
+pa.add_gaussian_beam(1.0)
+pa.add_white_noise_with_atm(noise_T,0.,0,1,0,1)
 
-Nmasses = 4
-mrange = np.arange(1.,10.,0.5)*1.e14
+Npoints = 60
+mrange = np.linspace(1,3,Npoints)*1.e14
 
 
-M = 3.5
-kappa = nfwkappa(M)
+trueM = 2e14
+kappa = nfwkappa(trueM)
 phi, fphi = lt.kappa_to_phi(kappa,pa.modlmap,return_fphi=True)
 #grad_phi = enmap.grad(phi)
 alpha_pix = enmap.grad_pixf(fphi)
 
-N = 1000
+N = 10000
+Nfor = N
 
 totlikes = 0.
 allike = 1.
@@ -61,37 +69,93 @@ allike = 1.
 Ms = []
 logdets = []
 cinvs = []
-for k,M in enumerate(mrange):
-    
-    M,logdet,cinv = pickle.load(open("c_"+str(M)+".pkl",'rb'))
-    Ms.append(  M )
-    logdets.append( logdet)
-    cinvs.append( cinv)
 
+TCMB = 1. #2.7255e6
+from scipy.linalg import pinv2
+
+for k,M in enumerate(mrange):
+
+    M,cov = pickle.load(open(out_dir+"c_"+str(k)+".pkl",'rb'))
+    covnoise = np.diag(np.ones(cov.shape[0]))*(noise_T*np.pi/180./60./TCMB)**2.
+    cov = cov + covnoise
+
+    
+    s,logdet = np.linalg.slogdet(cov)
+    print k,M,s,logdet,np.linalg.cond(cov)
+    assert s>0
+        
+    Ms.append(  M )
+    logdets.append( logdet )
+    cinvs.append( pinv2(cov) )
+
+mrange = np.array(Ms)
+    
 for i in range(N):
     lnlikes = []
-    cmb_map = pa.get_unlensed_cmb(seed=140000+2*i)
-    lensed = lensing.lens_map_flat_pix(cmb_map, alpha_pix,order=lens_order)
-    noise = pa.get_noise_sim(seed=140000+2*i+1)
+    cmb_map = pa.get_unlensed_cmb(seed=2*i+100000000)
+    lensed = lensing.lens_map_flat_pix(cmb_map, alpha_pix,order=lens_order) if np.abs(M)>1.e-3 else cmb_map
+    flensed = fftfast.fft(lensed,axes=[-2,-1])
+    flensed *= pa.lbeam
+    lensed = fftfast.ifft(flensed,axes=[-2,-1],normalize=True).real
+    noise = pa.get_noise_sim(seed=2*i+1+100000000)
     measured = lensed + noise
 
-    if i%100==0: print i
     for k,M in enumerate(mrange):
     
-        #M,logdet,cinv = pickle.load(open("c_"+str(M)+".pkl",'rb'))
         logdet = logdets[k]
         cinv = cinvs[k]
         
         lnlikeval = lnlike(logdet,cinv,measured)
+
+
         lnlikes.append(lnlikeval)
-        #print lnlikeval
-    totlikes += np.array(lnlikes)
-    #print totlikes
+
+
+    nlnlikes = -0.5*np.array(lnlikes)
+    totlikes += nlnlikes.copy()
+    if i%100==0:
+        print i
+    
+pl = io.Plotter()
+
+Npoints = 500
+pmin = 1.e14
+pmax = 3.e14
+mfinerange = np.linspace(pmin,pmax,Npoints)
+
+totlikes -= totlikes.max()
+degmax = 2
+p = np.polyfit(mrange,totlikes,deg=degmax)
+pfunc = lambda x: sum([c*x**(degmax-k) for k,c in enumerate(p)])
+
+quad = np.abs(p[degmax-2])
+sigwidth = np.sqrt(1./quad/2.)*np.sqrt(N/Nfor)
+
+
+mmax = mrange[np.argmax(totlikes)]
+print mmax,sigwidth
+
+pl.add(mrange,totlikes,marker="x")
+pl.add(mfinerange,pfunc(mfinerange))
+
+pl._ax.axvline(x=trueM,ls="--")
+pl._ax.axvline(x=mmax,ls="-")
+pl.done(out_dir+"chisq.png")
 
 pl = io.Plotter()
-likes = -0.5*totlikes
-#likes = np.exp(-0.5*totlikes)
-#print likes
-#likes /= likes.sum()
-pl.add(mrange,likes)
-pl.done("lnlikes.png")
+
+likes = np.exp(totlikes)
+likes /= likes.sum()
+pl.add(mrange,likes/likes.max(),marker="x",alpha=0.2)
+
+print "S/N : ",mmax/sigwidth
+print "Bias % : ",(mmax-trueM)*100./trueM
+print "Bias sigma : ",(mmax-trueM)/sigwidth
+
+
+fitlike = np.exp(-(mfinerange-mmax)**2./2./sigwidth**2.)
+pl.add(mfinerange,fitlike/fitlike.max())
+pl._ax.axvline(x=trueM,ls="--")
+pl._ax.axvline(x=mmax,ls="-")
+pl._ax.set_xlim(pmin,pmax)
+pl.done(out_dir+"lnlikes.png")

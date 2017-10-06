@@ -1,11 +1,10 @@
 import time
-import os
+import os,sys
 import numpy as np
 
-Mrange = np.arange(1.,10,0.5)*1e14
-for M in Mrange:
-    cmd = "quick_mpi.py 8 all python -W ignore tests/pix_cov.py -M "+str(M)
+Npoints = 60
+for k in range(Npoints):
+    cmd = "quick_mpi.py 4 all python -W ignore tests/pix_cov.py -M "+str(k)
     print cmd
     os.system(cmd)
     time.sleep(0.05)
-

@@ -7,6 +7,44 @@ import warnings
 import logging
 logger = logging.getLogger()
 
+def recon_from_config(Config,recon_section,parray,theory,lmax,grad_cut=None,pol=False,u_equals_l=True):
+    min_ell = fmaps.minimum_ell(parray.shape,parray.wcs)
+    lb = ellbounds_from_config(Config,recon_section,min_ell)
+    tellmin = lb['tellminY']
+    tellmax = lb['tellmaxY']
+    pellmin = lb['pellminY']
+    pellmax = lb['pellmaxY']
+    kellmin = lb['kellmin']
+    kellmax = lb['kellmax']
+
+
+    lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(parray.shape,parray.wcs)
+    template_dat = fmaps.simple_flipper_template_from_enmap(parray.shape,parray.wcs)
+    nT = parray.nT
+    nP = parray.nP
+    kbeam_dat = parray.lbeam
+    fMaskCMB_T = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=tellmin,lmax=tellmax)
+    fMaskCMB_P = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=pellmin,lmax=pellmax)
+    fMask = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=kellmin,lmax=kellmax)
+    with oio.nostdout():
+        from alhazen.quadraticEstimator import Estimator
+        qest = Estimator(template_dat,
+                         theory,
+                         theorySpectraForNorm=None,
+                         noiseX2dTEB=[nT,nP,nP],
+                         noiseY2dTEB=[nT,nP,nP],
+                         fmaskX2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
+                         fmaskY2dTEB=[fMaskCMB_T,fMaskCMB_P,fMaskCMB_P],
+                         fmaskKappa=fMask,
+                         kBeamX = kbeam_dat,
+                         kBeamY = kbeam_dat,
+                         doCurl=False,
+                         TOnly=not(pol),
+                         halo=True,
+                         uEqualsL=u_equals_l,
+                         gradCut=grad_cut,bigell=lmax)
+
+    return tellmin,tellmax,pellmin,pellmax,kellmin,kellmax,qest
 
 def theory_from_config(Config,theory_section,dimensionless=True):
     sec_type = Config.get(theory_section,"cosmo_type")
