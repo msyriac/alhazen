@@ -21,8 +21,8 @@ import argparse
 from mpi4py import MPI
 
 # Runtime params that should be moved to command line
-expf_name = "experiment_simple"
-cosmology_section = "cc_sigurd"
+expf_name = "experiment_noiseless"
+cosmology_section = "cc_erminia"
 
 
 
@@ -31,11 +31,21 @@ cosmology_section = "cc_sigurd"
 parser = argparse.ArgumentParser(description='Verify lensing reconstruction.')
 parser.add_argument("Region", type=str,help='equator/south')
 parser.add_argument("-N", "--nsim",     type=int,  default=None)
+parser.add_argument("-m", "--meanfield",     type=str,  default=None)
 #parser.add_argument("-s", "--save",     type=str,  default=None)
 args = parser.parse_args()
 Nsims = args.nsim
 region = args.Region
+if args.meanfield is not None:
+    mf = enmap.read_map(args.meanfield)
+    save_meanfield = False
+else:
+    mf = 0.
+    save_meanfield = True
+    
 #save = args.save
+
+save_dir = "/gpfs01/astro/workarea/msyriac/data/depot/distortions/distspectrav4mfsub_"+region+"_"
 
 analysis_section = "analysis_sigurd_"+region
 
@@ -53,8 +63,8 @@ out_dir = os.environ['WWW']+"plots/distsims_"+region+"_"  # for plots
 # How many sims? Should I use saved files?
 
 if Nsims is None: Nsims = 320
-sigurd_cmb_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sigurd_sims/cori/v3/"+region+"_curved_lensed_car_"+str(x).zfill(2)+".fits"
-sigurd_kappa_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sigurd_sims/cori/v3/"+region+"_curved_kappa_car_"+str(x).zfill(2)+".fits"
+sigurd_cmb_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sims/sigurd/cori/v5/"+region+"_curved_lensed_car_"+str(x).zfill(2)+".fits"
+sigurd_kappa_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sims/sigurd/cori/v5/"+region+"_curved_kappa_car_"+str(x).zfill(2)+".fits"
 
     
 Ntot = Nsims
@@ -73,7 +83,7 @@ my_tasks = each_tasks[rank]
 if rank==0: print "Reading config..."
 
 # Read config
-iniFile = "input/recon.ini"
+iniFile = "../halofg/input/recon.ini"
 Config = SafeConfigParser()
 Config.optionxform=str
 Config.read(iniFile)
@@ -96,7 +106,7 @@ kellmax = lb['kellmax']
 
 if rank==0: print "Patches data..."
 
-parray_dat = aio.patch_array_from_config(Config,expf_name,shape_dat,wcs_dat,dimensionless=True)
+parray_dat = aio.patch_array_from_config(Config,expf_name,shape_dat,wcs_dat,dimensionless=False)
 
 if rank==0: print "Attributes..."
 
@@ -110,8 +120,8 @@ lbinner_dat = stats.bin2D(modlmap_dat,lbin_edges)
 if rank==0: print "Cosmology..."
 
 # === COSMOLOGY ===
-theory, cc, lmax = aio.theory_from_config(Config,cosmology_section)
-parray_dat.add_theory(theory,lmax)
+theory, cc, lmax = aio.theory_from_config(Config,cosmology_section,dimensionless=False)
+parray_dat.add_theory(cc,theory,lmax,orphics_is_dimensionless=False)
 template_dat = fmaps.simple_flipper_template_from_enmap(shape_dat,wcs_dat)
 nT = parray_dat.nT
 nP = parray_dat.nP
@@ -144,7 +154,7 @@ with io.nostdout():
                      bigell=9000)
 
     
-taper_percent = 4.0
+taper_percent = 14.0
 pad_percent = 2.0
 Ny,Nx = shape_dat
 taper = fmaps.cosineWindow(Ny,Nx,lenApodY=int(taper_percent*min(Ny,Nx)/100.),lenApodX=int(taper_percent*min(Ny,Nx)/100.),padY=int(pad_percent*min(Ny,Nx)/100.),padX=int(pad_percent*min(Ny,Nx)/100.))
@@ -164,7 +174,7 @@ for index in my_tasks:
     k += 1
     if rank==0: print "Rank ", rank , " doing cutout ", index
     kappa = enmap.read_map(sigurd_kappa_file(index))*taper
-    cmb = enmap.read_map(sigurd_cmb_file(index))[0]/2.7255e6
+    cmb = enmap.read_map(sigurd_cmb_file(index))[0]#/2.7255e6
     ltt2d = fmaps.get_simple_power_enmap(cmb*taper)
     
     ccents,ltt = lbinner_dat.bin(ltt2d)/w2
@@ -181,7 +191,8 @@ for index in my_tasks:
     with io.nostdout():
         rawkappa = qest.getKappa("TT").real
 
-    kappa_recon = enmap.ndmap(rawkappa,wcs_dat)
+    kappa_recon = enmap.ndmap(rawkappa,wcs_dat) - mf
+    if save_meanfield: mpibox.add_to_stack("meanfield",kappa_recon)
     #if save is not None: enmap.write_fits(save_func(index),kappa_recon)
 
     if rank==0: print "Calculating kappa powers and binning..."
@@ -232,6 +243,9 @@ mpibox.get_stats()
 
 if rank==0:
 
+    if save_meanfield:
+        meanfield = mpibox.stacks['meanfield']
+        enmap.write_map(save_dir+"meanfield.hdf",enmap.ndmap(meanfield,wcs_dat))
     cstats = mpibox.stats['cross']
     istats = mpibox.stats['ipower']
     astats = mpibox.stats['auto']
@@ -248,6 +262,7 @@ if rank==0:
     pl = io.Plotter(scaleY='log')
     pl.addErr(lcents,cstats['mean'],yerr=cstats['errmean'],marker="o",label="recon x cross")
     pl.add(lcents,istats['mean'],marker="x",ls="none",label="input")
+    io.save_cols(save_dir+"ikk.txt",(lcents,istats['mean'],istats['errmean']))
     pl.add(lcents,diag,ls="-.",lw=2,label="diag no n0sub")
     pl.add(lcents,diagr,ls="-.",lw=2,label="diag n0sub")
     lcents,nlkk = lbinner_dat.bin(qest.N.Nlkk['TT'])
@@ -255,8 +270,12 @@ if rank==0:
     clkk = theory.gCl("kk",ellrange)
     pl.addErr(lcents,astats['mean'],yerr=astats['errmean'],marker="o",alpha=0.5,label="raw")
     pl.addErr(lcents,rstats['mean'],yerr=rstats['errmean'],marker="o",alpha=0.5,label="auto n0subbed")
+
+    io.save_cols(save_dir+"autokk.txt",(lcents,rstats['mean'],rstats['errmean']))
+
     pl.add(lcents,nlkk,ls="--",label="theory n0")
     pl.add(lcents,nstats['mean'],ls="--",label="superdumb n0")
+    io.save_cols(save_dir+"sdn0.txt",(lcents,nstats['mean'],nstats['errmean']))
     pl.add(ellrange,clkk,color="k")
     pl.legendOn(loc="lower left",labsize=9)
     pl.done(out_dir+"cpower.png")
@@ -265,11 +284,13 @@ if rank==0:
     io.quickPlot2d(stats.cov2corr(rstats['covmean']),out_dir+"rcorr.png")
 
     pl = io.Plotter()
-    ldiff = (cstats['mean']-istats['mean'])*100./istats['mean']
-    lerr = cstats['errmean']*100./istats['mean']
+    ldiff = (cstats['mean']-istats['mean'])/istats['mean']
+    lerr = cstats['errmean']/istats['mean']
+    io.save_cols(save_dir+"rxikk.txt",(lcents,cstats['mean'],cstats['errmean']))
+    io.save_cols(save_dir+"ratkk.txt",(lcents,ldiff,lerr))
     pl.addErr(lcents,ldiff,yerr=lerr,marker="o",ls="-")
     pl._ax.axhline(y=0.,ls="--",color="k")
-    pl._ax.set_ylim(-20.,10.)
+    pl._ax.set_ylim(-0.2,0.1)
     pl.done(out_dir+"powerdiff.png")
     
     iltt2d = theory.lCl("TT",parray_dat.modlmap)

@@ -90,7 +90,7 @@ def theory_from_config(Config,theory_section,dimensionless=True):
     elif sec_type=="enlib_file":
         import orphics.tools.cmb as cmb
         file_root = Config.get(theory_section,"enlib_file_root")
-        theory = cmb.load_theory_spectra_from_enlib(file_root,lpad=lmax)
+        theory = cmb.load_theory_spectra_from_enlib(file_root,lpad=lmax,get_dimensionless=dimensionless)
         cc = None
 
     else:
@@ -169,10 +169,10 @@ def enmaps_from_config(Config,sim_section,analysis_section,pol=False):
 
 
         
-        shape_dat, wcs_dat = enmap.get_enmap_patch(width_analysis_deg*60.,pixel_analysis,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
+        shape_dat, wcs_dat = enmap.rect_geometry(width_analysis_deg*60.,pixel_analysis,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
 
         if np.abs(buffer_sim-1.)<1.e-3:
-            shape_sim, wcs_sim = enmap.get_enmap_patch(width_analysis_deg*60.,pixel_sim,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
+            shape_sim, wcs_sim = enmap.rect_geometry(width_analysis_deg*60.,pixel_sim,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
         else:
             raise NotImplementedError, "Buffer !=1 not implemented"
 
@@ -188,7 +188,7 @@ def enmap_from_config_section(Config,section,pol=False):
         imap = enmap.read_map(pt_file)
         shape_dat = imap.shape
         wcs_dat = imap.wcs
-
+        if pol and len(shape_dat)<3: shape_dat = (3,shape_dat[0],shape_dat[1])
         res = np.min(imap.extent()/imap.shape[-2:])*60.*180./np.pi
             
     except:
@@ -206,7 +206,7 @@ def enmap_from_config_section(Config,section,pol=False):
 
 
         
-        shape_dat, wcs_dat = enmap.get_enmap_patch(width_analysis_deg*60.,pixel_analysis,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
+        shape_dat, wcs_dat = enmap.rect_geometry(width_analysis_deg*60.,pixel_analysis,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
 
     return shape_dat, wcs_dat            
 
