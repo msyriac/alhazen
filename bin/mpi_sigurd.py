@@ -306,13 +306,13 @@ if rank==0:
 
 
 
-    pdiff = (ltt-iltt)*100./iltt
-    perr = 100.*ltterr/iltt
+    pdiff = (ltt-iltt)/iltt
+    perr = ltterr/iltt
 
     pl.addErr(ccents+50,pdiff,yerr=perr,marker="o",ls="none",label="lensed")
     pl.legendOn(labsize=10,loc="lower left")
     pl._ax.axhline(y=0.,ls="--",color="k")
-    pl._ax.set_ylim(-20.,20.)
+    pl._ax.set_ylim(-0.1,0.1)
     pl.done(out_dir+"clttpdiff.png")
 
 
