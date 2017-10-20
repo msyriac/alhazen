@@ -23,19 +23,21 @@ numcores = comm.Get_size()
 expf_name = "experiment_noiseless"
 cosmology_section = "cc_nam_low"
 iau_convention = False
-save_dir = "/gpfs01/astro/workarea/msyriac/data/depot/distortions/distspectrav6_"
 
 # Parse command line
 parser = argparse.ArgumentParser(description='Verify lensing reconstruction.')
 parser.add_argument("Region", type=str,help='equator/south')
+parser.add_argument("Projection", type=str,help='CAR/CEA')
 parser.add_argument("-N", "--nsim",     type=int,  default=None)
 #parser.add_argument("-s", "--save",     type=str,  default=None)
 args = parser.parse_args()
 Nsims = args.nsim
 region = args.Region
+projection = args.Projection
 #save = args.save
 
-analysis_section = "analysis_sigurd_"+region
+save_dir = "/gpfs01/astro/workarea/msyriac/data/depot/distortions/distspectrav61600_"+region+"_"+projection+"_"
+analysis_section = "analysis_sigurd_"+region+"_"+projection+"_1600"
 
 # Get MPI comm
 comm = MPI.COMM_WORLD
@@ -44,15 +46,15 @@ numcores = comm.Get_size()
 
 
 # i/o directories
-pout_dir = os.environ['WWW']+"plots/distsimsv6_"+region+"_"  # for plots
+pout_dir = os.environ['WWW']+"plots/distsimsv61600_"+region+"_"+projection+"_"  # for plots
 #save_dir = map_root + dirname # for saves
 #if save is not None: save_func = lambda x: save_dir + "/"+save+"_"+str(x).zfill(9)+".fits"
 
 # How many sims? Should I use saved files?
 
 if Nsims is None: Nsims = 320
-sigurd_cmb_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sims/sigurd/cori/v6/"+region+"_curved_lensed_car_"+str(x).zfill(2)+".fits"
-sigurd_kappa_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sims/sigurd/cori/v6/"+region+"_curved_kappa_car_"+str(x).zfill(2)+".fits"
+sigurd_cmb_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sims/sigurd/cori/v61600/"+region+"_curved_lensed_"+projection+"_"+str(x).zfill(2)+".fits"
+sigurd_kappa_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sims/sigurd/cori/v61600/"+region+"_curved_kappa_"+projection+"_"+str(x).zfill(2)+".fits"
 
     
 Ntot = Nsims
@@ -142,7 +144,7 @@ if rank==0:
 
     p2d_tt = sverif_cmb.mpibox.stacks['lensed_p2d'][0,0]
     np.save(save_dir+"p2d_tt.npy",p2d_tt)
-    io.quickPlot2d(np.fft.fftshift(np.log10(p2d_tt)),pout_dir+"p2dtt.png")
+    io.quickPlot2d(np.fft.fftshift(np.log10(p2d_tt)),pout_dir+"p2dtt.png",aspect="auto",lim=[-22,2])
 
     plot_list = ["lensed"]
     spec_list = ["TT","EE","BB"] if pol else ['TT']

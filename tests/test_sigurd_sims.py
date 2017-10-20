@@ -7,35 +7,41 @@ import orphics.tools.cmb as cmb
 import orphics.analysis.flatMaps as fmaps
 import numpy as np
 import healpy as hp
+from mpi4py import MPI
+from orphics.analysis.pipeline import mpi_distribute, MPIStats, SpectrumVerification
 
-sim_root = "/gpfs01/astro/workarea/msyriac/data/sims/alex/sky/"
+# Get MPI comm
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+numcores = comm.Get_size()    
 
-def load_fullsky(sim_root,prefix):
+sim_root = "/gpfs01/astro/workarea/msyriac/data/sims/sigurd/cori/v6full64/"
+save_dir = "/gpfs01/astro/workarea/msyriac/data/depot/distortions/fullsky_spectra64_"
 
+def load_fullsky(sim_root,prefix,k):
 
-    for k in range(3):
-        uiqu_now = enmap.read_map(sim_root+prefix+"_"+str(k)+".fits")
-        shape = uiqu_now.shape
-        if k==0:
-            uiqu = enmap.ndmap(np.empty((3,shape[0],shape[1])),uiqu_now.wcs)
-        uiqu[k] = uiqu_now
-
+    uiqu = enmap.read_map(sim_root+prefix+"_"+str(k).zfill(2)+".fits")
+    
     return uiqu
 
-def map2power(iqu,lensed=False):
+def map2power(iqu,mpibox):
     from orphics.tools.stats import bin2D, bin1D
     bin_edges = np.arange(200,4000,40)
         
     
     print ("Map 2 alm...")
-    alm = curvedsky.map2alm(iqu,lmax=5000)
+    alm = curvedsky.map2alm(iqu.astype("float64"),lmax=5000)
+    del iqu
     cls = hp.alm2cl(alm)
+    del alm
     fineells = np.arange(0,cls.shape[1],1)
 
     print ("Binning...")
     lbinner = bin1D(bin_edges)
     def b(cls):
-        ells,cl1d = lbinner.binned(fineells,fineells*cls)/lbinner.binned(fineells,fineells)
+        ells,cl1d = lbinner.binned(fineells,fineells*cls)
+        ells,norm = lbinner.binned(fineells,fineells)
+        cl1d /= norm
         return ells,cl1d
 
 
@@ -45,6 +51,47 @@ def map2power(iqu,lensed=False):
     ells,clte = b(cls[3,:])
     ells,cleb = b(cls[4,:])
     ells,cltb = b(cls[5,:])
+
+    mpibox.add_to_stats("TT",cltt)
+    mpibox.add_to_stats("EE",clee)
+    mpibox.add_to_stats("BB",clbb)
+    mpibox.add_to_stats("TE",clte)
+    mpibox.add_to_stats("EB",cleb)
+    mpibox.add_to_stats("TB",cltb)
+
+    return ells
+
+Ntot = 8
+# Efficiently distribute sims over MPI cores
+num_each,each_tasks = mpi_distribute(Ntot,numcores)
+# Initialize a container for stats and stacks
+mpibox = MPIStats(comm,num_each,tag_start=333)
+
+if rank==0: print ("At most ", max(num_each) , " tasks...")
+
+# What am I doing?
+my_tasks = each_tasks[rank]
+
+k = -1
+for index in my_tasks:
+    
+    k += 1
+
+    cmb_map = load_fullsky(sim_root,"fullsky_curved_lensed_car",index)
+    print (rank,k,cmb_map.shape)
+    ells = map2power(cmb_map,mpibox)
+
+mpibox.get_stats()
+if rank==0:
+    TT = mpibox.stats['TT']['mean']
+    EE = mpibox.stats['EE']['mean']
+    BB = mpibox.stats['BB']['mean']
+    EB = mpibox.stats['EB']['mean']
+    TE = mpibox.stats['TE']['mean']
+    TB = mpibox.stats['TB']['mean']
+
+    io.save_cols(save_dir+"fullsky_binned_average_spec_v664.txt",(ells,TT,EE,BB,TE,EB,TB))
+    
 
 #     if lensed:
 #         ells,tcltt = b(theory.lCl('TT',fineells))
