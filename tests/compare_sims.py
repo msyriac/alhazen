@@ -56,8 +56,8 @@ pl._ax.set_ylim(1.e-3,5e5)
 pl.done(io.dout_dir+"sigurd_alex_clcomp_.png")
 
 cut_root = "/gpfs01/astro/workarea/msyriac/data/depot/distortions/"
-mells,mcltt,_ = np.loadtxt(cut_root+"distspectrav61600_equator_car_TT_lensed.txt",unpack=True)
-mells,mclee,_ = np.loadtxt(cut_root+"distspectrav61600_equator_car_EE_lensed.txt",unpack=True)
+mells,mcltt,_ = np.loadtxt(cut_root+"distspectrav6unlensed_equator_car_TT_unlensed.txt",unpack=True)
+mells,mclee,_ = np.loadtxt(cut_root+"distspectrav6unlensed_equator_car_EE_unlensed.txt",unpack=True)
 
 
 pl = io.Plotter(labelX="$\\ell$",labelY="$\Delta C_{\\ell}/C_{\\ell}$")

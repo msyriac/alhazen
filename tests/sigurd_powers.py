@@ -36,8 +36,8 @@ region = args.Region
 projection = args.Projection
 #save = args.save
 
-save_dir = "/gpfs01/astro/workarea/msyriac/data/depot/distortions/distspectrav61600_"+region+"_"+projection+"_"
-analysis_section = "analysis_sigurd_"+region+"_"+projection+"_1600"
+save_dir = "/gpfs01/astro/workarea/msyriac/data/depot/distortions/distspectrav6unlensed_"+region+"_"+projection+"_"
+analysis_section = "analysis_sigurd_"+region+"_"+projection #+"_1600"
 
 # Get MPI comm
 comm = MPI.COMM_WORLD
@@ -46,15 +46,15 @@ numcores = comm.Get_size()
 
 
 # i/o directories
-pout_dir = os.environ['WWW']+"plots/distsimsv61600_"+region+"_"+projection+"_"  # for plots
+pout_dir = os.environ['WWW']+"plots/distsimsv6unlensed_"+region+"_"+projection+"_"  # for plots
 #save_dir = map_root + dirname # for saves
 #if save is not None: save_func = lambda x: save_dir + "/"+save+"_"+str(x).zfill(9)+".fits"
 
 # How many sims? Should I use saved files?
 
 if Nsims is None: Nsims = 320
-sigurd_cmb_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sims/sigurd/cori/v61600/"+region+"_curved_lensed_"+projection+"_"+str(x).zfill(2)+".fits"
-sigurd_kappa_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sims/sigurd/cori/v61600/"+region+"_curved_kappa_"+projection+"_"+str(x).zfill(2)+".fits"
+sigurd_cmb_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sims/sigurd/cori/v6unlensed/"+region+"_curved_unlensed_"+projection+"_"+str(x).zfill(2)+".fits"
+sigurd_kappa_file = lambda x: "/gpfs01/astro/workarea/msyriac/data/sims/sigurd/cori/v6unlensed/"+region+"_curved_kappa_"+projection+"_"+str(x).zfill(2)+".fits"
 
     
 Ntot = Nsims
@@ -73,7 +73,7 @@ my_tasks = each_tasks[rank]
 if rank==0: print "Reading config..."
 
 # Read config
-iniFile = "../halofg/input/recon.ini"
+iniFile = "../halofg/input/cmb-config/recon.ini"
 Config = SafeConfigParser()
 Config.optionxform=str
 Config.read(iniFile)
@@ -97,7 +97,7 @@ lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attribut
 if rank==0: print "Binners..."
 
 kellmin = 200
-kellmax = 4000
+kellmax = 3000
 lbin_edges = np.arange(kellmin,kellmax,40)
 lbinner_dat = stats.bin2D(modlmap_dat,lbin_edges)
 
@@ -130,7 +130,9 @@ for index in my_tasks:
     k += 1
     if rank==0: print "Rank ", rank , " doing cutout ", index
     cmb = enmap.read_map(sigurd_cmb_file(index))
-    llteb,dummy = sverif_cmb.add_power("lensed",cmb*taper,norm=w2,twod_stack=True)
+    cmb[0] = fmaps.filter_map(cmb[0]*taper,cmb.copy()[0]*0.+1.,cmb.modlmap(),lowPass=kellmax,highPass=kellmin,keep_mean=True)
+
+    llteb,dummy = sverif_cmb.add_power("unlensed",cmb,norm=w2,twod_stack=True)
 
 
 
@@ -142,11 +144,11 @@ mpibox.get_stats()
 
 if rank==0:
 
-    p2d_tt = sverif_cmb.mpibox.stacks['lensed_p2d'][0,0]
+    p2d_tt = sverif_cmb.mpibox.stacks['unlensed_p2d'][0,0]
     np.save(save_dir+"p2d_tt.npy",p2d_tt)
     io.quickPlot2d(np.fft.fftshift(np.log10(p2d_tt)),pout_dir+"p2dtt.png",aspect="auto",lim=[-22,2])
 
-    plot_list = ["lensed"]
+    plot_list = ["unlensed"]
     spec_list = ["TT","EE","BB"] if pol else ['TT']
     pl = io.Plotter(scaleY='log')
     for spec in spec_list:
@@ -154,20 +156,20 @@ if rank==0:
     pl.done(pout_dir+"cl.png")
 
     if pol:
-        plot_list = ["lensed"]
+        plot_list = ["unlensed"]
         spec_list = ["TE"]
         pl = io.Plotter()
         for spec in spec_list:
             sverif_cmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl)
         pl.done(pout_dir+"clte.png")
 
-        plot_list = ["lensed"]
+        plot_list = ["unlensed"]
         spec_list = ["EB","TB"]
         for spec in spec_list:
             sverif_cmb.plot(spec,plot_list,xlim=[kellmin,kellmax],pl=pl,skip_uzero=False)
         pl.done(pout_dir+"clzero.png")
 
-    plot_list = ["lensed"]
+    plot_list = ["unlensed"]
     spec_list = ["TT","EE","BB"] if pol else ['TT']
     pl = io.Plotter()
     for spec in spec_list:
@@ -175,7 +177,7 @@ if rank==0:
     pl.done(pout_dir+"cldiffrat.png")
 
     if pol:
-        plot_list = ["lensed"]
+        plot_list = ["unlensed"]
         spec_list = ["TE","EB","TB"]
         pl = io.Plotter()
         for spec in spec_list:
