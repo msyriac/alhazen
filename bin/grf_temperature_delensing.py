@@ -15,7 +15,6 @@ with io.nostdout():
 from alhazen.quadraticEstimator import Estimator
 import alhazen.lensTools as lt
 from ConfigParser import SafeConfigParser 
-from szar.counts import ClusterCosmology
 import enlib.fft as fftfast
 import argparse
 from mpi4py import MPI
@@ -32,14 +31,12 @@ parser.add_argument("Nsims", type=int,help='Total number of sims.')
 args = parser.parse_args()
 Nsims = args.Nsims
 
-out_dir = os.environ['WWW']+"plots/cluster_"
-analysis_section = "analysis_arc"
-sim_section = "sims_arc"
-expf_name = "experiment_noiseless"
-#cosmology_section = "cc_cluster"
-cosmology_section = "cc_cluster_high"
-#recon_section = "reconstruction_cluster_lowell"
-recon_section = "reconstruction_cluster"
+out_dir = os.environ['WWW']+"plots/grf_"
+analysis_section = "analysis"
+sim_section = "sims"
+expf_name = "experiment_regular"
+cosmology_section = "cc_default"
+recon_section = "reconstruction_alex"
 lens_order = 5
 delens_steps = 5
 gradCut = None
@@ -148,7 +145,7 @@ for k,index in enumerate(my_tasks):
 
     if rank==0 and k==0:
         io.quickPlot2d(kappa,out_dir+"kappa.png")
-        io.quickPlot2d(kappa_model,out_dir+"kappamodel.png")
+        #io.quickPlot2d(kappa_model,out_dir+"kappamodel.png")
         io.quickPlot2d(unlensed,out_dir+"unlensed.png")
         io.quickPlot2d(lensed-unlensed,out_dir+"difflensed.png")
         # io.quickPlot2d(pdelensed-unlensed,out_dir+"diffpdelensed.png")
@@ -157,6 +154,9 @@ for k,index in enumerate(my_tasks):
 
     lrtt,likk = sverif_kappa.add_power("rttXikk",kappa_recon,imap2=kappa)
 
+    clkk2d = theory.gCl('kk',modlmap_dat)
+    nlkk2d = qest.N.Nlkk['TT']
+    wiener2d = clkk2d/(clkk2d+nlkk2d)
 
     # # BEGIN ITERATIVE DELENSING
     # kappa_iter_recon = kappa_model.copy()
@@ -282,43 +282,15 @@ if rank==0:
 
 
     inpkappa = enmap.ndmap(fmaps.filter_map(kappa,kappa*0.+1.,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)
-
-    rcents, inpkappa1d = binner_dat.bin(inpkappa)
-    kapparecon_stats = mpibox.stats["kapparecon1d"]
-    # kappaiterrecon_stats = mpibox.stats["kappaiterrecon1d"]
-
-    pl = io.Plotter(scaleX='log',scaleY='log')
-    pl.add(rcents,inpkappa1d)
-    pl.addErr(rcents,kapparecon_stats['mean'],yerr=kapparecon_stats['errmean'],ls="-")
-    # pl.addErr(rcents,kappaiterrecon_stats['mean'],yerr=kappaiterrecon_stats['errmean'],ls="--")
-    pl._ax.set_xlim(0.1,10.)
-    pl._ax.set_ylim(0.001,0.63)
-    pl.done(out_dir+"kappa1d.png")
-
-
+    inpkappa_wiener = enmap.ndmap(fmaps.filter_map(kappa,wiener2d,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)
+    reckappa_wiener = enmap.ndmap(fmaps.filter_map(mpibox.stacks['kapparecon'],wiener2d,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)   
     
-    pl = io.Plotter()
-    
-    rec = kapparecon_stats['mean']
-    inp = inpkappa1d
-    recerr = kapparecon_stats['errmean']
-    diff = (rec-inp)/inp
-    differr = recerr/inp
-    
-    pl.addErr(rcents,diff,yerr=differr,marker="o",ls="-")
+    io.quickPlot2d(inpkappa_wiener,out_dir+"inpwiener.png")
+    io.quickPlot2d(reckappa_wiener,out_dir+"recwiener.png")
 
-    # rec = kappaiterrecon_stats['mean']
-    # inp = inpkappa1d
-    # recerr = kappaiterrecon_stats['errmean']
-    # diff = (rec-inp)/inp
-    # differr = recerr/inp
-    
-    # pl.addErr(rcents,diff,yerr=differr,marker="d",ls="--")
+    ellrange = np.arange(0,lmax_global,1)
+    clkk = theory.gCl('kk',ellrange)
 
-    
-    pl.legendOn(labsize=8,loc="lower right")
-    pl.hline()
-    pl._ax.set_ylim(-0.30,0.10)
-    pl._ax.set_xlim(0.,10.)
-    pl.done(out_dir+"diffper.png")
-
+    plkk = io.Plotter(scaleY='log')
+    plkk.add(ellrange,clkk,color="k",lw=3)
+    plkk.add(cents,nlkk0,ls="--")#,alpha=1/(niter+3.))
