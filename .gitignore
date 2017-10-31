@@ -6,3 +6,5 @@
 *.csv
 *.dat
 *.fits
+input/recon.ini
+input/*_local.ini
