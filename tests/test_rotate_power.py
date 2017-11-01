@@ -5,10 +5,10 @@ import orphics.tools.io as io
 import numpy as np
 import sys
 import orphics.analysis.flatMaps as fmaps
-from orphics.analysis.pipeline import mpi_distribute, MPIStats
-from mpi4py import MPI
+from orphics.tools.mpi import MPI,mpi_distribute, MPIStats
+import healpy as hp
 
-Nsims = 512
+Nsims = 16
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -24,16 +24,16 @@ my_tasks = each_tasks[rank]
 theory_file_root = "data/Aug6_highAcc_CDM"
 theory = cmb.loadTheorySpectraFromCAMB(theory_file_root,unlensedEqualsLensed=False,useTotal=False,TCMB = 2.7255e6,lpad=9000,get_dimensionless=False)
 ells = np.arange(0,7000,1)
-pfunc = lambda x: theory.lCl('TT',x)
+#pfunc = lambda x: theory.lCl('TT',x)
 #pfunc = lambda x: x*0.+1.
-#pfunc = lambda x: theory.gCl('kk',x)
+pfunc = lambda x: theory.gCl('kk',x)
 ps = pfunc(ells).reshape((1,1,7000))
 
 wdeg = 40.
 hdeg = 15.
 yoffset = 60.
 pix = 1.0
-lmax = 5000
+lmax = 7000
 
 fshape, fwcs = enmap.fullsky_geometry(res=pix*np.pi/180./60., proj="car")
 
@@ -42,16 +42,16 @@ shape,wcs = enmap.rect_geometry(width_arcmin=wdeg*60.,px_res_arcmin=pix,height_a
 
 
 #mg = enmap.MapGen(shape,wcs,ps)
-taper,w2 = fmaps.get_taper(shape,taper_percent = 18.0,pad_percent = 4.0,weight=None)
+taper,sw2 = fmaps.get_taper(shape,taper_percent = 18.0,pad_percent = 4.0,weight=None)
 
-pxover = 0.5
+pxover = 1.0 #0.5
     
 for k,index in enumerate(my_tasks):
 
-    fullsky = curvedsky.rand_map(fshape, fwcs, ps, lmax=lmax)
+    fullsky = curvedsky.rand_map(fshape, fwcs, ps, lmax=lmax,dtype=np.float32)
 
 
-    map_south = fullsky.submap(enmap.box(shape,wcs))#*taper
+    map_south = fullsky.submap(enmap.box(shape,wcs))*taper
 
 
     if k==0:
@@ -87,16 +87,18 @@ for k,index in enumerate(my_tasks):
     map_test *= rect_taper
     #map_test = tmg.get_map(seed=index+int(1e6))*rottap
 
+    alm = curvedsky.map2alm(map_south,lmax=lmax)
+    cls = hp.alm2cl(alm)/sw2
+    del alm
 
     if rank==0 and k==0:
         prefix = io.dout_dir+"Oct28_"
-        io.highResPlot2d(map_south,prefix+"smap.png")
+        # io.highResPlot2d(map_south,prefix+"smap.png")
         del map_south
-        io.highResPlot2d(rotmap,prefix+"rotmap.png")
-        io.highResPlot2d(rottap,prefix+"taper.png")
-        io.highResPlot2d(map_test,prefix+"testmap.png")
+        # io.highResPlot2d(rotmap,prefix+"rotmap.png")
+        # io.highResPlot2d(rottap,prefix+"taper.png")
+        # io.highResPlot2d(map_test,prefix+"testmap.png")
 
-    sys.exit()
 
     p2d_rot,_,_ = fc.power2d(rotmap)/w2
     p2d,_,_ = rfc.power2d(map_test)/rw2
@@ -105,6 +107,7 @@ for k,index in enumerate(my_tasks):
     cents,crot = binner.bin(p2d_rot)
     cents,ctest = rbinner.bin(p2d)
 
+    mpibox.add_to_stack("sht",cls)
     mpibox.add_to_stack("crot",crot)
     mpibox.add_to_stack("ctest",ctest)
 
@@ -118,12 +121,27 @@ if rank==0:
 
     crot = mpibox.stacks["crot"]
     ctest = mpibox.stacks["ctest"]
+    shts = mpibox.stacks["sht"]
+    ells = np.arange(0,shts.size,1)
+    sht_theory = pfunc(ells)
+
+    
 
     pl = io.Plotter()
+    pl.add(ells,(shts-sht_theory)/sht_theory,label="south sht vs theory",alpha=0.3)
     pl.add(cents,(crot-ctest)/ctest,label="rot vs test")
     pl.add(cents,(crot-ctheory)/ctheory,label="rot vs theory")
     pl.add(cents,(ctest-ctheory)/ctheory,label="test vs theory")
     pl.hline()
     pl.legendOn()
+    pl._ax.set_xlim(0,5000)
     pl.done(prefix+"cldiff.png")
+
+
+    pl = io.Plotter(scaleY='log')
+    pl.add(ells,(shts*ells**2.))
+    pl.add(ells,(sht_theory*ells**2.))
+    pl.legendOn()
+    pl._ax.set_xlim(0,5000)
+    pl.done(prefix+"clsht.png")
 
