@@ -10,12 +10,12 @@ from orphics.theory.cosmology import Cosmology
 def plot_stats(cents,cont,ells,ells_pp,theory):
     if len(cont['tt'])<3: return
     
-    print "Calculating stats..."
+    print("Calculating stats...")
     st = {}
     for spec in ['tt','ee','te','bb','pp']:
         st[spec] = stats.getStats(cont[spec])
 
-    print "Plotting..."
+    print("Plotting...")
     pl = io.Plotter(scaleY='log',scaleX='log')
     for spec in ['tt','ee','bb']:
         pl.add(ells,theory[spec]*ells**2.,lw=2)
@@ -68,7 +68,7 @@ for i in range(Nsims):
 
     imap = enmap.read_map(map_name(i)) 
     phi = enmap.read_map(phi_name(i)) 
-    print "=========== Loaded ", i,"==========="
+    print(("=========== Loaded ", i,"==========="))
 
     if i==0:
         Ny,Nx = imap.shape[-2:]
@@ -90,10 +90,10 @@ for i in range(Nsims):
     if i==0: io.quickPlot2d(phi,os.environ['WORK']+"/web/plots/phimap.png")
 
 
-    print "IQU to TEB..."
+    print("IQU to TEB...")
     teb = enmap.ifft(enmap.map2harm(imap)).real
 
-    print "Powers..."
+    print("Powers...")
 
     t = teb[0,:,:]
     e = teb[1,:,:]
@@ -105,7 +105,7 @@ for i in range(Nsims):
     spec2d['te'] = np.nan_to_num(fmaps.get_simple_power_enmap(t,enmap2=e))/w2
     spec2d['pp'] = np.nan_to_num(fmaps.get_simple_power_enmap(phi))/w2*(modlmap*(modlmap+1.))**2./4.
 
-    print "Binning..."
+    print("Binning...")
     
     for spec in ['tt','ee','te','bb','pp']:
         cents, clww = binner.bin(spec2d[spec])

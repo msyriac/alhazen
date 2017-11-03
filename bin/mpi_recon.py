@@ -14,7 +14,7 @@ with io.nostdout():
         from enlib import enmap, lensing, resample
 from alhazen.quadraticEstimator import Estimator
 import alhazen.lensTools as lt
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from szar.counts import ClusterCosmology
 import enlib.fft as fftfast
 import argparse
@@ -134,7 +134,7 @@ else:
             Ntotcs.append(comm.recv(source=i,tag=88))
         Nmin = min(min(Ntotks,Ntotcs))
     Nmin = comm.bcast(Nmin,root=0)
-    if rank==0: print "Nmin : ", Nmin
+    if rank==0: print(("Nmin : ", Nmin))
     cmb_glob = cmb_glob[:Nmin]
     kappa_glob = kappa_glob[:Nmin]
     Ntot = Nmin
@@ -145,7 +145,7 @@ num_each,each_tasks = mpi_distribute(Ntot,numcores)
 # Initialize a container for stats and stacks
 mpibox = MPIStats(comm,num_each,tag_start=333)
 
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 
 # What am I doing?
 my_tasks = each_tasks[rank]
@@ -228,7 +228,7 @@ w3 = np.mean(taper**3.)
 w4 = np.mean(taper**4.)
 if rank==0:
     io.quickPlot2d(taper,out_dir+"taper.png")
-    print "w2 : " , w2
+    print(("w2 : " , w2))
 
 pixratio = analysis_resolution/Config.getfloat(sim_section,"pixel_arcmin")
 px_dat = analysis_resolution
@@ -253,7 +253,7 @@ for index,kappa_file,cmb_file in zip(my_tasks,my_kappa_files,my_cmb_files):
     assert kappa_file[-9:]==cmb_file[-9:]
     
     k += 1
-    if rank==0: print "Rank ", rank , " doing cutout ", index
+    if rank==0: print(("Rank ", rank , " doing cutout ", index))
     if not(simulated_kappa):
         if liu:
             kappa = liucon.get_kappa(index+1)
@@ -305,19 +305,19 @@ for index,kappa_file,cmb_file in zip(my_tasks,my_kappa_files,my_cmb_files):
         else:
             cmb = np.load(cmb_file) / 1.072480e+09
     else:
-        if rank==0: print "Generating unlensed CMB..."
+        if rank==0: print("Generating unlensed CMB...")
         unlensed = parray_sim.get_unlensed_cmb(seed=index)
         if random and simulated_kappa:
             lensed = unlensed
         else:
-            if rank==0: print "Lensing..."
+            if rank==0: print("Lensing...")
             #lensed = lensing.lens_map_flat_pix(unlensed.copy(), alpha_pix.copy(),order=lens_order)
             lensed = lensing.lens_map(unlensed.copy(), grad_phi, order=lens_order, mode="spline", border="cyclic", trans=False, deriv=False, h=1e-7)
-        if rank==0: print "Downsampling..."
+        if rank==0: print("Downsampling...")
         cmb = lensed if abs(pixratio-1.)<1.e-3 else resample.resample_fft(lensed,shape_dat)
         cmb = enmap.ndmap(cmb,wcs_dat)
         if not(cluster):
-            if rank==0: print "Calculating powers for diagnostics..."
+            if rank==0: print("Calculating powers for diagnostics...")
             #pxwindow =  fmaps.pixel_window_function(modlmap_dat,angmap_dat,px_dat,px_dat)
             hutt2d = fmaps.get_simple_power_enmap(unlensed*taper)/w2
             hltt2d = fmaps.get_simple_power_enmap(lensed*taper)/w2
@@ -333,7 +333,7 @@ for index,kappa_file,cmb_file in zip(my_tasks,my_kappa_files,my_cmb_files):
             mpibox.add_to_stats("hlcl",hltt)
                 
 
-    if rank==0: print "Filtering and binning input kappa..."
+    if rank==0: print("Filtering and binning input kappa...")
     #if not(sigurd):
     kappa = enmap.ndmap(fmaps.filter_map(kappa,kappa*0.+1.,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)
     if cluster:
@@ -343,7 +343,7 @@ for index,kappa_file,cmb_file in zip(my_tasks,my_kappa_files,my_cmb_files):
     mpibox.add_to_stack("input_kappa2d",kappa)
     
 
-    if rank==0: print "Reconstructing..."
+    if rank==0: print("Reconstructing...")
     measured = cmb * taper
     fkmaps = fftfast.fft(measured,axes=[-2,-1])
     qest.updateTEB_X(fkmaps,alreadyFTed=True)
@@ -362,9 +362,9 @@ for index,kappa_file,cmb_file in zip(my_tasks,my_kappa_files,my_cmb_files):
 
 
         if True: #not(sigurd):
-            if rank==0: print "Downsampling input kappa..."
+            if rank==0: print("Downsampling input kappa...")
             downk = enmap.ndmap(kappa  if abs(pixratio-1.)<1.e-3 else resample.resample_fft(kappa,shape_dat),wcs_dat)
-            if rank==0: print "Calculating kappa powers and binning..."
+            if rank==0: print("Calculating kappa powers and binning...")
 
         
 

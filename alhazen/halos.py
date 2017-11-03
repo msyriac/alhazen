@@ -7,9 +7,8 @@ from scipy.interpolate import splrep,splev,interp1d
 from scipy.fftpack import fftshift,ifftshift,fftfreq
 from scipy.integrate import simps
 import orphics.tools.io as io
-import flipper.liteMap as lm
 
-import flipper.fft as fftfast
+import enlib.fft as fftfast
 
 # g(x) = g(theta/thetaS) HuDeDeoVale 2007
 gnfw = lambda x: np.piecewise(x, [x>1., x<1., x==1.], \
@@ -71,6 +70,7 @@ def predictSN(polComb,noiseTY,noisePY,N,MM):
 def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overdensity=500.,critical=True,atClusterZ=True,arcStamp=100.,pxStamp=0.05,saveId=None,verbose=False,rayleighSigmaArcmin=None,returnKappa=False,winAtLens=None):
     if rayleighSigmaArcmin is not None: assert rayleighSigmaArcmin>=pxStamp
     M = 10.**log10Moverh
+    import flipper.liteMap as lm
 
     lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
     kellmin = 2.*np.pi/arcStamp*np.pi/60./180.
@@ -104,7 +104,7 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     # print "estimated integral " , kInt[modRMap<fiveth500].mean()*np.pi*fiveth500**2.
     k500 = simps(simps(kInt, yy), xx)
     
-    if verbose: print "integral of kappa inside disc ",k500
+    if verbose: print(("integral of kappa inside disc ",k500))
     kappaReal[modRMap>fiveth500] = 0. #### !!!!!!!!! Might not be necessary!
     # if cmb: print z,fiveth500*180.*60./np.pi
     Ukappa = kappaReal/k500
@@ -178,7 +178,7 @@ def NFWMatchedFilterSN(clusterCosmology,log10Moverh,c,z,ells,Nls,kellmax,overden
     varinv = filter.sum()
     std = np.sqrt(1./varinv)
     sn = k500/std
-    if verbose: print sn
+    if verbose: print(sn)
 
     if saveId is not None:
         np.savetxt("data/"+saveId+"_m"+str(log10Moverh)+"_z"+str(z)+".txt",np.array([log10Moverh,z,1./sn]))
@@ -254,6 +254,7 @@ def getDLnMCMB(ells,Nls,clusterCosmology,log10Moverh,z,concentration,arcStamp,px
 
     stepfilter_ellmax = max(ells)
     
+    import flipper.liteMap as lm
 
     lmap = lm.makeEmptyCEATemplate(raSizeDeg=arcStamp/60., decSizeDeg=arcStamp/60.,pixScaleXarcmin=pxStamp,pixScaleYarcmin=pxStamp)
 
@@ -313,8 +314,8 @@ def getDLnMCMB(ells,Nls,clusterCosmology,log10Moverh,z,concentration,arcStamp,px
 
     sn = ampBest/ampErr/np.sqrt(numSims)
     snAll = ampBest/ampErr
-    if snAll<5.: print "WARNING: ", saveId, " run with mass ", M , " and redshift ", z , " has overall S/N<5. \
-    Consider re-running with a greater numSims, otherwise estimate of per Ncluster S/N will be noisy."
+    if snAll<5.: print(("WARNING: ", saveId, " run with mass ", M , " and redshift ", z , " has overall S/N<5. \
+    Consider re-running with a greater numSims, otherwise estimate of per Ncluster S/N will be noisy."))
 
     if saveId is not None:
         Fit = np.array([np.exp(-0.5*(x-ampBest)**2./ampErr**2.) for x in amplitudeRange])

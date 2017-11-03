@@ -15,7 +15,7 @@ with io.nostdout():
         from enlib import enmap, lensing, resample
 from alhazen.quadraticEstimator import Estimator
 import alhazen.lensTools as lt
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from szar.counts import ClusterCosmology
 import enlib.fft as fftfast
 import argparse
@@ -63,7 +63,7 @@ num_each,each_tasks = mpi_distribute(Ntot,numcores)
 # Initialize a container for stats and stacks
 mpibox = MPIStats(comm,num_each,tag_start=333)
 
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 
 # What am I doing?
 my_tasks = each_tasks[rank]
@@ -88,7 +88,7 @@ lxmap_sim,lymap_sim,modlmap_sim,angmap_sim,lx_sim,ly_sim = fmaps.get_ft_attribut
 
 
 # === COSMOLOGY ===
-if rank==0: print "Cosmology..."
+if rank==0: print("Cosmology...")
 theory, cc, lmax = aio.theory_from_config(Config,cosmology_section,dimensionless=False)
 #assert cc is not None
 parray_dat.add_theory(cc,theory,lmax,orphics_is_dimensionless=False)
@@ -118,15 +118,15 @@ for index in my_tasks:
         grad_phi = enmap.grad(phi)
             
 
-    if rank==0: print "Generating unlensed CMB for ", k, "..."
+    if rank==0: print(("Generating unlensed CMB for ", k, "..."))
     unlensed = parray_sim.get_unlensed_cmb(seed=index)
-    if rank==0: print "Lensing..."
+    if rank==0: print("Lensing...")
     lensed = unlensed if nolens else lensing.lens_map(unlensed.copy(), grad_phi, order=lens_order, mode="spline", border="cyclic", trans=False, deriv=False, h=1e-7)
     #lensed = lensing.lens_map_flat(unlensed.copy(), phi, order=lens_order)
-    if rank==0: print "Downsampling..."
+    if rank==0: print("Downsampling...")
     cmb = lensed if abs(pixratio-1.)<1.e-3 else resample.resample_fft(lensed,shape_dat)
     cmb = enmap.ndmap(cmb,wcs_dat)
-    if rank==0: print "Adding noise..."
+    if rank==0: print("Adding noise...")
     flensed = fftfast.fft(cmb,axes=[-2,-1])
     flensed *= parray_dat.lbeam
     lensedt = fftfast.ifft(flensed,axes=[-2,-1],normalize=True).real
@@ -136,7 +136,7 @@ for index in my_tasks:
         
 
     
-    if rank==0: print "Filtering and binning input kappa..."
+    if rank==0: print("Filtering and binning input kappa...")
     dkappa = enmap.ndmap(fmaps.filter_map(kappa,kappa*0.+1.,parray_sim.modlmap,lowPass=kellmax,highPass=kellmin),wcs_sim)
     dkappa = dkappa if abs(pixratio-1.)<1.e-3 else enmap.ndmap(resample.resample_fft(dkappa,shape_dat),wcs_dat)
     cents,kappa1d = binner_dat.bin(dkappa)
@@ -144,7 +144,7 @@ for index in my_tasks:
     mpibox.add_to_stack("input_kappa2d",dkappa)
     
 
-    if rank==0: print "Reconstructing..."
+    if rank==0: print("Reconstructing...")
     measured = enmap.ndmap(cmb,wcs_dat)
     fkmaps = fftfast.fft(measured,axes=[-2,-1])
     qest.updateTEB_X(fkmaps,alreadyFTed=True)
@@ -181,7 +181,7 @@ for index in my_tasks:
 
         ipower = fmaps.get_simple_power_enmap(enmap1=delensed)
         lcents, ccltt = lbinner_dat.bin(ipower)
-        if rank==0: print np.sum(ccltt*lcents*np.diff(lbin_edges))
+        if rank==0: print((np.sum(ccltt*lcents*np.diff(lbin_edges))))
         pld.add(lcents,ccltt*lcents**2.,color="r",alpha=(t+1.)/Niters)
 
         
@@ -213,7 +213,7 @@ for index in my_tasks:
     pld._ax.set_ylim(1e-2,1e5)
     pld.done(out_dir+"delens_powers.png")
 
-    if rank==0 and index==0: print "Delensing completely and reconstructing..."
+    if rank==0 and index==0: print("Delensing completely and reconstructing...")
     dphi, dfphi = lt.kappa_to_phi(dkappa,parray_dat.modlmap,return_fphi=True)
     dgrad_phi = enmap.grad(dphi)
     delensed = lensing.delens_map(measured.copy(), dgrad_phi, nstep=0, order=lens_order)
@@ -357,14 +357,14 @@ if rank==0:
     
     chisq = np.dot(np.dot(mean,siginv),mean)
     sigma = np.sqrt(chisq)
-    print "S/N null : ",sigma
+    print(("S/N null : ",sigma))
 
     sigma_width = cluster_mass/sigma
     range_sigma = 10.
     massmid = cluster_mass
     left = max(massmid-range_sigma*sigma_width,0.)
     right = massmid+range_sigma*sigma_width
-    print left,massmid,right
+    print((left,massmid,right))
     
     # mass_range = np.linspace(left,right,100)
     # Likes = []

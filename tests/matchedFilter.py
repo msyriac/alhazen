@@ -2,7 +2,7 @@ from orphics.tools.io import Plotter
 import flipper.liteMap as lm
 from szlib.szcounts import ClusterCosmology
 from orphics.tools.io import dictFromSection,listFromConfig
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from alhazen.halos import NFWMatchedFilterSN
 import numpy as np
 from orphics.tools.cmb import loadTheorySpectraFromCAMB
@@ -88,5 +88,5 @@ kellmax = 8000
 
 sn,k,std = NFWMatchedFilterSN(cc,Mexp,c,z,ells=ls,Nls=Nls,kellmax=kellmax,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 
-print sn*np.sqrt(1000.)
+print((sn*np.sqrt(1000.)))
 

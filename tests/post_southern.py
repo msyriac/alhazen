@@ -1,4 +1,4 @@
-import cPickle as pickle
+import pickle as pickle
 import orphics.tools.stats as stats
 import orphics.tools.io as io
 import os,sys,glob
@@ -22,7 +22,7 @@ pl = io.Plotter(scaleY="log")
 pl.add(ells,clkktheory,color="k",lw=3)
 
 for k in range(50):
-    print k
+    print(k)
 
     try:
         exp_name = "south"
@@ -42,7 +42,7 @@ for k in range(50):
 
         pl.add(cents_pwr,en0subbed,alpha=0.4,ls="--")
     except:
-        print "skipping"
+        print("skipping")
         continue
     
 

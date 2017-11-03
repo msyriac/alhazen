@@ -18,7 +18,7 @@ Ntot = 256
 
 num_each,each_tasks = mpi_distribute(Ntot,numcores)
 mpibox = MPIStats(comm,num_each,tag_start=333)
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 my_tasks = each_tasks[rank]
 
 nside = 4096
@@ -68,7 +68,7 @@ for k,i in enumerate(my_tasks):
     mpibox.add_to_stack("full",cls)
     mpibox.add_to_stack("cut",p1d)
 
-    if rank==0: print k+1, " / ", len(my_tasks), " done."
+    if rank==0: print((k+1, " / ", len(my_tasks), " done."))
 
 
 mpibox.get_stacks()

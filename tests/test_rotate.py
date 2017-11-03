@@ -28,8 +28,8 @@ with bench.show("Rotation init"):
 with bench.show("Rotation init"):
     rotmap = r.rotate(map_south)
 
-print map_south.shape
-print rotmap.shape
+print((map_south.shape))
+print((rotmap.shape))
     
 io.highResPlot2d(map_south,"smap.png")
 io.highResPlot2d(rotmap,"rotmap.png")

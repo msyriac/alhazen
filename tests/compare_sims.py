@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 import matplotlib
 matplotlib.use('Agg')
 from enlib import enmap, curvedsky, lensing

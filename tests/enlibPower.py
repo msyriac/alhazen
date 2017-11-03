@@ -20,7 +20,7 @@ import orphics.tools.stats as stats
 out_dir = os.environ['WWW']
 
 ps = powspec.read_spectrum("data/cl_lensed.dat")
-print ps.shape
+print((ps.shape))
 
 TCMB = 2.7255e6
 cc = Cosmology(lmax=3000,pickling=True)
@@ -32,7 +32,7 @@ ccee = cc.theory.lCl('EE',ells)*TCMB**2.
 ccbb = cc.theory.lCl('BB',ells)*TCMB**2.
 
 
-enells = np.asarray(range(ps.shape[2]))[2:]
+enells = np.asarray(list(range(ps.shape[2])))[2:]
 entt = ps[0,0,2:]
 ente = ps[0,1,2:]
 enet = ps[1,0,2:]

@@ -1,4 +1,4 @@
-print "starting imports..."
+print("starting imports...")
 import numpy as np
 from enlib import enmap,resample,lensing
 import orphics.analysis.flatMaps as fmaps
@@ -8,9 +8,9 @@ import orphics.tools.io as io
 import alhazen.lensTools as lt
 from mpi4py import MPI
 import sys,os
-import cPickle as pickle
+import pickle as pickle
 import enlib.fft as fftfast
-print "finished imports..."
+print("finished imports...")
 
 def nfwkappa(massOverh):
     sgn = 1. if massOverh>0. else -1.
@@ -81,7 +81,7 @@ for k,M in enumerate(mrange):
 
     
     s,logdet = np.linalg.slogdet(cov)
-    print k,M,s,logdet,np.linalg.cond(cov)
+    print((k,M,s,logdet,np.linalg.cond(cov)))
     assert s>0
         
     Ms.append(  M )
@@ -114,7 +114,7 @@ for i in range(N):
     nlnlikes = -0.5*np.array(lnlikes)
     totlikes += nlnlikes.copy()
     if i%100==0:
-        print i
+        print(i)
     
 pl = io.Plotter()
 
@@ -133,7 +133,7 @@ sigwidth = np.sqrt(1./quad/2.)*np.sqrt(N/Nfor)
 
 
 mmax = mrange[np.argmax(totlikes)]
-print mmax,sigwidth
+print((mmax,sigwidth))
 
 pl.add(mrange,totlikes,marker="x")
 pl.add(mfinerange,pfunc(mfinerange))
@@ -148,9 +148,9 @@ likes = np.exp(totlikes)
 likes /= likes.sum()
 pl.add(mrange,likes/likes.max(),marker="x",alpha=0.2)
 
-print "S/N : ",mmax/sigwidth
-print "Bias % : ",(mmax-trueM)*100./trueM
-print "Bias sigma : ",(mmax-trueM)/sigwidth
+print(("S/N : ",mmax/sigwidth))
+print(("Bias % : ",(mmax-trueM)*100./trueM))
+print(("Bias sigma : ",(mmax-trueM)/sigwidth))
 
 
 fitlike = np.exp(-(mfinerange-mmax)**2./2./sigwidth**2.)

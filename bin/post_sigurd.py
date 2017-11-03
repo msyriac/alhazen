@@ -11,7 +11,7 @@ inputkk = {}
 cross = {}
 n0 = {}
 for region in ['equator','south']:
-    print region
+    print(region)
     save_dir = "/gpfs01/astro/workarea/msyriac/data/depot/distortions/distspectrav4mfsub_"+region+"_"
     autokk[region] = np.loadtxt(save_dir+"autokk.txt",unpack=True)
     inputkk[region] = np.loadtxt(save_dir+"ikk.txt",unpack=True)

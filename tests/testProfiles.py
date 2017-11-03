@@ -1,6 +1,6 @@
 import numpy as np
 from szlib.szcounts import ClusterCosmology
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 import alhazen.halos as halos
 from scipy.interpolate import interp1d

@@ -10,7 +10,7 @@ from alhazen.quadraticEstimator import NlGenerator,getMax
 import orphics.analysis.flatMaps as fmaps 
 import flipper.liteMap as lm
 from orphics.tools.stats import timeit, bin2D,coreBinner
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from szlib.szcounts import ClusterCosmology
 
 cosmologyName = 'LACosmology' #Planck15' 
@@ -112,7 +112,7 @@ for polComb in ['TT','TE','EE','EB','TB']:
     LF = LensForecast()
     LF.loadKK(kfrange,Clkk,ls,Nls)#kellrange,nlnow)
     sn,errs = LF.sn(kellrange,fsky,"kk")
-    print polComb, sn
+    print((polComb, sn))
 
 
 pl.add(kfrange,4.*Clkk/2./np.pi)
@@ -123,8 +123,8 @@ pl.legendOn(loc='lower right',labsize=12)
 pl._ax.set_xlim(kellrange.min(),kellrange.max())
 pl.done("output/projnl.png")
 
-print ls.shape
-print Nlmv.shape
+print((ls.shape))
+print((Nlmv.shape))
 np.savetxt(expX+expY+"_nlmv.txt",np.vstack((np.array(kellrange),np.array(Nlmv))).transpose())
 sys.exit()
 
@@ -139,8 +139,8 @@ Clkk = theory.gCl("kk",snrange)
 LF = LensForecast()
 LF.loadKK(snrange,Clkk,snrange,Nlmvfunc(snrange))
 sn,errs = LF.sn(snrange,fsky,"kk")
-print errs
-print "mv", sn
+print(errs)
+print(("mv", sn))
 
 Clkk = theory.gCl("kk",kfrange)
 b = coreBinner(snrange)
@@ -179,8 +179,8 @@ atClusterZ = False
 from alhazen.halos import NFWMatchedFilterSN
 sn = NFWMatchedFilterSN(cc,Mexp,c,z,ells=ls,Nls=Nls,kellmax=kellmax,overdensity=overdensity,critical=critical,atClusterZ=atClusterZ)
 
-print 100./(sn*np.sqrt(N)), " %"
-print "sn " , sn*np.sqrt(N)
+print((100./(sn*np.sqrt(N)), " %"))
+print(("sn " , sn*np.sqrt(N)))
 
 from orphics.theory.limber import XCorrIntegrator
 
@@ -202,7 +202,7 @@ LF.loadKK(snrange,Clkk,ls,Nls)#kellrange,nlnow)
 LF.loadKG(snrange,Clkg)#kellrange,nlnow)
 LF.loadGG(snrange,Clgg,ngal=ngal)#kellrange,nlnow)
 sn,errs = LF.sn(snrange,fsky,"kg")
-print errs
+print(errs)
 
 
 frange = np.arange(40,2000,1)
@@ -217,7 +217,7 @@ cents,clkgbinned = b.binned(frange,Clkg)
 from scipy.interpolate import interp1d
 clkgint = interp1d(frange,Clkg)
 
-print "kg S/N " , sn
+print(("kg S/N " , sn))
 pl = Plotter(labelX="$L$",labelY="$LC_L$")
 pl.add(frange,frange*Clkg)
 pl.addErr(cents,clkgint(cents)*cents,yerr=np.array(errs)*cents,marker="o")
@@ -247,8 +247,8 @@ LF.loadKK(snrange,Clkk,ls,Nls)#kellrange,nlnow)
 LF.loadKS(snrange,Clks)#kellrange,nlnow)
 LF.loadSS(snrange,Clss,ngal=ngal)#kellrange,nlnow)
 sn,errs = LF.sn(snrange,fsky,"ks")
-print errs
-print "ks ", sn
+print(errs)
+print(("ks ", sn))
 
 Clsg = xint.getCl("hsc","cmass")
 
@@ -258,6 +258,6 @@ LF.loadSS(snrange,Clss,ngal=ngal)#kellrange,nlnow)
 LF.loadSG(snrange,Clsg)#kellrange,nlnow)
 LF.loadGG(snrange,Clgg,ngal=ngalF)#kellrange,nlnow)
 sn,errs = LF.sn(snrange,fsky,"sg")
-print errs
-print "sg ", sn
+print(errs)
+print(("sg ", sn))
 

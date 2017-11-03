@@ -1,17 +1,17 @@
-print "Importing modules..."
+print("Importing modules...")
 import matplotlib
 matplotlib.use('Agg')
 from enlib import enmap,utils,lensing,powspec
 import numpy as np
 from alhazen.halos import NFWkappa
 from alhazen.lensTools import alphaMaker
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 from szlib.szcounts import ClusterCosmology
 from orphics.tools.stats import bin2D
 from szlib.sims import BattagliaSims
 import sys
-print "Done importing modules..."
+print("Done importing modules...")
 
 def getKappaSZ(bSims,snap,massIndex,px,thetaMapshape):
     b = bSims
@@ -19,7 +19,7 @@ def getKappaSZ(bSims,snap,massIndex,px,thetaMapshape):
     maps, z, kappaSimDat, szMapuKDat, projectedM500, trueM500, trueR500, pxInRad, pxInRad = b.getMaps(snap,massIndex,freqGHz=150.)
     pxIn = pxInRad * 180.*60./np.pi
     hwidth = PIX*pxIn/2.
-    print "At redshift ", z , " stamp is ", hwidth ," arcminutes wide."
+    print(("At redshift ", z , " stamp is ", hwidth ," arcminutes wide."))
     
     # input pixelization
     shapeSim, wcsSim = enmap.geometry(pos=[[-hwidth*arcmin,-hwidth*arcmin],[hwidth*arcmin,hwidth*arcmin]], res=pxIn*arcmin, proj="car")
@@ -31,8 +31,8 @@ def getKappaSZ(bSims,snap,massIndex,px,thetaMapshape):
     kappaMap = enmap.project(kappaSim,shapeOut,wcsOut)
     szMap = enmap.project(szMapuK,shapeOut,wcsOut)
 
-    print thetaMapshape
-    print szMap.shape
+    print(thetaMapshape)
+    print((szMap.shape))
 
     if szMap.shape[0]>thetaMapshape[0]:
         kappaMap = enmap.project(kappaSim,thetaMapshape,wcsOut)
@@ -189,7 +189,7 @@ endIndex = (jobIndex+1)*jobNum
 
 
 for i in range(startIndex,endIndex):
-    print i
+    print(i)
     map = enmap.rand_map(shape, wcs, ps)/TCMB
 
 
@@ -200,7 +200,7 @@ for i in range(startIndex,endIndex):
     a = alphaMaker(thetaMap)
     alpha = a.kappaToAlpha(inputKappaMap,test=False)
     alphamod = 180.*60.*np.sum(alpha**2,0)**0.5/np.pi
-    print "alphaint ", alphamod[thetaMap*60.*180./np.pi<10.].mean()
+    print(("alphaint ", alphamod[thetaMap*60.*180./np.pi<10.].mean()))
     pos = thetaMap.posmap() + alpha
     pix = thetaMap.sky2pix(pos, safe=False)
 
@@ -220,7 +220,7 @@ for i in range(startIndex,endIndex):
     fotX = enmap.fft(lensedMapX,normalize=False)
     fotY = enmap.fft(lensedMapY,normalize=False)
 
-    print "Reconstructing" , i , " ..."
+    print(("Reconstructing" , i , " ..."))
     qest.updateTEB_X(fotX,alreadyFTed=True)
     qest.updateTEB_Y(fotY,alreadyFTed=True)
     kappa = enmap.samewcs(qest.getKappa(polCombList[0]).real,thetaMap)

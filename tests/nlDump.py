@@ -35,7 +35,7 @@ px = 0.5
 dell = 10
 theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
 lmap = lm.makeEmptyCEATemplate(raSizeDeg=deg, decSizeDeg=deg,pixScaleXarcmin=px,pixScaleYarcmin=px)
-print lmap.data.shape
+print((lmap.data.shape))
 
 i=0
 for gradCut in [10000,2000]:
@@ -58,7 +58,7 @@ for gradCut in [10000,2000]:
 
                     kmax = getMax(polComb,tellmaxY,pellmaxY)
                     i+=1
-                    print i,tellmaxY,pellmaxY,kmax,"delens:",delensTolerance
+                    print((i,tellmaxY,pellmaxY,kmax,"delens:",delensTolerance))
 
                     bin_edges = np.arange(kmin,kmax,dell)+dell
                     myNls.updateBins(bin_edges)

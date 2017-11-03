@@ -7,7 +7,7 @@ def getCatalogRADecsPlanck(fitsLoc='/astro/astronfs01/workarea/msyriac/PlanckClu
 
 
     cols = hdulist[1].columns
-    print cols
+    print(cols)
     tbdata = hdulist[1].data
 
     ras = tbdata.field('RA')
@@ -38,7 +38,7 @@ def getCatalogRADecsRedmapper(fitsLoc='/astro/astronfs01/workarea/msyriac/Planck
 
 
     cols = hdulist[1].columns
-    print cols
+    print(cols)
     tbdata = hdulist[1].data
 
     ras = tbdata.field('RA')

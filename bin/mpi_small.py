@@ -14,7 +14,7 @@ with io.nostdout():
         from enlib import enmap, lensing, resample
 from alhazen.quadraticEstimator import Estimator
 import alhazen.lensTools as lt
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from szar.counts import ClusterCosmology
 import enlib.fft as fftfast
 import argparse
@@ -55,7 +55,7 @@ num_each,each_tasks = mpi_distribute(Ntot,numcores)
 # Initialize a container for stats and stacks
 mpibox = MPIStats(comm,num_each,tag_start=333)
 
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 
 # What am I doing?
 my_tasks = each_tasks[rank]
@@ -135,9 +135,9 @@ for index in my_tasks:
     #alpha_pix = enmap.grad_pixf(fphi)
     grad_phi = enmap.grad(phi)
             
-    if rank==0: print "Generating unlensed CMB..."
+    if rank==0: print("Generating unlensed CMB...")
     unlensed = parray_sim.get_unlensed_cmb(seed=index)
-    if rank==0: print "Lensing..."
+    if rank==0: print("Lensing...")
     #lensed = lensing.lens_map_flat_pix(unlensed.copy(), alpha_pix.copy(),order=lens_order)
     lensed = lensing.lens_map(unlensed.copy(), grad_phi, order=lens_order, mode="spline", border="cyclic", trans=False, deriv=False, h=1e-7)
 
@@ -156,25 +156,25 @@ for index in my_tasks:
 
     
     # === ADD NOISE AFTER DOWNSAMPLE
-    if rank==0: print "Beam convolving..."
+    if rank==0: print("Beam convolving...")
     olensed = enmap.ndmap(lensed.copy() if abs(pixratio-1.)<1.e-3 else resample.resample_fft(lensed.copy(),shape_dat),wcs_dat)
     flensed = fftfast.fft(olensed,axes=[-2,-1])
     flensed *= parray_dat.lbeam
     lensed = fftfast.ifft(flensed,axes=[-2,-1],normalize=True).real
-    if rank==0: print "Adding noise..."    
+    if rank==0: print("Adding noise...")    
     noise = parray_dat.get_noise_sim(seed=index+20000)
 
     lcents, noise1d = lbinner_dat.bin(fmaps.get_simple_power_enmap(noise))
     mpibox.add_to_stats('noisett',noise1d)        
 
     lensed += noise    
-    if rank==0: print "Downsampling..."
+    if rank==0: print("Downsampling...")
     cmb = lensed
 
     
     
     cmb = enmap.ndmap(cmb,wcs_dat)
-    if rank==0: print "Calculating powers for diagnostics..."
+    if rank==0: print("Calculating powers for diagnostics...")
     utt2d = fmaps.get_simple_power_enmap(enmap.ndmap(unlensed if abs(pixratio-1.)<1.e-3 else resample.resample_fft(unlensed,shape_dat),wcs_dat))
     ltt2d = fmaps.get_simple_power_enmap(olensed)
     ccents,utt = lbinner_dat.bin(utt2d)
@@ -183,7 +183,7 @@ for index in my_tasks:
     mpibox.add_to_stats("lcl",ltt)
             
 
-    if rank==0: print "Reconstructing..."
+    if rank==0: print("Reconstructing...")
     measured = cmb
     fkmaps = fftfast.fft(measured,axes=[-2,-1])
     qest.updateTEB_X(fkmaps,alreadyFTed=True)
@@ -209,9 +209,9 @@ for index in my_tasks:
 
 
     
-    if rank==0: print "Downsampling input kappa..."
+    if rank==0: print("Downsampling input kappa...")
     downk = enmap.ndmap(kappa  if abs(pixratio-1.)<1.e-3 else resample.resample_fft(kappa,shape_dat),wcs_dat)
-    if rank==0: print "Calculating kappa powers and binning..."
+    if rank==0: print("Calculating kappa powers and binning...")
     cpower = fmaps.get_simple_power_enmap(enmap1=kappa_recon,enmap2=downk)
     ipower = fmaps.get_simple_power_enmap(enmap1=downk)
     lcents, cclkk = lbinner_dat.bin(cpower)
@@ -245,9 +245,9 @@ if rank==0:
     nstats = mpibox.stats['superdumbs']
 
     area = unlensed.area()*(180./np.pi)**2.
-    print "area: ", area, " sq.deg."
+    print(("area: ", area, " sq.deg."))
     fsky = area/41250.
-    print "fsky: ",fsky
+    print(("fsky: ",fsky))
     diag = np.sqrt(np.diagonal(astats['cov'])*lcents*np.diff(lbin_edges)*fsky)
     diagr = np.sqrt(np.diagonal(rstats['cov'])*lcents*np.diff(lbin_edges)*fsky)
 
@@ -281,7 +281,7 @@ if rank==0:
     np.save(out_dir+str(area)+"sqdeg_covmat_dl300.npy",rstats['cov'])
     np.save(out_dir+str(area)+"sqdeg_autocovmat_dl300.npy",astats['cov'])
     np.save(out_dir+str(area)+"sqdeg_lbin_edges_dl300.npy",lbin_edges)
-    import cPickle as pickle
+    import pickle as pickle
     pickle.dump((lcents,mpibox.stats['noisett']['mean']),open(out_dir+"noise_mpismall.pkl",'wb'))
 
     pl = io.Plotter()

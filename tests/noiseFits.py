@@ -10,7 +10,7 @@ from alhazen.quadraticEstimator import NlGenerator,getMax
 import orphics.analysis.flatMaps as fmaps 
 import flipper.liteMap as lm
 from orphics.tools.stats import timeit, bin2D
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 
 
 cosmologyName = 'Planck15' 

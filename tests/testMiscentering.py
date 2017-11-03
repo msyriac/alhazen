@@ -3,7 +3,7 @@ import flipper.liteMap as lm
 from szlib.szcounts import ClusterCosmology
 from orphics.tools.io import dictFromSection,listFromConfig
 import orphics.tools.io as io
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from alhazen.halos import NFWMatchedFilterSN
 import numpy as np
 from orphics.tools.cmb import loadTheorySpectraFromCAMB
@@ -79,7 +79,7 @@ outDir = "/gpfs01/astro/www/msyriac/plots/"
 for beam in beamrange:
     beamX = beam
     beamY = beam
-    print beam
+    print(beam)
     myNls.updateNoise(beamX,noiseTX,noisePX,tellmin,tellmax,pellmin,pellmax,beamY=beamY,noiseTY=noiseTY,noisePY=noisePY)
     ls,Nls = myNls.getNl(polComb=polComb,halo=halo)
 

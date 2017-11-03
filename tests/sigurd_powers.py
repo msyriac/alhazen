@@ -7,7 +7,7 @@ import orphics.tools.io as io
 import orphics.analysis.flatMaps as fmaps
 from enlib import enmap, lensing, resample
 import alhazen.lensTools as lt
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 import enlib.fft as fftfast
 import argparse
 from alhazen.quadraticEstimator import Estimator
@@ -65,12 +65,12 @@ num_each,each_tasks = mpi_distribute(Ntot,numcores)
 # Initialize a container for stats and stacks
 mpibox = MPIStats(comm,num_each,tag_start=333)
 
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 
 # What am I doing?
 my_tasks = each_tasks[rank]
 
-if rank==0: print "Reading config..."
+if rank==0: print("Reading config...")
 
 # Read config
 iniFile = "../halofg/input/cmb-config/recon.ini"
@@ -78,30 +78,30 @@ Config = SafeConfigParser()
 Config.optionxform=str
 Config.read(iniFile)
 
-if rank==0: print "Params..."
+if rank==0: print("Params...")
 
 pol = True
 shape_dat, wcs_dat = aio.enmap_from_config_section(Config,analysis_section,pol=pol)
 analysis_resolution =  np.min(enmap.extent(shape_dat,wcs_dat)/shape_dat[-2:])*60.*180./np.pi
 min_ell = fmaps.minimum_ell(shape_dat,wcs_dat)
-if rank==0: print "Ell bounds..."
+if rank==0: print("Ell bounds...")
 
-if rank==0: print "Patches data..."
+if rank==0: print("Patches data...")
 
 parray_dat = aio.patch_array_from_config(Config,expf_name,shape_dat,wcs_dat,dimensionless=False)
 
-if rank==0: print "Attributes..."
+if rank==0: print("Attributes...")
 
 lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape_dat,wcs_dat)
 
-if rank==0: print "Binners..."
+if rank==0: print("Binners...")
 
 kellmin = 200
 kellmax = 3000
 lbin_edges = np.arange(kellmin,kellmax,40)
 lbinner_dat = stats.bin2D(modlmap_dat,lbin_edges)
 
-if rank==0: print "Cosmology..."
+if rank==0: print("Cosmology...")
 
 # === COSMOLOGY ===
 theory, cc, lmax = aio.theory_from_config(Config,cosmology_section,dimensionless=False)
@@ -116,7 +116,7 @@ taper = fmaps.cosineWindow(Ny,Nx,lenApodY=int(taper_percent*min(Ny,Nx)/100.),len
 w2 = np.mean(taper**2.)
 if rank==0:
     io.quickPlot2d(taper,pout_dir+"taper.png")
-    print "w2 : " , w2
+    print(("w2 : " , w2))
 
 px_dat = analysis_resolution
 
@@ -128,7 +128,7 @@ k = -1
 for index in my_tasks:
     
     k += 1
-    if rank==0: print "Rank ", rank , " doing cutout ", index
+    if rank==0: print(("Rank ", rank , " doing cutout ", index))
     cmb = enmap.read_map(sigurd_cmb_file(index))
     cmb[0] = fmaps.filter_map(cmb[0]*taper,cmb.copy()[0]*0.+1.,cmb.modlmap(),lowPass=kellmax,highPass=kellmin,keep_mean=True)
 

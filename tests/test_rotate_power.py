@@ -16,7 +16,7 @@ numcores = comm.Get_size()
 Ntot = Nsims
 num_each,each_tasks = mpi_distribute(Ntot,numcores)
 mpibox = MPIStats(comm,num_each,tag_start=333)
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 my_tasks = each_tasks[rank]
 
 
@@ -111,7 +111,7 @@ for k,index in enumerate(my_tasks):
     mpibox.add_to_stack("crot",crot)
     mpibox.add_to_stack("ctest",ctest)
 
-    if rank==0: print "Done with ", k+1," / ",len(my_tasks)
+    if rank==0: print(("Done with ", k+1," / ",len(my_tasks)))
 
 mpibox.get_stacks()
 

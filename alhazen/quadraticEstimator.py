@@ -1,4 +1,4 @@
-from __future__ import division
+
 import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
 import orphics.analysis.flatMaps as fmaps 
@@ -11,7 +11,7 @@ from orphics.tools.stats import timeit, bin2D
 import alhazen.quadFunctions as qfuncs
 
 import time
-import cPickle as pickle
+import pickle as pickle
 
 
 
@@ -275,7 +275,7 @@ class QuadNorm(object):
         YY = Y+Y
 
         if self.verbose: 
-            print "Calculating norm for ", XY
+            print(("Calculating norm for ", XY))
 
             
         h=0.
@@ -609,7 +609,7 @@ class QuadNorm(object):
 
 
         else:
-            print "ERROR: Unrecognized polComb"
+            print("ERROR: Unrecognized polComb")
             sys.exit(1)    
         
                         
@@ -920,7 +920,7 @@ class NlGenerator(object):
         while ctol>dTolPercentage:
             bNlsinv = 0.
             polPass = list(polCombs)
-            if verbose: print "Performing iteration ", inum+1
+            if verbose: print(("Performing iteration ", inum+1))
             for pol in ['EB','TB']:
                 if not(pol in polCombs): continue
                 Al2d = self.N.getNlkk2d(pol,halo)
@@ -944,7 +944,7 @@ class NlGenerator(object):
                 old = np.nanmean(oclbb)
                 ctol = np.abs(old-new)*100./new
                 ctolLens = np.abs(oldLens-newLens)*100./newLens
-                if verbose: print "Percentage difference between iterations is ",ctol, " compared to requested tolerance of ", dTolPercentage,". Diff of Nlkks is ",ctolLens
+                if verbose: print(("Percentage difference between iterations is ",ctol, " compared to requested tolerance of ", dTolPercentage,". Diff of Nlkks is ",ctolLens))
             oldNl = nlkk.copy()
             oclbb = dclbb.copy()
             inum += 1
@@ -981,7 +981,7 @@ class NlGenerator(object):
         #pl = Plotter(scaleY='log',scaleX='log')
         #pl = Plotter(scaleY='log')
         while ctol>dTolPercentage:
-            if verbose: print "Performing iteration ", inum+1
+            if verbose: print(("Performing iteration ", inum+1))
             Al2d = self.N.getNlkk2d(xy,halo)
             centers, nlkk = delensBinner.bin(self.N.Nlkk[xy])
             nlkk = sanitizePower(nlkk)
@@ -992,7 +992,7 @@ class NlGenerator(object):
                 new = np.nanmean(nlkk)
                 old = np.nanmean(oldNl)
                 ctol = np.abs(old-new)*100./new
-                if verbose: print "Percentage difference between iterations is ",ctol, " compared to requested tolerance of ", dTolPercentage
+                if verbose: print(("Percentage difference between iterations is ",ctol, " compared to requested tolerance of ", dTolPercentage))
             oldNl = nlkk.copy()
             inum += 1
             #pl.add(centers,nlkk)
@@ -1067,7 +1067,7 @@ class Estimator(object):
 
 
         if loadPickledNormAndFilters is not None:
-            if verbose: print "Unpickling..."
+            if verbose: print("Unpickling...")
             with open(loadPickledNormAndFilters,'rb') as fin:
                 self.N,self.AL,self.OmAL,self.fmaskK,self.phaseY = pickle.load(fin)
             return
@@ -1094,7 +1094,7 @@ class Estimator(object):
         if fmaskKappa is None:
             ellMinK = 80
             ellMaxK = 3000
-            print "WARNING: using default kappa mask of 80 < L < 3000"
+            print("WARNING: using default kappa mask of 80 < L < 3000")
             self.fmaskK = fmaps.fourierMask(self.N.lx,self.N.ly,self.N.modLMap,lmin=ellMinK,lmax=ellMaxK)
         else:
             self.fmaskK = fmaskKappa
@@ -1129,7 +1129,7 @@ class Estimator(object):
 
             self.nList = nList
 
-            if self.verbose: print "Initializing filters and normalization for quadratic estimators..."
+            if self.verbose: print("Initializing filters and normalization for quadratic estimators...")
             assert not(uEqualsL and lEqualsU)
             for cmb in cmbList:
                 if uEqualsL:
@@ -1160,7 +1160,7 @@ class Estimator(object):
             try:
                 self.N.addClkk2DPower(theorySpectraForFilters.gCl("kk",self.N.modLMap))
             except:
-                print "Couldn't add Clkk2d power"
+                print("Couldn't add Clkk2d power")
 
             self.estList = estList
             self.OmAL = None
@@ -1374,7 +1374,7 @@ class Estimator(object):
 
         if self.verbose:
             elapTime = time.time() - startTime
-            print "Time for core kappa was ", elapTime ," seconds."
+            print(("Time for core kappa was ", elapTime ," seconds."))
 
         if self.doCurl:
             OmAL = self.OmAL[XY]*fMask
@@ -1555,7 +1555,7 @@ def isotropic_noise_full_lensing_covariance(polCombList,theory,noiseFuncTX,noise
     for polComb in polCombList:
         Nls[polComb] = Als[polComb]*Ls**2./4.
 
-    print "Calculating mv..."
+    print("Calculating mv...")
     Nmv = []
     for k,L in enumerate(Ls):
         Nmat = np.zeros((len(polCombList),len(polCombList)))

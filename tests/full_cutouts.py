@@ -17,7 +17,7 @@ Ntot = 32
 
 num_each,each_tasks = mpi_distribute(Ntot,numcores)
 mpibox = MPIStats(comm,num_each,tag_start=333)
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 my_tasks = each_tasks[rank]
 
 deg = 40.
@@ -99,7 +99,7 @@ for k,i in enumerate(my_tasks):
     mpibox.add_to_stack("cut4",p1d4)
     mpibox.add_to_stack("cut5",p1d5)
 
-    print k,i
+    print((k,i))
 
 
 mpibox.get_stacks()

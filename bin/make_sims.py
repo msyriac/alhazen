@@ -7,7 +7,7 @@ import orphics.tools.io as io
 import orphics.analysis.flatMaps as fmaps
 from enlib import enmap, lensing, resample
 import alhazen.lensTools as lt
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 import enlib.fft as fftfast
 import argparse
 from mpi4py import MPI
@@ -76,8 +76,8 @@ lens_order = Config.get(sim_section,'lens_order')
 pol = not(args.skip_pol)
 shape_sim, wcs_sim, shape_dat, wcs_dat = aio.enmaps_from_config(Config,sim_section,analysis_section,pol=pol)
 if rank==0:
-    print "Dat shape : ", shape_dat
-    print "Sim shape : ",shape_sim
+    print(("Dat shape : ", shape_dat))
+    print(("Sim shape : ",shape_sim))
 analysis_resolution =  np.min(enmap.extent(shape_dat,wcs_dat)/shape_dat[-2:])*60.*180./np.pi
 pixratio = analysis_resolution/Config.getfloat(sim_section,"pixel_arcmin")
 min_ell = fmaps.minimum_ell(shape_dat,wcs_dat)
@@ -91,7 +91,7 @@ parray_sim = aio.patch_array_from_config(Config,expf_name,shape_sim,wcs_sim,dime
 num_each,each_tasks = mpi_distribute(Nsims,numcores)
 # Initialize a container for stats and stacks
 mpibox = MPIStats(comm,num_each,tag_start=333)
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 # What am I doing?
 my_tasks = each_tasks[rank]
 
@@ -149,7 +149,7 @@ def sim(cseed,kseed,skip_kappa_verif=False):
 
 
 for k,index in enumerate(my_tasks):
-    if rank==0: print "Rank ", rank, " doing job ",k+1, " / ",len(my_tasks),"..."
+    if rank==0: print(("Rank ", rank, " doing job ",k+1, " / ",len(my_tasks),"..."))
     sim(index,Nsims+index)
     sim(2*Nsims+index,3*Nsims+index)
     sim(4*Nsims+index,5*Nsims+index)

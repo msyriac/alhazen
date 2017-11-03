@@ -14,7 +14,7 @@ with io.nostdout():
         from enlib import enmap, lensing, resample
 from alhazen.quadraticEstimator import Estimator
 import alhazen.lensTools as lt
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from szar.counts import ClusterCosmology
 import enlib.fft as fftfast
 import argparse
@@ -75,12 +75,12 @@ num_each,each_tasks = mpi_distribute(Ntot,numcores)
 # Initialize a container for stats and stacks
 mpibox = MPIStats(comm,num_each,tag_start=333)
 
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 
 # What am I doing?
 my_tasks = each_tasks[rank]
 
-if rank==0: print "Reading config..."
+if rank==0: print("Reading config...")
 
 # Read config
 iniFile = "../halofg/input/recon.ini"
@@ -88,13 +88,13 @@ Config = SafeConfigParser()
 Config.optionxform=str
 Config.read(iniFile)
 
-if rank==0: print "Params..."
+if rank==0: print("Params...")
 
 pol = False
 shape_dat, wcs_dat = aio.enmap_from_config_section(Config,analysis_section,pol=pol)
 analysis_resolution =  np.min(enmap.extent(shape_dat,wcs_dat)/shape_dat[-2:])*60.*180./np.pi
 min_ell = fmaps.minimum_ell(shape_dat,wcs_dat)
-if rank==0: print "Ell bounds..."
+if rank==0: print("Ell bounds...")
 
 lb = aio.ellbounds_from_config(Config,"reconstruction_sigurd",min_ell)
 tellmin = lb['tellminY']
@@ -104,20 +104,20 @@ pellmax = lb['pellmaxY']
 kellmin = lb['kellmin']
 kellmax = lb['kellmax']
 
-if rank==0: print "Patches data..."
+if rank==0: print("Patches data...")
 
 parray_dat = aio.patch_array_from_config(Config,expf_name,shape_dat,wcs_dat,dimensionless=False)
 
-if rank==0: print "Attributes..."
+if rank==0: print("Attributes...")
 
 lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape_dat,wcs_dat)
 
-if rank==0: print "Binners..."
+if rank==0: print("Binners...")
 
 lbin_edges = np.arange(kellmin,kellmax,200)
 lbinner_dat = stats.bin2D(modlmap_dat,lbin_edges)
 
-if rank==0: print "Cosmology..."
+if rank==0: print("Cosmology...")
 
 # === COSMOLOGY ===
 theory, cc, lmax = aio.theory_from_config(Config,cosmology_section,dimensionless=False)
@@ -163,7 +163,7 @@ w3 = np.mean(taper**3.)
 w4 = np.mean(taper**4.)
 if rank==0:
     io.quickPlot2d(taper,out_dir+"taper.png")
-    print "w2 : " , w2
+    print(("w2 : " , w2))
 
 px_dat = analysis_resolution
 
@@ -172,7 +172,7 @@ k = -1
 for index in my_tasks:
     
     k += 1
-    if rank==0: print "Rank ", rank , " doing cutout ", index
+    if rank==0: print(("Rank ", rank , " doing cutout ", index))
     kappa = enmap.read_map(sigurd_kappa_file(index))*taper
     cmb = enmap.read_map(sigurd_cmb_file(index))[0]#/2.7255e6
     ltt2d = fmaps.get_simple_power_enmap(cmb*taper)
@@ -183,7 +183,7 @@ for index in my_tasks:
 
     
 
-    if rank==0: print "Reconstructing..."
+    if rank==0: print("Reconstructing...")
     measured = cmb * taper
     fkmaps = fftfast.fft(measured,axes=[-2,-1])
     qest.updateTEB_X(fkmaps,alreadyFTed=True)
@@ -195,7 +195,7 @@ for index in my_tasks:
     if save_meanfield: mpibox.add_to_stack("meanfield",kappa_recon)
     #if save is not None: enmap.write_fits(save_func(index),kappa_recon)
 
-    if rank==0: print "Calculating kappa powers and binning..."
+    if rank==0: print("Calculating kappa powers and binning...")
 
     apower = fmaps.get_simple_power_enmap(enmap1=kappa_recon)/w4
 
@@ -253,9 +253,9 @@ if rank==0:
     nstats = mpibox.stats['superdumbs']
 
     area = cmb.area()*(180./np.pi)**2.
-    print "area: ", area, " sq.deg."
+    print(("area: ", area, " sq.deg."))
     fsky = area/41250.
-    print "fsky: ",fsky
+    print(("fsky: ",fsky))
     diag = np.sqrt(np.diagonal(astats['cov'])*lcents*np.diff(lbin_edges)*fsky)
     diagr = np.sqrt(np.diagonal(rstats['cov'])*lcents*np.diff(lbin_edges)*fsky)
 

@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import time
 from shutil import copyfile
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 
 
 timestamp = str(time.time())
@@ -23,6 +23,6 @@ for snap in range(snapRange[0],snapRange[1]):
     for i in range(numJobs):
 
         cmd = "quick_wq.sh python bin/lensRecon.py "+str(i)+" "+str(numClusters)+" "+str(snap)+" "+saveName+" & "
-        print cmd
+        print(cmd)
         os.system(cmd)
         time.sleep(0.5)

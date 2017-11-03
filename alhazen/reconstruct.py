@@ -1,4 +1,4 @@
-from __future__ import division
+
 import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
 import orphics.analysis.flatMaps as fmaps 
@@ -13,7 +13,7 @@ from orphics.tools.stats import timeit, bin2D
 import alhazen.quadFunctions as qfuncs
 
 import time
-import cPickle as pickle
+import pickle as pickle
 
 class QuadNormSmooth(object):
 
@@ -358,7 +358,7 @@ class QuadNormSmooth(object):
 
 
         else:
-            print "ERROR: Unrecognized polComb"
+            print("ERROR: Unrecognized polComb")
             sys.exit(1)    
         
                         
@@ -479,7 +479,7 @@ class EstimatorSmooth(object):
         try:
             self.N.addClkk2DPower(theory_filters.gCl("kk",self.N.modLMap))
         except:
-            print "Couldn't add Clkk2d power"
+            print("Couldn't add Clkk2d power")
             
         self.OmAL = None
         for est in estList:

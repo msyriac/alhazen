@@ -11,8 +11,8 @@ import os, sys
 import numpy as np
 from mpi4py import MPI
 import argparse
-from ConfigParser import SafeConfigParser 
-import cPickle as pickle
+from configparser import SafeConfigParser 
+import pickle as pickle
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -83,9 +83,9 @@ fine_ells = np.arange(2,5000,1)
 #for i in range(Nsims):
 
 Nsims = int(50/numcores)
-irange = range(rank*Nsims,(rank+1)*Nsims)
+irange = list(range(rank*Nsims,(rank+1)*Nsims))
 for i,k in enumerate(irange):
-    print i
+    print(i)
     measured = enmap.read_map(mapfile(k))
     measured = measured[0]/TCMB
 
@@ -171,7 +171,7 @@ for i,k in enumerate(irange):
     
     
     for polcomb in pol_list:
-        print "Reconstructing",polcomb ," for ", i , " ..."
+        print(("Reconstructing",polcomb ," for ", i , " ..."))
         kappa_recon = enmap.samewcs(qest.getKappa(polcomb).real,measured)
         # if i==0: io.quickPlot2d(kappa_recon,out_dir+"kappa_recon_single.png")
         kappa_recon -= kappa_recon.mean()

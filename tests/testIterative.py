@@ -1,4 +1,4 @@
-print "Starting imports..."
+print("Starting imports...")
 import matplotlib
 matplotlib.use('Agg')
 from alhazen.quadraticEstimator import Estimator, NlGenerator
@@ -46,7 +46,7 @@ Clkk = theory.gCl("kk",ellkk)
 
 lsmv,Nlmv,ells,dclbb,efficiency = myNls.getNlIterative(polCombList,kellmin,kellmax,tellmax,pellmin,pellmax,dell=10,halo=True,plot=True)
 
-print efficiency
+print(efficiency)
 
 pl = Plotter(scaleY='log',scaleX='log')
 pl.add(ellkk,4.*Clkk/2./np.pi)

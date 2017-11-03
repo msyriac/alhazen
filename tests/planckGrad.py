@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import sys, os, time
 
 from orphics.tools.output import Plotter
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 
 import flipper.liteMap as lm
 

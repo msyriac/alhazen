@@ -1,18 +1,18 @@
-print "Importing modules..."
+print("Importing modules...")
 import matplotlib
 matplotlib.use('Agg')
 from enlib import enmap,utils,lensing,powspec
 import numpy as np
 from alhazen.halos import NFWkappa
 from alhazen.lensTools import alphaMaker
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 from szlib.szcounts import ClusterCosmology
 from orphics.tools.stats import bin2D
 from szlib.sims import BattagliaSims, getKappaSZ
 from enlib.fft import fft,ifft
 import os
-print "Done importing modules..."
+print("Done importing modules...")
 
 
 outDir = os.environ['WWW']+"plots/kappatest/"
@@ -184,12 +184,12 @@ kappaFix = 0.
 trueKappaStack = 0.
 szStack = 0.
 N = 1000
-massIndices = range(300)
+massIndices = list(range(300))
 avgM500 = 0.
 avgz = 0.
 
 # remove to test norm dependence
-ells = np.array(range(ps[0,0,:].size))
+ells = np.array(list(range(ps[0,0,:].size)))
 ps[0,0,:] = theory.uCl('TT',ells)*TCMB**2.
 
 # pl = Plotter(scaleY='log',scaleX='log')
@@ -270,7 +270,7 @@ for i in range(N):
     # fotYRot = np.nan_to_num(fft(lensedMapYRot,axes=[-2,-1])/ beamTemplate[:,:])
 
 
-    if i%1==0: print "Reconstructing" , i , " ..."
+    if i%1==0: print(("Reconstructing" , i , " ..."))
     qest.updateTEB_X(fotX,alreadyFTed=True)
     qest.updateTEB_Y(fotY,alreadyFTed=True)
     kappa = qest.getKappa(polCombList[0]).real/w2

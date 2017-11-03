@@ -32,12 +32,12 @@ io.quickPlot2d(imap,io.dout_dir+"cmb.png")
 dtype = np.complex128
 rtype = np.zeros([0],dtype=dtype).real.dtype
 
-print "alms..."
+print("alms...")
 alm = curvedsky.map2alm(imap,lmax=4000)
 powfac = 0.5
 ps_data = enmap.multi_pow(alm*alm.conj()[None,None],powfac).astype(rtype)
-print alm
-print alm.shape
+print(alm)
+print((alm.shape))
 
 pspec = np.ones((8000))
 pspec[:200] = 0.

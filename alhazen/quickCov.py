@@ -75,7 +75,7 @@ Nlfuncdict['EE'] = cmb.get_noise_func(beamArcmin,noiseP,TCMB=TCMB)
 Nlfuncdict['BB'] = cmb.get_noise_func(beamArcmin,noiseP,TCMB=TCMB)
 
 
-print modLMap.shape
+print((modLMap.shape))
 dlx = np.diff(lxMap,axis=1)[0,0]
 dly = np.diff(lyMap,axis=0)[0,0]
 
@@ -152,7 +152,7 @@ for polComb in polCombList:
 
 for polComb in polCombList:
     Als[polComb] = np.array(Als[polComb])
-print time.time()-st," seconds."
+print((time.time()-st," seconds."))
 
 crosses = {}
 polCrosses = itertools.combinations_with_replacement(polCombList,2)
@@ -160,7 +160,7 @@ polCrosses = itertools.combinations_with_replacement(polCombList,2)
 
 
 for alpha,beta in polCrosses:
-    print alpha,beta
+    print((alpha,beta))
     Xalpha,Yalpha = alpha
     Xbeta,Ybeta = beta
 
@@ -168,7 +168,7 @@ for alpha,beta in polCrosses:
     combs2 = [Xalpha+Ybeta,Yalpha+Xbeta]
     Cllist = ['TT','TE','EE','BB','ET']
     if not( all([combs in Cllist for combs in combs1])) and not(all([combs in Cllist for combs in combs2]) ):
-        print "skipping"
+        print("skipping")
         continue
     
     
@@ -263,7 +263,7 @@ for alpha,beta in polCrosses:
     combs2 = [Xalpha+Ybeta,Yalpha+Xbeta]
     Cllist = ['TT','TE','EE','BB','ET']
     if not( all([combs in Cllist for combs in combs1])) and not(all([combs in Cllist for combs in combs2]) ):
-        print "skipping"
+        print("skipping")
         continue
 
     corr = crosses[alpha+beta]/np.sqrt(crosses[alpha+alpha]*crosses[beta+beta])

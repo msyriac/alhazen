@@ -1,5 +1,5 @@
 import numpy as np
-import cPickle as pickle
+import pickle as pickle
 from orphics.theory.cosmology import Cosmology
 
 cc = Cosmology(lmax=6000,pickling=True)
@@ -19,7 +19,7 @@ for k,pfile in enumerate(p):
     cov = np.load(covfile)
     lbin_edges = np.load(lbinfile)
 
-    print cov.shape
-    print lbin_edges.shape
+    print((cov.shape))
+    print((lbin_edges.shape))
 
 

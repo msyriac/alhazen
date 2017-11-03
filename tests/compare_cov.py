@@ -1,6 +1,6 @@
 import numpy as np
 import orphics.tools.io as io
-import cPickle as pickle
+import pickle as pickle
 
 pl = io.Plotter(scaleY='log')
 TCMB = 2.7255e6
@@ -40,7 +40,7 @@ i = 0
 for cov,lbin,fsky in zip([cov3,cov4],[lbin3,lbin4],[fsky3,fsky4]):
     covmat = np.load(cov)
     lbin_edges = np.load(lbin)
-    print lbin_edges[0], lbin_edges[-1],np.diff(lbin_edges)[0]
+    print((lbin_edges[0], lbin_edges[-1],np.diff(lbin_edges)[0]))
     lcents = (lbin_edges[1:]+lbin_edges[:-1])/2.
     diag = np.sqrt(np.diagonal(covmat)*lcents*np.diff(lbin_edges)*fsky)
 

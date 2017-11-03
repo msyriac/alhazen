@@ -1,4 +1,4 @@
-print "Starting imports..."
+print("Starting imports...")
 import matplotlib
 matplotlib.use('Agg')
 from alhazen.quadraticEstimator import Estimator
@@ -28,7 +28,7 @@ from orphics.tools.stats import getStats
 
 from mpi4py import MPI
 
-print "Done with imports..."
+print("Done with imports...")
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -106,7 +106,7 @@ assert N%numcores==0
 num_each = (N / numcores)
 startIndex = rank*num_each
 endIndex = startIndex + num_each
-myIs = range(N)[startIndex:endIndex]
+myIs = list(range(N))[startIndex:endIndex]
 
 
 listCrossPower = {}
@@ -131,7 +131,7 @@ whiteNoiseP = (np.pi / (180. * 60))**2.  * noiseP**2. / TCMB**2.
 # w4 = np.mean(maskMap.data**4.)
 
 for k,i in enumerate(myIs):
-    print i
+    print(i)
 
     lensedTLm = lm.liteMapFromFits(lensedTPath(i))
     lensedQLm = lm.liteMapFromFits(lensedQPath(i))
@@ -220,7 +220,7 @@ for k,i in enumerate(myIs):
 
 
 
-    print "Reconstructing" , i , " ..."
+    print(("Reconstructing" , i , " ..."))
     qest.updateTEB_X(fot,foe,fob,alreadyFTed=True)
     qest.updateTEB_Y(alreadyFTed=True)
 
@@ -236,7 +236,7 @@ for k,i in enumerate(myIs):
         pl.plot2d(reconLm.data)
         pl.done("/gpfs01/astro/www/msyriac/plots/recon"+str(i)+".png")
         
-        print "crossing with input"
+        print("crossing with input")
 
 
         p2d = ft.powerFromLiteMap(kappaLm,reconLm,applySlepianTaper=False)
@@ -296,10 +296,10 @@ else:
         totAllInputPower = totAllInputPower + rcvTotInputPower
 
         for i,polComb in enumerate(polCombList):
-            print "Waiting for ", job ," ", polComb," cross"
+            print(("Waiting for ", job ," ", polComb," cross"))
             comm.Recv(rcvInputPowerMat, source=job, tag=i)
             listAllCrossPower[polComb] = np.vstack((listAllCrossPower[polComb],rcvInputPowerMat))
-            print "Waiting for ", job ," ", polComb," auto"
+            print(("Waiting for ", job ," ", polComb," auto"))
             comm.Recv(rcvInputPowerMat, source=job, tag=i+80)
             listAllReconPower[polComb] = np.vstack((listAllReconPower[polComb],rcvInputPowerMat))
         

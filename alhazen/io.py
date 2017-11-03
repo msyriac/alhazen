@@ -94,7 +94,7 @@ def theory_from_config(Config,theory_section,dimensionless=True):
         cc = None
 
     else:
-        print sec_type
+        print(sec_type)
         raise ValueError
 
 
@@ -174,7 +174,7 @@ def enmaps_from_config(Config,sim_section,analysis_section,pol=False):
         if np.abs(buffer_sim-1.)<1.e-3:
             shape_sim, wcs_sim = enmap.rect_geometry(width_analysis_deg*60.,pixel_sim,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
         else:
-            raise NotImplementedError, "Buffer !=1 not implemented"
+            raise NotImplementedError("Buffer !=1 not implemented")
 
     return shape_sim, wcs_sim, shape_dat, wcs_dat            
 
@@ -264,7 +264,7 @@ def get_patch_degrees(Config,section):
     elif degree:
         return patch_degrees
     else:
-        print "ERROR: Patch width not specified."
+        print("ERROR: Patch width not specified.")
         sys.exit()
 
     

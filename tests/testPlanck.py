@@ -1,11 +1,11 @@
-print "Importing modules..."
+print("Importing modules...")
 import matplotlib
 matplotlib.use('Agg')
 from enlib import enmap,utils,lensing,powspec
 import numpy as np
 from alhazen.halos import NFWkappa
 from alhazen.lensTools import alphaMaker
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 from szlib.szcounts import ClusterCosmology
 from orphics.tools.stats import bin2D
@@ -16,15 +16,15 @@ import alhazen.planckInterface as pint
 import healpy as hp
 import flipper.liteMap as lm
 from scipy.ndimage.interpolation import zoom
-print "Done importing modules..."
+print("Done importing modules...")
 
 
 ras,decs = pint.getCatalogRADecsPlanck(sncut=5.)
 #ras,decs = pint.getCatalogRADecsRedmapper()
-print ras.min(),ras.max()
-print decs.min(),decs.max()
+print((ras.min(),ras.max()))
+print((decs.min(),decs.max()))
 
-print len(ras)
+print((len(ras)))
 #sys.exit()
 p143Loc = '/astro/astronfs01/workarea/msyriac/PlanckClusters/WPR2_CMB_muK.fits'
 hpPlanck = hp.read_map(p143Loc)
@@ -91,7 +91,7 @@ i=0
 for ra,dec in zip(ras[:maxN],decs[:maxN]):
     #for k in range(maxN):
     i+=1
-    if i%10==0: print i,ra,dec
+    if i%10==0: print((i,ra,dec))
 
     if doMf:
         ra = np.random.uniform(min(ras),max(ras))
@@ -184,13 +184,13 @@ for ra,dec in zip(ras[:maxN],decs[:maxN]):
     try:
         fotX = np.nan_to_num(fft(lensedMapX,axes=[-2,-1])/ beamTemplate[:,:])
     except:
-        print "skipping ", i, ra, dec
+        print(("skipping ", i, ra, dec))
         i-=1
         continue
     fotY = np.nan_to_num(fft(lensedMapY,axes=[-2,-1])/ beamTemplate[:,:])
 
 
-    if i%10==0: print "Reconstructing" , i , " ..."
+    if i%10==0: print(("Reconstructing" , i , " ..."))
     qest.updateTEB_X(fotX,alreadyFTed=True)
     qest.updateTEB_Y(fotY,alreadyFTed=True)
     kappa = qest.getKappa(polCombList[0]).real/w2
@@ -204,7 +204,7 @@ saveMf = False
 try:
     if doMf:
         np.savetxt("data/meanfield.dat",kappaStack)
-        print "saved meanfield"
+        print("saved meanfield")
         saveMf = True
 except:
     pass
@@ -213,7 +213,7 @@ if not(saveMf):
     try:    
         mf = np.loadtxt("data/meanfield.dat")
         kappaStack -= mf
-        print "subtracted meanfield"
+        print("subtracted meanfield")
     except:
         pass
 

@@ -53,7 +53,7 @@ out_dir = os.environ['WWW']+"plots/cgauss_"
 num_each,each_tasks = mpi_distribute(Nsims,numcores)
 # Initialize a container for stats and stacks
 mpibox = MPIStats(comm,num_each,tag_start=333)
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 # What am I doing?
 my_tasks = each_tasks[rank]
 
@@ -63,7 +63,7 @@ for k,index in enumerate(my_tasks):
     noise = ngen.get_map()
     mkappa = true2d+noise
     if k==0 and rank==0: io.quickPlot2d(noise,out_dir+"nstamp.png")
-    print k
+    print(k)
     cents, prof = rbinner.bin(mkappa)
     mpibox.add_to_stats('prof',prof)
     mpibox.add_to_stack('mkappa',mkappa)
@@ -79,7 +79,7 @@ if rank==0:
     siginv = np.linalg.inv(cov)
     
     chisq = np.dot(np.dot(mean,siginv),mean)
-    print np.sqrt(chisq)
+    print((np.sqrt(chisq)))
 
     mass_range = np.linspace(1.e14,5.e14,300)
     Likes = []
@@ -90,7 +90,7 @@ if rank==0:
         trial = enmap.ndmap(fmaps.filter_map(trial,true2d*0.+1.,modlmap,lowPass=kellmax,highPass=kellmin),wcs)
         cents,theory = rbinner.bin(trial)
         Likes.append(np.exp(-0.5*stats.fchisq(mean,siginv,theory,amp=1.)))
-        if k%10==0: print m
+        if k%10==0: print(m)
 
     Likes = np.array(Likes)
     Likes /= Likes.sum()

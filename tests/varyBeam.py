@@ -106,7 +106,7 @@ for polComb in ['EB']:
 
             if polComb=='EB' and delens:
                 ls, Nls,efficiency = myNls.iterativeDelens(polComb,delensTolerance,halo)
-                print "percentage efficiency ", efficiency , " %"
+                print(("percentage efficiency ", efficiency , " %"))
             else:
                 ls,Nls = myNls.getNl(polComb=polComb,halo=halo)
             

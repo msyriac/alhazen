@@ -149,7 +149,7 @@ for polComb in ['EB']:
             sn,errs = LF.sn(snrange,fsky,"kk")
             #print errs
             sns.append(sn)
-            print noiseFile, " S/N " , sn
+            print((noiseFile, " S/N " , sn))
 
 
 

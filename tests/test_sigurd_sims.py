@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 import matplotlib
 matplotlib.use('Agg')
 from enlib import enmap, curvedsky, lensing
@@ -67,7 +67,7 @@ num_each,each_tasks = mpi_distribute(Ntot,numcores)
 # Initialize a container for stats and stacks
 mpibox = MPIStats(comm,num_each,tag_start=333)
 
-if rank==0: print ("At most ", max(num_each) , " tasks...")
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 
 # What am I doing?
 my_tasks = each_tasks[rank]
@@ -78,7 +78,7 @@ for index in my_tasks:
     k += 1
 
     cmb_map = load_fullsky(sim_root,"fullsky_curved_lensed_car",index)
-    print (rank,k,cmb_map.shape)
+    print((rank,k,cmb_map.shape))
     ells = map2power(cmb_map,mpibox)
 
 mpibox.get_stats()

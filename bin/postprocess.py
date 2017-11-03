@@ -1,17 +1,17 @@
-print "Importing modules..."
+print("Importing modules...")
 import matplotlib
 matplotlib.use('Agg')
 from enlib import enmap,utils,lensing,powspec
 import numpy as np
 from alhazen.halos import NFWkappa
 from alhazen.lensTools import alphaMaker
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 from szlib.szcounts import ClusterCosmology
 from orphics.tools.stats import bin2D
 from szlib.sims import BattagliaSims
 import sys,os
-print "Done importing modules..."
+print("Done importing modules...")
 
 
 iniFile = "input/submission.ini"
@@ -37,7 +37,7 @@ for snap in range(*snapRange):
     N = numClusters
 
     for i in range(N):
-        print i
+        print(i)
 
         kappa = enmap.read_map(saveName+"_kappa_"+str(i)+"_"+str(snap)+".hdf")
         inputKappaMap = enmap.read_map(saveName+"_inpkappa_"+str(i)+"_"+str(snap)+".hdf")

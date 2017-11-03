@@ -7,7 +7,7 @@ import orphics.tools.io as io
 import orphics.analysis.flatMaps as fmaps
 from enlib import enmap, lensing, resample
 import alhazen.lensTools as lt
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 import enlib.fft as fftfast
 import argparse
 from alhazen.quadraticEstimator import Estimator
@@ -66,7 +66,7 @@ assert args.num_sims < Nsims
 num_each,each_tasks = mpi_distribute(Nuse,numcores)
 # Initialize a container for stats and stacks
 mpibox = MPIStats(comm,num_each,tag_start=333)
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 # What am I doing?
 my_tasks = each_tasks[rank]
 
@@ -128,11 +128,11 @@ def l(cseed,kseed,returnk=False,index=None):
     # -- add beam and noise if you want --
     if "noiseless" not in expf_name:
         assert index is not None
-        if rank==0: print "Adding beam..."
+        if rank==0: print("Adding beam...")
         flensed = fftfast.fft(lensedt,axes=[-2,-1])
         flensed *= parray_dat.lbeam
         lensedt = fftfast.ifft(flensed,axes=[-2,-1],normalize=True).real
-        if rank==0: print "Adding noise..."
+        if rank==0: print("Adding noise...")
         seedroot = (covseed+1)*Nsets*Nsims # WARNING: noise sims will be correlated with CMB from the next covseed
         nseed = seedroot+index
         noise = parray_dat.get_noise_sim(seed=nseed)
@@ -173,12 +173,12 @@ for k,index in enumerate(my_tasks):
 
     i = index
 
-    if rank==0: print "Rank ", rank, " doing task ",k, " / ",len(my_tasks), " ... "
+    if rank==0: print(("Rank ", rank, " doing task ",k, " / ",len(my_tasks), " ... "))
 
     S0,inpk = l(4*Nsims+i,5*Nsims+i,returnk=True,index=i) 
     if doN1:
         # === N1 calculation ===
-        if rank==0: print "N0MC ... "
+        if rank==0: print("N0MC ... ")
         n1 = 0.
         S = l(i,Nsims+i,index=i) 
         Sp = l(2*Nsims+i,3*Nsims+i,index=i) 
@@ -191,7 +191,7 @@ for k,index in enumerate(my_tasks):
         cents, p1d = lbinner.bin(n0mc2d)
         mpibox.add_to_stats('n0mc',p1d)
         n1 += -n0mc2d
-        if rank==0: print "N1MC ... "
+        if rank==0: print("N1MC ... ")
         # ALREADY DONE ABOVE: S0,inpk = l(4*Nsims+i,5*Nsims+i,returnk=True,index=i) 
         Sp,inpk2 = l(6*Nsims+i,5*Nsims+i,returnk=True,index=i)
         assert np.all(np.isclose(inpk,inpk2))
@@ -205,13 +205,13 @@ for k,index in enumerate(my_tasks):
         # === N1 calculation done ===
 
     # kappa verification
-    if rank==0: print "Kappa verification ... "
+    if rank==0: print("Kappa verification ... ")
     kappa = qe(S0)
-    if rank==0: print "Powers ... "
+    if rank==0: print("Powers ... ")
     ixi,ki,ki = power(inpk)
     ixr,kr = powerf1(kappa,ki)
     rxr_raw = powerf1f2(kr,kr)
-    if rank==0: print "Binning ... "
+    if rank==0: print("Binning ... ")
     cents, ixi1d = lbinner.bin(ixi)
     cents, ixr1d = lbinner.bin(ixr)
     cents, rxr_raw1d = lbinner.bin(rxr_raw)
@@ -220,7 +220,7 @@ for k,index in enumerate(my_tasks):
     mpibox.add_to_stats('rxr_raw',rxr_raw1d)
 
     # sdn0
-    if rank==0: print "SDN0 ... "
+    if rank==0: print("SDN0 ... ")
     lpower,ks,ks = power(S0,S0)
     sd = qest.N.super_dumb_N0_TTTT(lpower)
     lcents,sdp = lbinner.bin(sd)
@@ -231,7 +231,7 @@ for k,index in enumerate(my_tasks):
     mpibox.add_to_stack("rxr2d",n0subbed)
     
 
-    if rank==0: print rank,index,len(my_tasks)
+    if rank==0: print((rank,index,len(my_tasks)))
 
 mpibox.get_stacks()
 mpibox.get_stats()
@@ -263,9 +263,9 @@ if rank==0:
 
 
     area = S0.area()*(180./np.pi)**2.
-    print "area: ", area, " sq.deg."
+    print(("area: ", area, " sq.deg."))
     fsky = area/41250.
-    print "fsky: ",fsky
+    print(("fsky: ",fsky))
     diagraw = np.sqrt(np.diagonal(rxr_raw['cov'])*cents*np.diff(lbin_edges)*fsky)
     diagn0sub = np.sqrt(np.diagonal(rxr['cov'])*cents*np.diff(lbin_edges)*fsky)
     idiag = np.sqrt(np.diagonal(ixr['cov'])*cents*np.diff(lbin_edges)*fsky)

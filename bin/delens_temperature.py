@@ -14,7 +14,7 @@ with io.nostdout():
         from enlib import enmap, lensing, resample
 from alhazen.quadraticEstimator import Estimator
 import alhazen.lensTools as lt
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 import enlib.fft as fftfast
 import argparse
 from mpi4py import MPI
@@ -56,7 +56,7 @@ arcmap = parray_sim.modrmap* 180.*60./np.pi
 num_each,each_tasks = mpi_distribute(Nsims,numcores)
 # Initialize a container for stats and stacks
 mpibox = MPIStats(comm,num_each,tag_start=333)
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 # What am I doing?
 my_tasks = each_tasks[rank]
 
@@ -124,7 +124,7 @@ grad_phi = enmap.grad(phi)
 
 
 for k,index in enumerate(my_tasks):
-    if rank==0: print "Rank ", rank, " doing job ",k+1, " / ",len(my_tasks),"..."
+    if rank==0: print(("Rank ", rank, " doing job ",k+1, " / ",len(my_tasks),"..."))
     unlensed = parray_sim.get_unlensed_cmb(seed=index,scalar=False)
     luteb,dummy = sverif_cmb.add_power("unlensed",unlensed)
 

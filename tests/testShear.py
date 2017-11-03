@@ -33,7 +33,7 @@ fracgals = []
 for i,z in enumerate(zrange):
     fracgal = np.trapz(dndz(zrange[i:]),zrange[i:,])
     fracgals.append(fracgal)
-    print z
+    print(z)
 
 pl = io.Plotter()
 pl.add(zrange,fracgals)
@@ -41,13 +41,13 @@ outDir = os.environ['WWW']+"plots/"
 pl.done(outDir + "fracgals.png")
 
 
-print "imports"
+print("imports")
 from orphics.theory.gaussianCov import LensForecast
 from orphics.theory.cosmology import LimberCosmology
 from szlib.szcounts import ClusterCosmology
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from orphics.tools.io import Plotter,dictFromSection,listFromConfig
-print "imports done"
+print("imports done")
 
 iniFile = "../SZ_filter/input/pipeline.ini"
 Config = SafeConfigParser()
@@ -90,10 +90,10 @@ winsCMB = []
 stdsGal = []
 stdsCMB = []
 
-import cPickle as pickle
+import pickle as pickle
 mexpgrid,zgrid,errgrid = pickle.load(open("../SZ_filter/data/owl2.pkl",'rb'))
 sngrid = 1./errgrid
-print sngrid[np.where(np.isclose(mexpgrid,np.log10(M500))),:].ravel()
+print((sngrid[np.where(np.isclose(mexpgrid,np.log10(M500))),:].ravel()))
 
 #sys.exit()
 

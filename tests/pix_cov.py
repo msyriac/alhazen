@@ -9,7 +9,7 @@ import sys, os
 from scipy.linalg import pinv2
 from orphics.analysis.pipeline import mpi_distribute, MPIStats
 import argparse
-import cPickle as pickle
+import pickle as pickle
 import enlib.fft as fftfast
 
 # Parse command line
@@ -65,7 +65,7 @@ Ntot = N
 num_each,each_tasks = mpi_distribute(Ntot,numcores)
 # Initialize a container for stats and stacks
 mpibox = MPIStats(comm,num_each,tag_start=333)
-if rank==0: print "At most ", max(num_each) , " tasks..."
+if rank==0: print(("At most ", max(num_each) , " tasks..."))
 
 from alhazen.halos import NFWkappa
 
@@ -98,7 +98,7 @@ for k,index in enumerate(my_tasks):
     cmb = measured.reshape((shape[0]*shape[1]))
     mpibox.add_to_stats("vec",cmb)
 
-    if k%1000==0 and rank==0: print M,k, " / ", len(my_tasks)
+    if k%1000==0 and rank==0: print((M,k, " / ", len(my_tasks)))
 
 mpibox.get_stats()
 

@@ -233,7 +233,7 @@ for polcomb in pol_list:
 
 
 for i in range(Nsims):
-    print i
+    print(i)
 
     unlensed = enmap.rand_map(shape_sim,wcs_sim,ps)
     lensed = lensing.lens_map_flat_pix(unlensed, alpha_pix,order=lens_order)
@@ -314,7 +314,7 @@ for i in range(Nsims):
 
 
     for polcomb in pol_list:
-        print "Reconstructing",polcomb ," for ", i , " ..."
+        print(("Reconstructing",polcomb ," for ", i , " ..."))
         kappa_recon = enmap.samewcs(qest.getKappa(polcomb).real,measured)
         if i==0: io.quickPlot2d(kappa_recon,out_dir+"kappa_recon_single.png")
         kappa_recon -= kappa_recon.mean()

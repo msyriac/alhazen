@@ -14,7 +14,7 @@ clCMB_lensed = np.ones(ells.size)
 accurate_lensing = True
 compute_tgradt = True
 
-l2range = range(lmin,lmax)
+l2range = list(range(lmin,lmax))
 l2dim = len(l2range)-1
 
 b = corr.derivative_dclcmbdclpp_corr_func(lmax,flavor,accurate_lensing,clCMB,clpp,l2range,lmin,lmax,l2dim,lmax)

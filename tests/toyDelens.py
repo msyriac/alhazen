@@ -68,7 +68,7 @@ if test:
     for k,lens_order in enumerate(range(5,0,-1)):
 
         alpha = (lens_order-2+1.+1)/(5-2+1.+1)
-        print lens_order, alpha
+        print((lens_order, alpha))
 
         # Lens with kappa1
         lensed = lensing.lens_map_flat_pix(unlensed, alpha_pix,order=lens_order)
@@ -126,7 +126,7 @@ iter_delensed = lensed
 phi, fphi = lt.kappa_to_phi(kappa_map,modlmap_sim,return_fphi=True)
 grad_phi = enmap.grad(phi)/(iters)
 for i in range(1,iters+1):
-    print i
+    print(i)
     iter_delensed = lensing.delens_map(iter_delensed, grad_phi, nstep=nstep, order=lens_order, mode="spline", border="cyclic")
     
 iter_residual = iter_delensed - unlensed

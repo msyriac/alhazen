@@ -13,7 +13,7 @@ import os, sys
 import numpy as np
 from mpi4py import MPI
 import argparse
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 
 
 comm = MPI.COMM_WORLD
@@ -119,7 +119,7 @@ n0subs = []
 
 
 for i in range(Nsims):
-    print i
+    print(i)
     unlensed = parray_sim.get_unlensed_cmb(seed=(200+i))
     lensed = lensing.lens_map_flat_pix(unlensed.copy(), alpha_pix.copy(),order=lens_order)
 
@@ -301,7 +301,7 @@ for i in range(Nsims):
     
     
     for polcomb in pol_list:
-        print "Reconstructing",polcomb ," for ", i , " ..."
+        print(("Reconstructing",polcomb ," for ", i , " ..."))
         kappa_recon = enmap.samewcs(qest.getKappa(polcomb).real,measured)
         if i==0: io.quickPlot2d(kappa_recon,out_dir+"kappa_recon_single.png")
         kappa_recon -= kappa_recon.mean()

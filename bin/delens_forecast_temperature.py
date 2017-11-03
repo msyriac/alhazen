@@ -88,7 +88,7 @@ plkk.add(cents,nlkku,ls="-",lw=3,color="red")
 nlkk2d = nlkk0_2d
 clkk_now2d = clkk2d
 for i in range(niter):
-    print "Iteration ", i
+    print(("Iteration ", i))
     alpha = (i+2.)/(niter+3.)
     wiener2d = clkk2d/(clkk2d+nlkk2d)
     clkk_now2d = (1.-wiener2d)*clkk_now2d

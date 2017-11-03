@@ -1,11 +1,11 @@
-print "Importing modules..."
+print("Importing modules...")
 import matplotlib
 matplotlib.use('Agg')
 from enlib import enmap,utils,lensing,powspec
 import numpy as np
 from alhazen.halos import NFWkappa
 from alhazen.lensTools import alphaMaker
-from ConfigParser import SafeConfigParser 
+from configparser import SafeConfigParser 
 from orphics.tools.io import Plotter,dictFromSection,listFromConfig
 import orphics.tools.io as io
 from szar.counts import ClusterCosmology
@@ -14,7 +14,7 @@ from szar.sims import BattagliaSims, getKappaSZ
 from enlib.fft import fft,ifft
 from alhazen.quadraticEstimator import Estimator
 import os
-print "Done importing modules..."
+print("Done importing modules...")
 
 
 out_dir = os.environ['WWW']+"lenstests/"
@@ -97,7 +97,7 @@ for i in range(N):
     rotmap = rotate(diffmap, angle,reshape=False)
     avgrot += rotmap
     
-    print i,angle
+    print((i,angle))
     #io.highResPlot2d(map,out_dir+"unl"+str(i)+".png")
     #io.highResPlot2d(rotmap,out_dir+"rot"+str(i)+".png")
 

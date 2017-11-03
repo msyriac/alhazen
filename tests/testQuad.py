@@ -1,4 +1,4 @@
-print "Starting imports..."
+print("Starting imports...")
 import matplotlib
 matplotlib.use('Agg')
 from alhazen.quadraticEstimator import Estimator, NlGenerator
@@ -50,18 +50,18 @@ TCMB = 2.7255e6
 #cambRoot = "/astro/u/msyriac/repos/cmb-lensing-projections/data/TheorySpectra/ell28k_highacc"
 dataFile = "/astro/astronfs01/workarea/msyriac/act/FinalScinetPaper/preparedMap_T_6.fits"
 
-print "Loading map..."
+print("Loading map...")
 templateMap = lm.liteMapFromFits(dataFile)
 
 
 templateMap.info()
-print templateMap.data.shape
+print((templateMap.data.shape))
 
 # pl = Plotter()
 # pl.plot2d(templateMap.data)
 # pl.done("map.png")
 
-print "Interpolating Cls..."
+print("Interpolating Cls...")
 
 #from orphics.tools.cmb import loadTheorySpectraFromCAMB
 #theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,TCMB = TCMB,lpad=9000)
@@ -77,7 +77,7 @@ Clkk = theory.gCl("kk",ellkk)
 
 lxMap,lyMap,modLMap,thetaMap,lx,ly  = fmaps.getFTAttributesFromLiteMap(templateMap)
 
-print "Making white noise..."
+print("Making white noise...")
 nT,nP = fmaps.whiteNoise2D([noiseT,noiseP],beamArcmin,modLMap,TCMB=TCMB)
 fMask = fmaps.fourierMask(lx,ly,modLMap,lmin=cmbellmin,lmax=cmbellmax)
 fMaskK = fmaps.fourierMask(lx,ly,modLMap,lmin=kellmin,lmax=kellmax)
@@ -150,7 +150,7 @@ bin_edges = np.arange(10,3000,10)
 
 #theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
 lmap = lm.makeEmptyCEATemplate(raSizeDeg=arc/60., decSizeDeg=arc/60.,pixScaleXarcmin=px,pixScaleYarcmin=px)
-print lmap.data.shape
+print((lmap.data.shape))
 myNls = NlGenerator(lmap,theory,bin_edges,gradCut=gradCut)
 
 myNls.updateNoise(beam,noiseT,noiseP,tellmin,tellmax,pellmin,pellmax)
@@ -212,7 +212,7 @@ bin_edges = np.arange(10,3000,10)
 
 #theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,lpad=9000)
 lmap = lm.makeEmptyCEATemplate(raSizeDeg=arc/60., decSizeDeg=arc/60.,pixScaleXarcmin=px,pixScaleYarcmin=px)
-print lmap.data.shape
+print((lmap.data.shape))
 myNls = NlGenerator(lmap,theory,bin_edges,gradCut=gradCut)
 
 
