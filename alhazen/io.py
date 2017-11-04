@@ -211,32 +211,35 @@ def enmap_from_config_section(Config,section,pol=False):
     return shape_dat, wcs_dat            
 
 
-def patch_array_from_config(Config,exp_name,shape,wcs,dimensionless=True,TCMB=2.7255e6,skip_real=False):
+def patch_array_from_config(Config,exp_name,shape,wcs,dimensionless=True,TCMB=2.7255e6,skip_real=False,skip_instrument=False):
+
     pa = fmaps.PatchArray(shape,wcs,dimensionless=dimensionless,TCMB=TCMB,skip_real=skip_real)
-    try:
-        bfile = Config.get(exp_name,"beam_file")
-        ells,bls = np.loadtxt(bfile,delimiter=",",unpack=True,use_cols=[0,1])
-        pa.add_1d_beam(ells,bls,fill_value="extrapolate")
-    except:
-        fwhm = Config.getfloat(exp_name,"beam")
-        pa.add_gaussian_beam(fwhm)
 
-    try:
-        n2d_file_T = Config.get(exp_name,"noise_2d_file_T")
-        n2d_file_P = Config.get(exp_name,"noise_2d_file_P")
-        imapT = enmap.read_map(n2d_file_T)
-        imapP = enmap.read_map(n2d_file_P)
-        pa.add_noise_2d(nT=imapT,nP=imapP)
-    except:
-        noise_T = Config.getfloat(exp_name,"noise_T")
-        noise_P = Config.getfloat(exp_name,"noise_P")
-        lknee_T = Config.getfloat(exp_name,"lknee_T")
-        lknee_P = Config.getfloat(exp_name,"lknee_P")
-        alpha_T = Config.getfloat(exp_name,"alpha_T")
-        alpha_P = Config.getfloat(exp_name,"alpha_P")
+    if not(skip_instrument):
+        try:
+            bfile = Config.get(exp_name,"beam_file")
+            ells,bls = np.loadtxt(bfile,delimiter=",",unpack=True,use_cols=[0,1])
+            pa.add_1d_beam(ells,bls,fill_value="extrapolate")
+        except:
+            fwhm = Config.getfloat(exp_name,"beam")
+            pa.add_gaussian_beam(fwhm)
+
+        try:
+            n2d_file_T = Config.get(exp_name,"noise_2d_file_T")
+            n2d_file_P = Config.get(exp_name,"noise_2d_file_P")
+            imapT = enmap.read_map(n2d_file_T)
+            imapP = enmap.read_map(n2d_file_P)
+            pa.add_noise_2d(nT=imapT,nP=imapP)
+        except:
+            noise_T = Config.getfloat(exp_name,"noise_T")
+            noise_P = Config.getfloat(exp_name,"noise_P")
+            lknee_T = Config.getfloat(exp_name,"lknee_T")
+            lknee_P = Config.getfloat(exp_name,"lknee_P")
+            alpha_T = Config.getfloat(exp_name,"alpha_T")
+            alpha_P = Config.getfloat(exp_name,"alpha_P")
 
 
-        pa.add_white_noise_with_atm(noise_T,noise_P,lknee_T,alpha_T,lknee_P,alpha_P)
+            pa.add_white_noise_with_atm(noise_T,noise_P,lknee_T,alpha_T,lknee_P,alpha_P)
 
 
     return pa
