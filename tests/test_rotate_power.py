@@ -27,7 +27,7 @@ theory = cmb.loadTheorySpectraFromCAMB(theory_file_root,unlensedEqualsLensed=Fal
 ells = np.arange(0,7000,1)
 #pfunc = lambda x: theory.lCl('TT',x)
 #pfunc = lambda x: x*0.+1.
-pfunc = lambda x: theory.gCl('kk',x)
+pfunc = lambda x: x*0.+(10.*np.pi/180./60.)**2. #theory.gCl('kk',x)
 ps = pfunc(ells).reshape((1,1,7000))
 
 wdeg = 40.
@@ -46,7 +46,7 @@ with bench.show("taper"):
     #mg = enmap.MapGen(shape,wcs,ps)
     taper,sw2 = fmaps.get_taper(shape,taper_percent = 18.0,pad_percent = 4.0,weight=None)
 
-pxover = 1.0 #0.5
+pxover = 0.5
     
 for k,index in enumerate(my_tasks):
 
