@@ -21,6 +21,17 @@ gnfw = lambda x: np.piecewise(x, [x>1., x<1., x==1.], \
 f_c = lambda c: np.log(1.+c) - (c/(1.+c))
 
 
+def two_halo(massOverh,theta_range,cc,zL=0.7,concentration=3.2,overdensity=200.,critical=False,atClusterZ=False,kellmin=2,kellmax=8000,n_ells=200):
+
+    from scipy.special import j0
+
+    ell_bins = np.linspace(kellmin,kellmax,n_ells)
+
+    # for theta in theta_range:
+
+        
+
+
 def nfw_kappa(massOverh,modrmap_radians,cc,zL=0.7,concentration=3.2,overdensity=180.,critical=False,atClusterZ=False):
     sgn = 1. if massOverh>0. else -1.
     comS = cc.results.comoving_radial_distance(cc.cmbZ)*cc.h
