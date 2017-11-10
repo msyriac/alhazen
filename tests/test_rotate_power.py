@@ -87,9 +87,9 @@ for k,index in enumerate(my_tasks):
     map_test *= rect_taper
     #map_test = tmg.get_map(seed=index+int(1e6))*rottap
 
-    alm = curvedsky.map2alm(map_south,lmax=lmax)
-    cls = hp.alm2cl(alm)/sw2
-    del alm
+    # alm = curvedsky.map2alm(map_south,lmax=lmax)
+    # cls = hp.alm2cl(alm)/sw2
+    # del alm
 
     if rank==0 and k==0:
         prefix = io.dout_dir+"Oct28_"
@@ -107,7 +107,7 @@ for k,index in enumerate(my_tasks):
     cents,crot = binner.bin(p2d_rot)
     cents,ctest = rbinner.bin(p2d)
 
-    mpibox.add_to_stack("sht",cls)
+    #mpibox.add_to_stack("sht",cls)
     mpibox.add_to_stack("crot",crot)
     mpibox.add_to_stack("ctest",ctest)
 
@@ -121,9 +121,9 @@ if rank==0:
 
     crot = mpibox.stacks["crot"]
     ctest = mpibox.stacks["ctest"]
-    shts = mpibox.stacks["sht"]
-    ells = np.arange(0,shts.size,1)
-    sht_theory = pfunc(ells)
+    #shts = mpibox.stacks["sht"]
+    #ells = np.arange(0,shts.size,1)
+    #sht_theory = pfunc(ells)
 
     
 
