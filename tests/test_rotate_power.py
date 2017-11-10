@@ -7,6 +7,7 @@ import sys
 import orphics.analysis.flatMaps as fmaps
 from orphics.tools.mpi import MPI,mpi_distribute, MPIStats
 import healpy as hp
+from enlib import enmap
 
 Nsims = 16
 
@@ -41,14 +42,16 @@ shape,wcs = enmap.rect_geometry(width_arcmin=wdeg*60.,px_res_arcmin=pix,height_a
 
 
 
-#mg = enmap.MapGen(shape,wcs,ps)
-taper,sw2 = fmaps.get_taper(shape,taper_percent = 18.0,pad_percent = 4.0,weight=None)
+with bench.show("taper"):
+    #mg = enmap.MapGen(shape,wcs,ps)
+    taper,sw2 = fmaps.get_taper(shape,taper_percent = 18.0,pad_percent = 4.0,weight=None)
 
 pxover = 0.5
     
 for k,index in enumerate(my_tasks):
 
-    fullsky = curvedsky.rand_map(fshape, fwcs, ps, lmax=lmax,dtype=np.float32)
+    with bench.show("full_sky"):
+        fullsky = curvedsky.rand_map(fshape, fwcs, ps, lmax=lmax,dtype=np.float32)
 
 
     map_south = fullsky.submap(enmap.box(shape,wcs))*taper
