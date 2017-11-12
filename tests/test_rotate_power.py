@@ -131,7 +131,7 @@ if rank==0:
     
 
     pl = io.Plotter()
-    pl.add(ells,(shts-sht_theory)/sht_theory,label="south sht vs theory",alpha=0.3)
+    #pl.add(ells,(shts-sht_theory)/sht_theory,label="south sht vs theory",alpha=0.3)
     pl.add(cents,(crot-ctest)/ctest,label="rot vs test")
     pl.add(cents,(crot-ctheory)/ctheory,label="rot vs theory")
     pl.add(cents,(ctest-ctheory)/ctheory,label="test vs theory")
@@ -141,10 +141,10 @@ if rank==0:
     pl.done(prefix+"cldiff.png")
 
 
-    pl = io.Plotter(scaleY='log')
-    pl.add(ells,(shts*ells**2.))
-    pl.add(ells,(sht_theory*ells**2.))
-    pl.legendOn()
-    pl._ax.set_xlim(0,5000)
-    pl.done(prefix+"clsht.png")
+    # pl = io.Plotter(scaleY='log')
+    # pl.add(ells,(shts*ells**2.))
+    # pl.add(ells,(sht_theory*ells**2.))
+    # pl.legendOn()
+    # pl._ax.set_xlim(0,5000)
+    # pl.done(prefix+"clsht.png")
 
