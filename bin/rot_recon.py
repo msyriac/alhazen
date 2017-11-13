@@ -21,24 +21,47 @@ pipe = utils.RotTestPipeline(full_sky_pix=args.full_sky_pixel,wdeg=args.patch_wi
                              mpi_comm=MPI.COMM_WORLD,nsims=args.Nsims,lmax=args.lmax,pix_intermediate=args.pix_inter)
 
 cmb = {}
-recon = {}
+ikappa = {}
 mlist = ['e','s','r']
 
 
 for k,index in enumerate(pipe.tasks):
 
-    cmb['s'],cmb['e'] = pipe.make_sim(index)
+    cmb['s'],cmb['e'],ikappa['s'],ikappa['e'] = pipe.make_sim(index)
     cmb['r'] = pipe.rotator.rotate(cmb['s'])
+    ikappa['r'] = pipe.rotator.rotate(ikappa['s'])
 
     for m in mlist:
-        recon[m] = pipe.reconstruct(m,cmb[m])
+        recon = pipe.reconstruct(m,cmb[m])
+        cxc,kcmb,kcmb = pipe.fc[m].power2d(cmb[m])
+        rxr,krecon,krecon = pipe.fc[m].power2d(recon)
+        rxr /= pipe.w4[m]
+        rxi,kinput = pipe.fc[m].f1power(ikappa[m],krecon)
+        rxi /= pipe.w3[m]
+        ixi = pipe.fc[m].f2power(kinput,kinput)
+        ixi /= pipe.w2[m]
+        n0 = pipe.qest[m].N.super_dumb_N0_TTTT(cxc)/pipe.w2[m]**2.
+        rxr_n0 = rxr - n0
+
+        pipe.mpibox.add_to_stats("cmb-"+m,pipe.binner[m].bin(cxc/pipe.w2[m])[1])
+        pipe.mpibox.add_to_stats("rxr-"+m,pipe.binner[m].bin(rxr)[1])
+        pipe.mpibox.add_to_stats("rxi-"+m,pipe.binner[m].bin(rxi)[1])
+        pipe.mpibox.add_to_stats("ixi-"+m,pipe.binner[m].bin(ixi)[1])
+        pipe.mpibox.add_to_stats("n0-"+m,pipe.binner[m].bin(n0)[1])
+        pipe.mpibox.add_to_stats("rxr-n0-"+m,pipe.binner[m].bin(rxr_n0)[1])
+
+    
 
 
-    if k==0 and pipe.rank==0:
-        import orphics.tools.io as io
-        for m in mlist:
+        if k==0 and pipe.rank==0:
+            import orphics.tools.io as io
             io.highResPlot2d(cmb[m],io.dout_dir+"cmb_"+m+".png")
-            io.highResPlot2d(recon[m],io.dout_dir+"recon_"+m+".png")
+            io.highResPlot2d(recon,io.dout_dir+"recon_"+m+".png")
     
     
     
+if pipe.rank==0: pipe.logger.info( "MPI Collecting...")
+pipe.mpibox.get_stats(verbose=False)
+
+if pipe.rank==0:
+    pipe.dump()
