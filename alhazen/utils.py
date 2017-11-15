@@ -177,13 +177,19 @@ class RotTestPipeline(object):
                                          bigell=self.lmax)
 
                 
-    def dump(self):
+    def dump(self,save_meanfield):
+        mlist = ['s','e','r']
 
+        if save_meanfield:
+            for m in mlist:
+                mf = self.mpibox.stacks["meanfield-"+m]
+                enmap.write_map("meanfield_"+m+".hdf",mf)
+            
+        
         def unpack(label,m):
             dic = self.mpibox.stats[label+"-"+m]
             return dic['mean'],dic['errmean']
 
-        mlist = ['s','e','r']
 
         # CLKK vs input powers
         pl = io.Plotter()
@@ -246,21 +252,78 @@ class RotTestPipeline(object):
             y,err = unpack("n0",m)
             pl.add(cents,y,ls="--")
             pl.add(cents,y+clkk1d,ls="-")
-        pl.legendOn()
-        pl._ax.set_ylim(1.e-10,1.e-6)
-        pl.done(io.dout_dir+"clkkrecon_"+m+".png")
-        
-        
-        # for m in mlist:
+            pl.legendOn()
+            pl._ax.set_ylim(1.e-10,1.e-6)
+            pl.done(io.dout_dir+"clkkrecon_"+m+".png")
 
-        #     modlmap = self.modlmap[m]
-        #     cltt = self.theory.lCl('TT',modlmap)
-        #     clkk = self.theory.gCl('kk',modlmap)
+
+        pl = io.Plotter()
+        rxi_e,rxi_err_e = unpack("rxi","e")
+
+        for m in ['s','r']:
+            
+            y,err = unpack("rxi",m)
+            diff = (y-rxi_e)/rxi_e
+            diff_err = np.abs(y/rxi_e)*np.sqrt((err/y)**2.+(rxi_err_e/rxi_e)**2.)
+            pl.addErr(cents,diff,diff_err,ls="--",marker="o",label=m+"-cross")
+            
+        pl.legendOn()
+        pl.hline()
+        pl._ax.set_ylim(-0.1,0.1)
+        pl.done(io.dout_dir+"clkkdiffrecon_cross.png")
+
+        pl = io.Plotter()
+        rxr_e,rxr_err_e = unpack("rxr-n0","e")
+
+        for m in ['s','r']:
+            y,err = unpack("rxr-n0",m)
+            diff = (y-rxr_e)/rxr_e
+            diff_err = np.abs(y/rxr_e)*np.sqrt((err/y)**2.+(rxr_err_e/rxr_e)**2.)
+            pl.addErr(cents,diff,diff_err,ls="-",marker="o",label=m+"-auto")
             
             
-        #     unpack("rxr",m)
-        #     unpack("rxi",m)
-        #     unpack("ixi",m)
-        #     unpack("n0",m)
-        #     unpack("rxr-n0",m)
+        pl.legendOn()
+        pl.hline()
+        pl._ax.set_ylim(-0.4,0.4)
+        pl.done(io.dout_dir+"clkkdiffrecon_auto.png")
+
+
+        pl = io.Plotter()
+
+        for m in mlist:
+            modlmap = self.modlmap[m]
+            clkk2d = self.theory.gCl('kk',modlmap)
+            clkk1d = self.binner[m].bin(clkk2d)[1]
             
+            
+            y,err = unpack("rxi",m)
+            diff = (y-clkk1d)/clkk1d
+            diff_err = err/clkk1d
+            pl.addErr(cents,diff,diff_err,ls="--",marker="o",label=m+"-cross")
+            
+        pl.legendOn()
+        pl.hline()
+        pl._ax.set_ylim(-0.1,0.1)
+        pl.done(io.dout_dir+"clkkdiffrecon_theory_cross.png")
+
+
+        pl = io.Plotter()
+
+        for m in mlist:
+            modlmap = self.modlmap[m]
+            clkk2d = self.theory.gCl('kk',modlmap)
+            clkk1d = self.binner[m].bin(clkk2d)[1]
+            
+            y,err = unpack("rxr-n0",m)
+            diff = (y-clkk1d)/clkk1d
+            diff_err = err/clkk1d
+            pl.addErr(cents,diff,diff_err,ls="-",marker="o",label=m+"-auto")
+            
+        pl.legendOn()
+        pl.hline()
+        pl._ax.set_ylim(-0.4,0.4)
+        pl.done(io.dout_dir+"clkkdiffrecon_theory_auto.png")
+        
+
+
+        
