@@ -17,10 +17,11 @@ def ignore():
 class RotTestPipeline(object):
 
 
-    def __init__(self,full_sky_pix,wdeg,hdeg,yoffset,mpi_comm=None,nsims=1,lmax=7000,pix_intermediate=None):
+    def __init__(self,full_sky_pix,wdeg,hdeg,yoffset,mpi_comm=None,nsims=1,lmax=7000,pix_intermediate=None,bin_lmax=3000):
         self.dtype = np.float32
-        self.bin_edges = np.arange(80,3000,100)
+        self.bin_edges = np.arange(80,bin_lmax,100)
         self.fshape, self.fwcs = enmap.fullsky_geometry(res=full_sky_pix*np.pi/180./60., proj="car")
+        self.fshape = self.fshape[-2:]
         self.shape = {}
         self.wcs = {}
         self.taper = {}
@@ -73,9 +74,8 @@ class RotTestPipeline(object):
         with bench.show("Lensing operation...") if self.rank==0 else ignore():
             full,kappa = lensing.rand_map(self.fshape, self.fwcs, self.ps, lmax=self.lmax,
                                           maplmax=self.lmax, seed=seed, verbose=True if self.rank==0 else False, dtype=self.dtype,output="lk")
-
-            south = full[0].submap(self.pos_south)
-            equator = full[0].submap(self.pos_eq)
+            south = full.submap(self.pos_south)
+            equator = full.submap(self.pos_eq)
             ksouth = kappa.submap(self.pos_south)
             kequator = kappa.submap(self.pos_eq)
             del full
@@ -177,33 +177,12 @@ class RotTestPipeline(object):
                                          bigell=self.lmax)
 
                 
-    def dump(self,save_meanfield):
+    def dump(self,save_meanfield,skip_recon):
         mlist = ['s','e','r']
 
-        if save_meanfield:
-            for m in mlist:
-                mf = self.mpibox.stacks["meanfield-"+m]
-                enmap.write_map("meanfield_"+m+".hdf",mf)
-            
-        
         def unpack(label,m):
             dic = self.mpibox.stats[label+"-"+m]
             return dic['mean'],dic['errmean']
-
-
-        # CLKK vs input powers
-        pl = io.Plotter()
-        for m in mlist:
-            modlmap = self.modlmap[m]
-            clkk = self.binner[m].bin(self.theory.gCl('kk',modlmap))[1]
-            pclkk,pclkk_err = unpack("ixi",m)
-            pdiff = (pclkk-clkk)/clkk
-            perr = pclkk_err/clkk
-            pl.addErr(self.cents,pdiff,yerr=perr,label=m,ls="-")
-        pl.hline()
-        pl.legendOn()
-        pl.done(io.dout_dir+"clkkdiff.png")
-            
 
         # CLTT vs input powers
         pl = io.Plotter()
@@ -217,6 +196,32 @@ class RotTestPipeline(object):
         pl.hline()
         pl.legendOn()
         pl.done(io.dout_dir+"clttdiff.png")
+
+        # CLKK vs input powers
+        pl = io.Plotter()
+        for m in mlist:
+            modlmap = self.modlmap[m]
+            clkk = self.binner[m].bin(self.theory.gCl('kk',modlmap))[1]
+            pclkk,pclkk_err = unpack("ixi",m)
+            pdiff = (pclkk-clkk)/clkk
+            perr = pclkk_err/clkk
+            pl.addErr(self.cents,pdiff,yerr=perr,label=m,ls="-")
+        pl.hline()
+        pl.legendOn()
+        pl.done(io.dout_dir+"clkkdiff.png")
+
+        if skip_recon: return
+        
+        if save_meanfield:
+            for m in mlist:
+                mf = self.mpibox.stacks["meanfield-"+m]
+                enmap.write_map("meanfield_"+m+".hdf",mf)
+            
+        
+
+
+            
+
 
 
 
