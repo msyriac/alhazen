@@ -27,7 +27,7 @@ orphics
 	  - load_theory_spectra*
 	  - GaussianCov
 
-	- cmb.py
+	- instrument.py
 	  - gauss_beam
 	  - white_noise*
 

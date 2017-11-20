@@ -1,5 +1,5 @@
 from __future__ import print_function
-from enlib import enmap, lensing, powspec, bench
+from enlib import enmap, lensing, powspec, bench, curvedsky
 from enlib import utils as u
 import sys
 import numpy as np
@@ -10,6 +10,7 @@ import orphics.tools.cmb as cmb
 from alhazen.quadraticEstimator import Estimator
 import orphics.analysis.flatMaps as fmaps
 import contextlib
+import healpy as hp
 @contextlib.contextmanager
 def ignore():
     yield None
@@ -74,6 +75,10 @@ class RotTestPipeline(object):
         with bench.show("Lensing operation...") if self.rank==0 else ignore():
             full,kappa = lensing.rand_map(self.fshape, self.fwcs, self.ps, lmax=self.lmax,
                                           maplmax=self.lmax, seed=seed, verbose=True if self.rank==0 else False, dtype=self.dtype,output="lk")
+            alms = curvedsky.map2alm(full,lmax=self.lmax)
+            ps_data = hp.alm2cl(alms.astype(np.complex128))
+            del alms
+            self.mpibox.add_to_stats("fullsky_ps",ps_data)
             south = full.submap(self.pos_south)
             equator = full.submap(self.pos_eq)
             ksouth = kappa.submap(self.pos_south)
@@ -184,8 +189,16 @@ class RotTestPipeline(object):
             dic = self.mpibox.stats[label+"-"+m]
             return dic['mean'],dic['errmean']
 
+        ellrange = np.arange(0,self.bin_edges[-1])
+        cltheory = self.theory.lCl('TT',ellrange)
+
         # CLTT vs input powers
         pl = io.Plotter()
+
+        pdiff = (self.mpibox.stats["fullsky_ps"]['mean'][:ellrange.size]-cltheory)/cltheory
+        perr = self.mpibox.stats["fullsky_ps"]['errmean'][:ellrange.size]/cltheory
+        pl.addErr(ellrange,pdiff,yerr=perr,label="sht fullsky",ls="-",alpha=0.3)
+
         for m in mlist:
             modlmap = self.modlmap[m]
             cltt = self.binner[m].bin(self.theory.lCl('TT',modlmap))[1]
@@ -195,6 +208,7 @@ class RotTestPipeline(object):
             pl.addErr(self.cents,pdiff,yerr=perr,label=m,ls="-")
         pl.hline()
         pl.legendOn()
+        pl._ax.set_ylim(-0.1,0.1)
         pl.done(io.dout_dir+"clttdiff.png")
 
         # CLKK vs input powers

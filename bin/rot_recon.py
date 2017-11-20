@@ -40,7 +40,7 @@ for k,index in enumerate(pipe.tasks):
 
     cmb['s'],cmb['e'],ikappa['s'],ikappa['e'] = pipe.make_sim(index)
     cmb['r'] = pipe.rotator.rotate(cmb['s'])
-    ikappa['r'] = pipe.rotator.rotate(ikappa['s'])
+    ikappa['r'] = pipe.rotator.rotate(ikappa['s'], order=5, mode="constant", cval=0.0, prefilter=True, mask_nan=True, safe=True)
 
     for m in mlist:
         cxc,kcmb,kcmb = pipe.fc[m].power2d(cmb[m])
