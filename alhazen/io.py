@@ -1,6 +1,7 @@
 import sys
 from enlib import enmap
 import numpy as np
+import orphics.maps as maps
 import orphics.analysis.flatMaps as fmaps
 import orphics.tools.io as oio
 import warnings
@@ -169,10 +170,10 @@ def enmaps_from_config(Config,sim_section,analysis_section,pol=False):
 
 
         
-        shape_dat, wcs_dat = enmap.rect_geometry(width_analysis_deg*60.,pixel_analysis,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
+        shape_dat, wcs_dat = maps.rect_geometry(width_analysis_deg*60.,pixel_analysis,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
 
         if np.abs(buffer_sim-1.)<1.e-3:
-            shape_sim, wcs_sim = enmap.rect_geometry(width_analysis_deg*60.,pixel_sim,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
+            shape_sim, wcs_sim = maps.rect_geometry(width_analysis_deg*60.,pixel_sim,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
         else:
             raise NotImplementedError("Buffer !=1 not implemented")
 
@@ -206,7 +207,7 @@ def enmap_from_config_section(Config,section,pol=False):
 
 
         
-        shape_dat, wcs_dat = enmap.rect_geometry(width_analysis_deg*60.,pixel_analysis,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
+        shape_dat, wcs_dat = maps.rect_geometry(width_analysis_deg*60.,pixel_analysis,proj=projection,pol=pol,height_arcmin=height_analysis_deg*60.,xoffset_degree=ra_offset,yoffset_degree=dec_offset)
 
     return shape_dat, wcs_dat            
 
