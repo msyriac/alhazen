@@ -2,13 +2,13 @@ print("Starting imports...")
 import matplotlib
 matplotlib.use('Agg')
 from alhazen.quadraticEstimator import Estimator
-import orphics.analysis.flatMaps as fmaps 
-from orphics.tools.cmb import loadTheorySpectraFromCAMB
+import orphics.maps as fmaps 
+from orphics.cosmology import loadTheorySpectraFromCAMB
 import numpy as np
 #from astLib import astWCS, astCoords
 import flipper.liteMap as lm
-from orphics.tools.io import Plotter
-from orphics.tools.stats import binInAnnuli
+from orphics.io import Plotter
+from orphics.stats import bin_in_annuli
 import sys
 
 from scipy.interpolate import interp1d
@@ -24,7 +24,7 @@ import flipper.fftTools as ft
 import orphics.tools.stats as stats
 
 
-from orphics.tools.stats import getStats
+from orphics.stats import get_stats
 
 from mpi4py import MPI
 
@@ -59,12 +59,12 @@ colorList = ['red','blue','green','orange','purple','brown']
 tonly = False
 if polCombList==['TT']: tonly=True
 
-simRoot = "/astro/astronfs01/workarea/msyriac/cmbSims/"
+simRoot = "/gpfs01/astro/workarea/msyriac/data/sims/alex/"
 
-lensedTPath = lambda x: simRoot + "lensedCMBMaps_" + str(x).zfill(5) + "/order5_"+periodic+"lensedCMB_T_beam"+cutoutStr+"_0"+suffix+".fits"
-lensedQPath = lambda x: simRoot + "lensedCMBMaps_" + str(x).zfill(5) + "/order5_"+periodic+"lensedCMB_Q_beam"+cutoutStr+"_0"+suffix+".fits"
-lensedUPath = lambda x: simRoot + "lensedCMBMaps_" + str(x).zfill(5) + "/order5_"+periodic+"lensedCMB_U_beam"+cutoutStr+"_0"+suffix+".fits"
-kappaPath = lambda x: simRoot + "phiMaps_" + str(x).zfill(5) + "/kappaMap"+cutoutStr+"_0"+suffix+".fits"
+lensedTPath = lambda x: simRoot + "s14/lensedCMBMaps_" + str(x).zfill(5) + "/order5_"+periodic+"lensedCMB_T_beam"+cutoutStr+"_0"+suffix+".fits"
+lensedQPath = lambda x: simRoot + "s14/lensedCMBMaps_" + str(x).zfill(5) + "/order5_"+periodic+"lensedCMB_Q_beam"+cutoutStr+"_0"+suffix+".fits"
+lensedUPath = lambda x: simRoot + "s14/lensedCMBMaps_" + str(x).zfill(5) + "/order5_"+periodic+"lensedCMB_U_beam"+cutoutStr+"_0"+suffix+".fits"
+kappaPath = lambda x: simRoot + "s14/phiMaps_" + str(x).zfill(5) + "/kappaMap"+cutoutStr+"_0"+suffix+".fits"
 beamPath = simRoot + "beam_0.txt"
 
 l,beamells = np.loadtxt(beamPath,unpack=True,usecols=[0,1])
@@ -75,7 +75,7 @@ kellmin = 100
 kellmax = 3000
 
 #cambRoot = "/astro/u/msyriac/repos/cmb-lensing-projections/data/TheorySpectra/ell28k_highacc"
-cambRoot = "/astro/u/msyriac/repos/actpLens/data/non-linear"
+cambRoot = "/gpfs01/astro/workarea/msyriac/data/sims/alex/non-linear"
 
 TCMB = 2.7255e6
 #theory = loadTheorySpectraFromCAMB(cambRoot,unlensedEqualsLensed=False,useTotal=False,TCMB = TCMB,lpad=4000)
@@ -137,6 +137,7 @@ for k,i in enumerate(myIs):
         gGenT = fmaps.GRFGen(lensedTLm.copy(),ellNoise,Ntt,bufferFactor=1)
         gGenP1 = fmaps.GRFGen(lensedTLm.copy(),ellNoise,Npp,bufferFactor=1)
         gGenP2 = fmaps.GRFGen(lensedTLm.copy(),ellNoise,Npp,bufferFactor=1)
+
 
     if noiseT>1.e-3: lensedTLm.data = lensedTLm.data + gGenT.getMap(stepFilterEll=None)
     if noiseP>1.e-3: lensedQLm.data = lensedQLm.data + gGenP1.getMap(stepFilterEll=None)
@@ -202,17 +203,17 @@ for k,i in enumerate(myIs):
 
 
         p2d = ft.powerFromLiteMap(kappaLm,reconLm,applySlepianTaper=False)
-        centers, means = stats.binInAnnuli(p2d.powerMap, p2d.modLMap, bin_edges)
+        centers, means = stats.bin_in_annuli(p2d.powerMap, p2d.modLMap, bin_edges)
         listCrossPower[polComb].append( means )
 
 
 
         p2d = ft.powerFromLiteMap(reconLm,applySlepianTaper=False)
-        centers, means = stats.binInAnnuli(p2d.powerMap, p2d.modLMap, bin_edges)
+        centers, means = stats.bin_in_annuli(p2d.powerMap, p2d.modLMap, bin_edges)
         listReconPower[polComb].append( means )
 
     p2d = ft.powerFromLiteMap(kappaLm,applySlepianTaper=False)
-    centers, means = stats.binInAnnuli(p2d.powerMap, p2d.modLMap, bin_edges)
+    centers, means = stats.bin_in_annuli(p2d.powerMap, p2d.modLMap, bin_edges)
 
     if k==0: totInputPower = (means.copy()*0.).astype(dtype=np.float64)
 
@@ -269,15 +270,15 @@ else:
     
 
     for polComb,col in zip(polCombList,colorList):
-        statsCross[polComb] = getStats(listAllCrossPower[polComb])
+        statsCross[polComb] = get_stats(listAllCrossPower[polComb])
         pl.addErr(centers,statsCross[polComb]['mean'],yerr=statsCross[polComb]['errmean'],ls="none",marker="o",markersize=8,label="recon x input "+polComb,color=col,mew=2,elinewidth=2)
 
-        statsRecon[polComb] = getStats(listAllReconPower[polComb])
+        statsRecon[polComb] = get_stats(listAllReconPower[polComb])
         fp = interp1d(centers,statsRecon[polComb]['mean'],fill_value='extrapolate')
         pl.add(ellkk,(fp(ellkk))-Clkk,color=col,lw=2)
 
         Nlkk2d = qest.N.Nlkk[polComb]
-        ncents, npow = stats.binInAnnuli(Nlkk2d, p2d.modLMap, bin_edges)
+        ncents, npow = stats.bin_in_annuli(Nlkk2d, p2d.modLMap, bin_edges)
         pl.add(ncents,npow,color=col,lw=2,ls="--")
 
         

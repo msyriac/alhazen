@@ -1,10 +1,11 @@
 import numpy as np
 import sys, os, glob
-from orphics.analysis.pipeline import mpi_distribute, MPIStats
-import orphics.tools.stats as stats
+from orphics.mpi import mpi_distribute
+from orphics.stats import Stats as MPIStats
+import orphics.stats as stats
 import alhazen.io as aio
-import orphics.tools.io as io
-import orphics.analysis.flatMaps as fmaps
+import orphics.io as io
+import orphics.maps as fmaps
 import warnings
 import logging
 logger = logging.getLogger()
@@ -15,7 +16,6 @@ with io.nostdout():
 from alhazen.quadraticEstimator import Estimator
 import alhazen.lensTools as lt
 from configparser import SafeConfigParser 
-from szar.counts import ClusterCosmology
 import enlib.fft as fftfast
 import argparse
 from mpi4py import MPI
