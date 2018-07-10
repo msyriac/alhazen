@@ -24,7 +24,7 @@ from mpi4py import MPI
 import astropy.io.fits as fits
 class LiuConvergence(object):
 
-    def __init__(self,root_dir="/gpfs01/astro/workarea/msyriac/data/sims/jia/"):
+    def __init__(self,root_dir="/global/cscratch1/sd/djbard/JiaSims/convergence_maps/Maps11000/"):
         self.root = root_dir
         size_deg = 3.5
         Npix = 2048.
@@ -50,12 +50,19 @@ class LiuConvergence(object):
         #print ('JIA print retmap.shape', retmap.shape)
         return retmap
 
+
+lc = LiuConvergence(root_dir="/global/cscratch1/sd/djbard/JiaSims/convergence_maps/")
+# forget the ini, let's get shape and wcs from Jia's sims themselves
+shape,wcs = lc.shape,lc.wcs
+shape_sim,wcs_sim = shape,wcs
+shape_dat,wcs_dat = shape,wcs
+
 # Runtime params that should be moved to command line
 #analysis_section = "analysis_small" # this gives lower noise curves?
 #sim_section = "sims_small"
-analysis_section = "analysis_high"
-sim_section = "sims_high"
-cosmology_section = "cc_nam"
+#analysis_section = "analysis_high"
+#sim_section = "sims_high"
+cosmology_section = "cc_nam" # this should ideally by Jia's sims cosmology
 
 
 # Parse command line
@@ -99,9 +106,9 @@ Config.optionxform=str
 Config.read(iniFile)
 
 pol = False
-shape_sim, wcs_sim, shape_dat, wcs_dat = aio.enmaps_from_config(Config,sim_section,analysis_section,pol=pol)
-analysis_resolution =  np.min(enmap.extent(shape_dat,wcs_dat)/shape_dat[-2:])*60.*180./np.pi
-print 'analysis resolution',analysis_resolution
+#shape_sim, wcs_sim, shape_dat, wcs_dat = aio.enmaps_from_config(Config,sim_section,analysis_section,pol=pol)
+#analysis_resolution =  np.min(enmap.extent(shape_dat,wcs_dat)/shape_dat[-2:])*60.*180./np.pi
+#print 'analysis resolution',analysis_resolution
 min_ell = fmaps.minimum_ell(shape_dat,wcs_dat)
 lb = aio.ellbounds_from_config(Config,"reconstruction_small",min_ell)
 tellmin = lb['tellminY']
@@ -151,13 +158,12 @@ with io.nostdout():
                      bigell=lmax)
 
     
-pixratio = analysis_resolution/Config.getfloat(sim_section,"pixel_arcmin")
-px_dat = analysis_resolution
-lens_order = Config.getint(sim_section,"lens_order")
+#pixratio = analysis_resolution/Config.getfloat(sim_section,"pixel_arcmin")
+#px_dat = analysis_resolution
+lens_order = 5 #Config.getint(sim_section,"lens_order")
 parray_sim = aio.patch_array_from_config(Config,expf_name,shape_sim,wcs_sim,dimensionless=True)
 parray_sim.add_theory(None,theory,lmax)
 
-lc = LiuConvergence(root_dir="/global/cscratch1/sd/djbard/JiaSims/convergence_maps/")
 
 k = -1
 for index in my_tasks:
@@ -197,7 +203,7 @@ for index in my_tasks:
     
     # === ADD NOISE AFTER DOWNSAMPLE
     if rank==0: print "Beam convolving..."
-    olensed = enmap.ndmap(lensed.copy() if abs(pixratio-1.)<1.e-3 else resample.resample_fft(lensed.copy(),shape_dat),wcs_dat)
+    olensed = enmap.ndmap(lensed.copy() #if abs(pixratio-1.)<1.e-3 else resample.resample_fft(lensed.copy(),shape_dat),wcs_dat)
     flensed = fftfast.fft(olensed,axes=[-2,-1])
     flensed *= parray_dat.lbeam
     lensed = fftfast.ifft(flensed,axes=[-2,-1],normalize=True).real
@@ -215,7 +221,7 @@ for index in my_tasks:
     
     cmb = enmap.ndmap(cmb,wcs_dat)
     if rank==0: print "Calculating powers for diagnostics..."
-    utt2d = fmaps.get_simple_power_enmap(enmap.ndmap(unlensed if abs(pixratio-1.)<1.e-3 else resample.resample_fft(unlensed,shape_dat),wcs_dat))
+    utt2d = fmaps.get_simple_power_enmap(enmap.ndmap(unlensed)
     ltt2d = fmaps.get_simple_power_enmap(olensed)
     ccents,utt = lbinner_dat.bin(utt2d)
     ccents,ltt = lbinner_dat.bin(ltt2d)
@@ -250,7 +256,7 @@ for index in my_tasks:
 
     
     if rank==0: print "Downsampling input kappa..."
-    downk = enmap.ndmap(kappa  if abs(pixratio-1.)<1.e-3 else resample.resample_fft(kappa,shape_dat),wcs_dat)
+    downk = enmap.ndmap(kappa,wcs_dat)
     if rank==0: print "Calculating kappa powers and binning..."
     cpower = fmaps.get_simple_power_enmap(enmap1=kappa_recon,enmap2=downk)
     ipower = fmaps.get_simple_power_enmap(enmap1=downk)
