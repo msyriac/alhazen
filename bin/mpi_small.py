@@ -15,7 +15,7 @@ with io.nostdout():
 from alhazen.quadraticEstimator import Estimator
 import alhazen.lensTools as lt
 from ConfigParser import SafeConfigParser 
-from szar.counts import ClusterCosmology
+#from szar.counts import ClusterCosmology
 import enlib.fft as fftfast
 import argparse
 from mpi4py import MPI
@@ -62,11 +62,12 @@ my_tasks = each_tasks[rank]
 
 
 # Read config
-iniFile = "../halofg/input/recon.ini"
+iniFile = "recon.ini"
 Config = SafeConfigParser()
 Config.optionxform=str
 Config.read(iniFile)
 
+print "settings..."
 pol = False
 shape_sim, wcs_sim, shape_dat, wcs_dat = aio.enmaps_from_config(Config,sim_section,analysis_section,pol=pol)
 analysis_resolution =  np.min(enmap.extent(shape_dat,wcs_dat)/shape_dat[-2:])*60.*180./np.pi
@@ -82,7 +83,7 @@ parray_dat = aio.patch_array_from_config(Config,expf_name,shape_dat,wcs_dat,dime
 parray_sim = aio.patch_array_from_config(Config,expf_name,shape_sim,wcs_sim,dimensionless=True)
 lxmap_dat,lymap_dat,modlmap_dat,angmap_dat,lx_dat,ly_dat = fmaps.get_ft_attributes_enmap(shape_dat,wcs_dat)
 lxmap_sim,lymap_sim,modlmap_sim,angmap_sim,lx_sim,ly_sim = fmaps.get_ft_attributes_enmap(shape_sim,wcs_sim)
-lbin_edges = np.arange(kellmin,kellmax,300)
+lbin_edges = np.arange(kellmin,kellmax,300) # BINS ! IMPORTANT!
 lbinner_dat = stats.bin2D(modlmap_dat,lbin_edges)
 lbinner_sim = stats.bin2D(modlmap_sim,lbin_edges)
 
@@ -99,7 +100,7 @@ if rank==0: io.quickPlot2d(kbeampass,out_dir+"kbeam.png")
 fMaskCMB_T = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=tellmin,lmax=tellmax)
 fMaskCMB_P = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=pellmin,lmax=pellmax)
 fMask = fmaps.fourierMask(lx_dat,ly_dat,modlmap_dat,lmin=kellmin,lmax=kellmax)
-
+print "qest init..."
 with io.nostdout():
     qest = Estimator(template_dat,
                      theory,
@@ -124,7 +125,7 @@ px_dat = analysis_resolution
 lens_order = Config.getint(sim_section,"lens_order")
 parray_sim = aio.patch_array_from_config(Config,expf_name,shape_sim,wcs_sim,dimensionless=True)
 parray_sim.add_theory(None,theory,lmax)
-
+print "starting..."
 
 k = -1
 for index in my_tasks:
@@ -140,7 +141,7 @@ for index in my_tasks:
     if rank==0: print "Lensing..."
     #lensed = lensing.lens_map_flat_pix(unlensed.copy(), alpha_pix.copy(),order=lens_order)
     lensed = lensing.lens_map(unlensed.copy(), grad_phi, order=lens_order, mode="spline", border="cyclic", trans=False, deriv=False, h=1e-7)
-
+    # enmap.write_fits(filename,lensed)
     
     # === ADD NOISE BEFORE DOWNSAMPLE
     # if rank==0: print "Beam convolving..."
@@ -171,6 +172,11 @@ for index in my_tasks:
     if rank==0: print "Downsampling..."
     cmb = lensed
 
+    # Deconvolve beam, low pass filter, and save (not used for analysis here
+
+    
+
+    #####
     
     
     cmb = enmap.ndmap(cmb,wcs_dat)
@@ -195,6 +201,7 @@ for index in my_tasks:
 
         
     kappa_recon = enmap.ndmap(rawkappa,wcs_dat)
+    # enmap.write_map(kfilename,kappa_recon)
     apower = fmaps.get_simple_power_enmap(enmap1=kappa_recon)
 
     
@@ -238,11 +245,11 @@ if rank==0:
 
 
 
-    cstats = mpibox.stats['cross']
-    istats = mpibox.stats['ipower']
-    astats = mpibox.stats['auto']
-    rstats = mpibox.stats['auto_n0subbed']
-    nstats = mpibox.stats['superdumbs']
+    cstats = mpibox.stats['cross'] # cross with input
+    istats = mpibox.stats['ipower'] # auto of input
+    astats = mpibox.stats['auto'] # raw auto of recon
+    rstats = mpibox.stats['auto_n0subbed'] # RDN0 subtracted auto of recon
+    nstats = mpibox.stats['superdumbs'] # RDN0
 
     area = unlensed.area()*(180./np.pi)**2.
     print "area: ", area, " sq.deg."
